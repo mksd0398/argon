@@ -1,0 +1,4 @@
+date,project,task,start_time,end_time,status
+2026-10-05,create-shopify-app-storefront,"Brainstorm and design a native iOS + Android Shopify storefront scaffolder",04:26,,pending
+2026-10-05,create-shopify-app-storefront,"subagent: research current Shopify native mobile storefront stack (Buy SDK, Checkout Kit, Customer Account API, Storefront API, theme-like content)",04:27,04:31,done
+2026-10-05,create-shopify-app-storefront,"subagent: review Argon section 1 (CLI flow, provisioning, scopes, auth, templates) against Shopify docs and CLI",04:41,04:48,done
