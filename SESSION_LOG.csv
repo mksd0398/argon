@@ -7,3 +7,5 @@ date,project,task,start_time,end_time,status
 2026-10-05,create-shopify-app-storefront,"subagent: Argon task 2: GraphQL contract and fragment resolver",05:12,05:14,done
 2026-10-05,create-shopify-app-storefront,"subagent: review Argon task 2 (GraphQL contract and fragment resolver)",05:15,05:16,done
 2026-10-05,create-shopify-app-storefront,"subagent: Argon task 3: section definitions and seed builder",05:12,05:18,done
+2026-10-05,create-shopify-app-storefront,"subagent: review Argon task 3 (section definitions and seed builder)",05:18,05:19,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 4: store provisioning and checks",05:20,05:24,done
