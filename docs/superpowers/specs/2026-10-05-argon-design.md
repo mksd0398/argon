@@ -122,7 +122,7 @@ are live as soon as they are saved.
 - **Screen lookup.** The app reads `metaobject(handle: {type: "mobile_screen", handle: "home"})`.
   More screens later cost nothing; they're just more handles.
 - **Seed.** The seed builds `home` from Admin data (requires `read_products`):
-  - a hero banner using the first product's featured `MediaImage`, if one exists;
+  - a text-only hero banner (heading = shop name, text telling the merchant to add an image and edit it in Content → Metaobjects); seeding an image is skipped because a product's MediaImage isn't guaranteed to be a valid `file_reference`;
   - `mobile_collections` with up to 6 collections that have products;
   - a `mobile_products` carousel of the first collection.
 - **`link` resolution** is one shared parser, also used for menu items and deep
