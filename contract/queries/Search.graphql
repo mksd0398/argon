@@ -1,0 +1,23 @@
+query Search(
+  $query: String!
+  $first: Int!
+  $after: String
+  $sortKey: SearchSortKeys
+  $reverse: Boolean
+  $filters: [ProductFilter!]
+) {
+  search(
+    query: $query
+    first: $first
+    after: $after
+    sortKey: $sortKey
+    reverse: $reverse
+    productFilters: $filters
+    types: [PRODUCT]
+  ) {
+    totalCount
+    productFilters { ...Filter }
+    pageInfo { hasNextPage endCursor }
+    nodes { ... on Product { ...ProductCard } }
+  }
+}

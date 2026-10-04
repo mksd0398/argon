@@ -1,0 +1,8 @@
+query FallbackHome {
+  collections(first: 6) {
+    nodes {
+      ...CollectionCard
+      products(first: 8) { nodes { ...ProductCard } }
+    }
+  }
+}

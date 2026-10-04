@@ -1,0 +1,14 @@
+query Order($id: ID!) {
+  order(id: $id) {
+    id
+    name
+    processedAt
+    financialStatus
+    fulfillments(first: 5) { nodes { status } }
+    lineItems(first: 50) {
+      nodes { title variantTitle quantity image { url } totalPrice { amount currencyCode } }
+    }
+    subtotal { amount currencyCode }
+    totalPrice { amount currencyCode }
+  }
+}

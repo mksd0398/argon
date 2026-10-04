@@ -1,0 +1,19 @@
+query Collection(
+  $handle: String!
+  $first: Int!
+  $after: String
+  $sortKey: ProductCollectionSortKeys
+  $reverse: Boolean
+  $filters: [ProductFilter!]
+) {
+  collection(handle: $handle) {
+    id
+    title
+    description
+    products(first: $first, after: $after, sortKey: $sortKey, reverse: $reverse, filters: $filters) {
+      filters { ...Filter }
+      pageInfo { hasNextPage endCursor }
+      nodes { ...ProductCard }
+    }
+  }
+}
