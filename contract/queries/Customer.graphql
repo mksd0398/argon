@@ -1,0 +1,10 @@
+query Customer {
+  customer {
+    firstName
+    lastName
+    emailAddress { emailAddress }
+    orders(first: 20, reverse: true) {
+      nodes { id name processedAt financialStatus totalPrice { amount currencyCode } }
+    }
+  }
+}

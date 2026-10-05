@@ -1,0 +1,32 @@
+{
+  "name": "@mksd0398/argon",
+  "version": "0.1.0",
+  "description": "Generate a native iOS + Android Shopify storefront app in one command. Not affiliated with or endorsed by Shopify.",
+  "license": "MIT",
+  "author": "Mayank Khan Singh DeSouza <mayank@kloctechnologies.com>",
+  "type": "module",
+  "bin": {
+    "argon": "bin/create.js"
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.js\"",
+    "test:live": "node -e \"process.env.ARGON_LIVE='1';require('child_process').execSync('npm test',{stdio:'inherit'})\""
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "contract",
+    "templates",
+    "LICENSE",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "prompts": "^2.4.2"
+  }
+}

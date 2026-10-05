@@ -1,0 +1,437 @@
+{
+  "metaobject": {
+    "field": {
+      "references": {
+        "nodes": [
+          {
+            "id": "gid://shopify/Metaobject/101",
+            "type": "mobile_banner",
+            "fields": [
+              {
+                "key": "image",
+                "value": "gid://shopify/MediaImage/201",
+                "reference": {
+                  "image": {
+                    "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/1685d5abe3e11df2a5ae2017646441bafb1f815893bbcc953296c3040175eb4f.png",
+                    "altText": null,
+                    "width": 1024,
+                    "height": 1024
+                  }
+                },
+                "references": null
+              },
+              {
+                "key": "heading",
+                "value": "New season",
+                "reference": null,
+                "references": null
+              },
+              {
+                "key": "text",
+                "value": "Fresh styles for everyone.",
+                "reference": null,
+                "references": null
+              },
+              {
+                "key": "button_label",
+                "value": "Shop men",
+                "reference": null,
+                "references": null
+              },
+              {
+                "key": "link",
+                "value": "/collections/men",
+                "reference": null,
+                "references": null
+              },
+              {
+                "key": "style",
+                "value": "hero",
+                "reference": null,
+                "references": null
+              }
+            ]
+          },
+          {
+            "id": "gid://shopify/Metaobject/102",
+            "type": "mobile_products",
+            "fields": [
+              {
+                "key": "heading",
+                "value": "Featured",
+                "reference": null,
+                "references": null
+              },
+              {
+                "key": "collection",
+                "value": "gid://shopify/Collection/1",
+                "reference": {
+                  "id": "gid://shopify/Collection/429493780502",
+                  "handle": "men",
+                  "title": "Men",
+                  "image": {
+                    "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/1685d5abe3e11df2a5ae2017646441bafb1f815893bbcc953296c3040175eb4f.png",
+                    "altText": null,
+                    "width": 1024,
+                    "height": 1024
+                  },
+                  "products": {
+                    "nodes": [
+                      {
+                        "id": "gid://shopify/Product/7982904639510",
+                        "handle": "hoodie-old",
+                        "title": "Hoodie",
+                        "availableForSale": true,
+                        "featuredImage": {
+                          "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/3d4d46da1bdbda2bf52f92987e6d4108770eb0a8f233f63a279849fce731f5af.jpg",
+                          "altText": null,
+                          "width": 4096,
+                          "height": 4096
+                        },
+                        "priceRange": {
+                          "minVariantPrice": {
+                            "amount": "90.0",
+                            "currencyCode": "CAD"
+                          }
+                        },
+                        "compareAtPriceRange": {
+                          "minVariantPrice": {
+                            "amount": "0.0",
+                            "currencyCode": "CAD"
+                          }
+                        }
+                      },
+                      {
+                        "id": "gid://shopify/Product/7982902771734",
+                        "handle": "men-t-shirt",
+                        "title": "Men's T-shirt",
+                        "availableForSale": true,
+                        "featuredImage": {
+                          "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/c99af4de567f8baafab47fa2d5267d83a997f9082892f01d7145c0eaa5403832.jpg",
+                          "altText": null,
+                          "width": 4096,
+                          "height": 4096
+                        },
+                        "priceRange": {
+                          "minVariantPrice": {
+                            "amount": "40.0",
+                            "currencyCode": "CAD"
+                          }
+                        },
+                        "compareAtPriceRange": {
+                          "minVariantPrice": {
+                            "amount": "0.0",
+                            "currencyCode": "CAD"
+                          }
+                        }
+                      },
+                      {
+                        "id": "gid://shopify/Product/7982905098262",
+                        "handle": "men-crewneck",
+                        "title": "Men's Crewneck",
+                        "availableForSale": true,
+                        "featuredImage": {
+                          "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/4ecbbab490d5a90c04074428b4b0e09358c6895050db590ffbb84e1f8e05fbbc.jpg",
+                          "altText": null,
+                          "width": 4096,
+                          "height": 4096
+                        },
+                        "priceRange": {
+                          "minVariantPrice": {
+                            "amount": "120.0",
+                            "currencyCode": "CAD"
+                          }
+                        },
+                        "compareAtPriceRange": {
+                          "minVariantPrice": {
+                            "amount": "0.0",
+                            "currencyCode": "CAD"
+                          }
+                        }
+                      },
+                      {
+                        "id": "gid://shopify/Product/7982856273942",
+                        "handle": "sweatpants",
+                        "title": "Sweatpants",
+                        "availableForSale": true,
+                        "featuredImage": {
+                          "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/e4fe192f0e86ffc74d3b906f754119d4b5f4432cf01120d090ab7eb5182e8897.jpg",
+                          "altText": null,
+                          "width": 4096,
+                          "height": 4096
+                        },
+                        "priceRange": {
+                          "minVariantPrice": {
+                            "amount": "35.0",
+                            "currencyCode": "CAD"
+                          }
+                        },
+                        "compareAtPriceRange": {
+                          "minVariantPrice": {
+                            "amount": "0.0",
+                            "currencyCode": "CAD"
+                          }
+                        }
+                      },
+                      {
+                        "id": "gid://shopify/Product/7983594471446",
+                        "handle": "shorts",
+                        "title": "Shorts",
+                        "availableForSale": true,
+                        "featuredImage": {
+                          "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/631607a39677fdc2ff99f21a55560629e49e5c5e15c1212c4e9186fa995cb65d.jpg",
+                          "altText": null,
+                          "width": 4096,
+                          "height": 4096
+                        },
+                        "priceRange": {
+                          "minVariantPrice": {
+                            "amount": "45.0",
+                            "currencyCode": "CAD"
+                          }
+                        },
+                        "compareAtPriceRange": {
+                          "minVariantPrice": {
+                            "amount": "0.0",
+                            "currencyCode": "CAD"
+                          }
+                        }
+                      },
+                      {
+                        "id": "gid://shopify/Product/7983595487254",
+                        "handle": "high-top-sneakers",
+                        "title": "High Top Sneakers",
+                        "availableForSale": true,
+                        "featuredImage": {
+                          "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/bb74594d8c235ffbf67f512fa1a7583df84595d7320e5145b35f169b7a7f2f6c.jpg",
+                          "altText": null,
+                          "width": 4096,
+                          "height": 4096
+                        },
+                        "priceRange": {
+                          "minVariantPrice": {
+                            "amount": "180.0",
+                            "currencyCode": "CAD"
+                          }
+                        },
+                        "compareAtPriceRange": {
+                          "minVariantPrice": {
+                            "amount": "0.0",
+                            "currencyCode": "CAD"
+                          }
+                        }
+                      },
+                      {
+                        "id": "gid://shopify/Product/7983595323414",
+                        "handle": "white-leather-sneakers",
+                        "title": "White Leather Sneakers",
+                        "availableForSale": true,
+                        "featuredImage": {
+                          "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/f29f7c2c49dfed5f080884f85ffcfd562294da2c83646d0a2c007e00fb2deeb1.jpg",
+                          "altText": null,
+                          "width": 4096,
+                          "height": 4096
+                        },
+                        "priceRange": {
+                          "minVariantPrice": {
+                            "amount": "90.0",
+                            "currencyCode": "CAD"
+                          }
+                        },
+                        "compareAtPriceRange": {
+                          "minVariantPrice": {
+                            "amount": "0.0",
+                            "currencyCode": "CAD"
+                          }
+                        }
+                      },
+                      {
+                        "id": "gid://shopify/Product/7983595356182",
+                        "handle": "gray-leather-sneakers",
+                        "title": "Gray Leather Sneakers",
+                        "availableForSale": true,
+                        "featuredImage": {
+                          "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/a70ad4a5100e25be731159d1c6ec53517c407cf93a48ed3ca0184a879276d9c2.jpg",
+                          "altText": null,
+                          "width": 4096,
+                          "height": 4096
+                        },
+                        "priceRange": {
+                          "minVariantPrice": {
+                            "amount": "1000.0",
+                            "currencyCode": "CAD"
+                          }
+                        },
+                        "compareAtPriceRange": {
+                          "minVariantPrice": {
+                            "amount": "0.0",
+                            "currencyCode": "CAD"
+                          }
+                        }
+                      },
+                      {
+                        "id": "gid://shopify/Product/7983595388950",
+                        "handle": "gray-runners",
+                        "title": "Gray Runners",
+                        "availableForSale": true,
+                        "featuredImage": {
+                          "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/797e1d2346b3df0d3b82749af3a05a265f0e61e5067a14bdc9ba0e204a02ab21.jpg",
+                          "altText": null,
+                          "width": 4096,
+                          "height": 4096
+                        },
+                        "priceRange": {
+                          "minVariantPrice": {
+                            "amount": "30.0",
+                            "currencyCode": "CAD"
+                          }
+                        },
+                        "compareAtPriceRange": {
+                          "minVariantPrice": {
+                            "amount": "0.0",
+                            "currencyCode": "CAD"
+                          }
+                        }
+                      },
+                      {
+                        "id": "gid://shopify/Product/7983593095190",
+                        "handle": "canvas-sneakers",
+                        "title": "Canvas Sneakers",
+                        "availableForSale": true,
+                        "featuredImage": {
+                          "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/4e6a1c46ff8e481db3972a6c2e816e878ab78acf2d6593ca9cf8ac9d5a344b3a.jpg",
+                          "altText": null,
+                          "width": 4096,
+                          "height": 4096
+                        },
+                        "priceRange": {
+                          "minVariantPrice": {
+                            "amount": "40.0",
+                            "currencyCode": "CAD"
+                          }
+                        },
+                        "compareAtPriceRange": {
+                          "minVariantPrice": {
+                            "amount": "0.0",
+                            "currencyCode": "CAD"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                "references": null
+              },
+              {
+                "key": "products",
+                "value": "[]",
+                "reference": null,
+                "references": {
+                  "nodes": []
+                }
+              },
+              {
+                "key": "limit",
+                "value": "4",
+                "reference": null,
+                "references": null
+              }
+            ]
+          },
+          {
+            "id": "gid://shopify/Metaobject/103",
+            "type": "mobile_collections",
+            "fields": [
+              {
+                "key": "heading",
+                "value": "Shop by collection",
+                "reference": null,
+                "references": null
+              },
+              {
+                "key": "collections",
+                "value": "[\"gid://shopify/Collection/429493780502\",\"gid://shopify/Collection/429493813270\",\"gid://shopify/Collection/429493846038\"]",
+                "reference": null,
+                "references": {
+                  "nodes": [
+                    {
+                      "id": "gid://shopify/Collection/429493780502",
+                      "handle": "men",
+                      "title": "Men",
+                      "image": {
+                        "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/1685d5abe3e11df2a5ae2017646441bafb1f815893bbcc953296c3040175eb4f.png",
+                        "altText": null,
+                        "width": 1024,
+                        "height": 1024
+                      }
+                    },
+                    {
+                      "id": "gid://shopify/Collection/429493813270",
+                      "handle": "women",
+                      "title": "Women",
+                      "image": {
+                        "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/2df0f75738a7a6e959e1e11f6227ee470802bf466ba7c52fb41819fbaac53e21.png",
+                        "altText": null,
+                        "width": 1024,
+                        "height": 1024
+                      }
+                    },
+                    {
+                      "id": "gid://shopify/Collection/429493846038",
+                      "handle": "unisex",
+                      "title": "Unisex",
+                      "image": {
+                        "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/146052825418e1d78fd3b1be7f209ff0081de5a8694df87f65561cf601190e46.png",
+                        "altText": null,
+                        "width": 1024,
+                        "height": 1024
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "id": "gid://shopify/Metaobject/104",
+            "type": "mobile_video",
+            "fields": [
+              {
+                "key": "url",
+                "value": "https://example.com/v.mp4",
+                "reference": null,
+                "references": null
+              }
+            ]
+          },
+          {
+            "id": "gid://shopify/Metaobject/105",
+            "type": "mobile_products",
+            "fields": [
+              {
+                "key": "heading",
+                "value": "Empty",
+                "reference": null,
+                "references": null
+              },
+              {
+                "key": "products",
+                "value": "[]",
+                "reference": null,
+                "references": {
+                  "nodes": []
+                }
+              },
+              {
+                "key": "style",
+                "value": "grid",
+                "reference": null,
+                "references": null
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

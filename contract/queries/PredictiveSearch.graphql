@@ -1,0 +1,7 @@
+query PredictiveSearch($query: String!) {
+  predictiveSearch(query: $query, limit: 8, types: [PRODUCT, COLLECTION, QUERY]) {
+    queries { text }
+    products { ...ProductCard }
+    collections { handle title }
+  }
+}

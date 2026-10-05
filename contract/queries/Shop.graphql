@@ -1,0 +1,12 @@
+query Shop {
+  shop {
+    id
+    name
+    primaryDomain { host }
+    brand {
+      logo { image { url } }
+      coverImage { image { url } }
+      colors { primary { background foreground } }
+    }
+  }
+}

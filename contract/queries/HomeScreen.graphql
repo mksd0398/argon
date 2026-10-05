@@ -1,0 +1,31 @@
+query HomeScreen($handle: String!) {
+  metaobject(handle: { type: "mobile_screen", handle: $handle }) {
+    field(key: "sections") {
+      references(first: 20) {
+        nodes {
+          ... on Metaobject {
+            id
+            type
+            fields {
+              key
+              value
+              reference {
+                ... on MediaImage { image { ...Image } }
+                ... on Collection {
+                  ...CollectionCard
+                  products(first: 24) { nodes { ...ProductCard } }
+                }
+              }
+              references(first: 24) {
+                nodes {
+                  ... on Product { ...ProductCard }
+                  ... on Collection { ...CollectionCard }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

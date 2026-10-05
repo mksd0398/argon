@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # Node 22: npm test's quoted glob needs Node 21+ (the package itself supports 18+)
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      # Runs every contract query against mock.shop
+      - run: npm run test:live
+
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v4
+      - name: Generate the demo project
+        run: |
+          git config --global user.email "ci@argon.invalid"
+          git config --global user.name "Argon CI"
+          npm ci
+          node bin/create.js demo --demo --yes
+      # After generation, so the Gradle cache key sees the generated build files
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Test and build
+        working-directory: demo/android
+        run: ./gradlew testDebugUnitTest assembleDebug
+
+  ios:
+    name: ios (Xcode ${{ matrix.xcode }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    # The latest stable Xcode (26) is what App Store uploads need; it is watched without blocking until Xcode 16 is dropped
+    continue-on-error: ${{ matrix.experimental }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: macos-15, xcode: 16.x, experimental: false }
+          - { runner: macos-26, xcode: latest-stable, experimental: true }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ matrix.xcode }}
+      - uses: actions/cache@v6
+        with:
+          path: ~/Library/Caches/org.swift.swiftpm
+          key: spm-${{ runner.os }}-${{ matrix.runner }}-${{ matrix.xcode }}-${{ hashFiles('templates/ios/App.xcodeproj/project.pbxproj') }}
+      - name: Generate the demo project
+        run: |
+          git config --global user.email "ci@argon.invalid"
+          git config --global user.name "Argon CI"
+          npm ci
+          node bin/create.js demo --demo --yes
+      # Builds the generated project: templates/ios has no Config.xcconfig until Argon writes it.
+      # The simulator: an iPhone on the newest iOS runtime from 17 up to the selected Xcode's SDK (an image also carries
+      # runtimes newer than that Xcode can run).
+      - name: Build and test
+        run: |
+          SDK=$(xcrun --sdk iphonesimulator --show-sdk-version)
+          UDID=$(xcrun simctl list devices available -j | SDK="$SDK" node -e '
+            const version = (text) => text.split(/[.-]/).map(Number);
+            const compare = (a, b) => a[0] - b[0] || (a[1] ?? 0) - (b[1] ?? 0);
+            const sdk = version(process.env.SDK);
+            const runtimes = Object.entries(JSON.parse(require("fs").readFileSync(0, "utf8")).devices)
+              .map(([id, devices]) => ({ match: /SimRuntime\.iOS-(\d+-\d+)/.exec(id), devices }))
+              .filter((r) => r.match)
+              .map((r) => ({ version: version(r.match[1]), devices: r.devices }))
+              .filter((r) => r.version[0] >= 17 && compare(r.version, sdk) <= 0)
+              .sort((a, b) => compare(b.version, a.version));
+            for (const runtime of runtimes) {
+              const phone = runtime.devices.find((d) => d.name.startsWith("iPhone"));
+              if (phone) {
+                console.error(`Simulator: ${phone.name}, iOS ${runtime.version.join(".")} (SDK ${process.env.SDK})`);
+                console.log(phone.udid);
+                process.exit(0);
+              }
+            }
+            console.error(`No iPhone simulator on an iOS 17...${process.env.SDK} runtime`);
+            process.exit(1);
+          ')
+          xcodebuild -project demo/ios/App.xcodeproj -scheme App \
+            -destination "id=$UDID" \
+            CODE_SIGNING_ALLOWED=NO -skipPackagePluginValidation -skipMacroValidation \
+            build test

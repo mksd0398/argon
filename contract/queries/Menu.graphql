@@ -1,0 +1,11 @@
+query Menu($handle: String!) {
+  menu(handle: $handle) {
+    items {
+      ...MenuItem
+      items {
+        ...MenuItem
+        items { ...MenuItem }
+      }
+    }
+  }
+}

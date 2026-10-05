@@ -1,0 +1,3 @@
+query Products($ids: [ID!]!) {
+  nodes(ids: $ids) { ... on Product { ...ProductCard } }
+}

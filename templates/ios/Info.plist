@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>ShopDomain</key>
+	<string>$(SHOP_DOMAIN)</string>
+	<key>StorefrontToken</key>
+	<string>$(STOREFRONT_TOKEN)</string>
+	<key>CustomerClientId</key>
+	<string>$(CUSTOMER_CLIENT_ID)</string>
+	<key>ShopId</key>
+	<string>$(SHOP_ID)</string>
+	<key>ApiVersion</key>
+	<string>$(API_VERSION)</string>
+	<key>PdpMetafields</key>
+	<string>$(PDP_METAFIELDS)</string>
+</dict>
+</plist>

@@ -1,0 +1,41 @@
+# Changelog
+
+## 0.1.0 — 2026-10-05
+
+First release.
+
+### Added
+
+- `npx @mksd0398/argon my-store-app` generates a SwiftUI iOS app (iOS 17+) and a
+  Jetpack Compose Android app (minSdk 26) for one Shopify store, kept screen for
+  screen identical. Both use Storefront API `2026-10` through a hand-written
+  GraphQL client, and Checkout Kit (Swift 3.9.1, Android 3.6.3) for checkout.
+- Tabs for Home, Shop, Wishlist, Cart and Account, with search, product lists
+  with sorting and filters, product pages with variants and metafields, and a
+  persisted cart.
+- Customer Account API login (OAuth 2.0 + PKCE, Mobile client) with orders and a
+  *Delete account* entry. Tokens are stored encrypted.
+- A home screen the merchant edits from Shopify admin: an ordered list of
+  `mobile_banner`, `mobile_products` and `mobile_collections` metaobjects under
+  a `mobile_screen` entry. Without one, the apps build a fallback home from the
+  store's brand, collections and products.
+- Store provisioning through the Shopify CLI: creates the four metaobject
+  definitions, seeds the `home` entry, and warns about a storefront password or
+  legacy customer accounts. One manual Headless-channel step, printed with the
+  store's values.
+- `--demo` runs against `mock.shop` with no credentials. Flags: `--store`,
+  `--token`, `--client-id`, `--bundle-id`, `--skip-content`, `--yes`. With no
+  terminal, nothing is asked.
+- Every generated project carries a README, an `AGENTS.md` and a `CLAUDE.md`
+  that points to it.
+- GitHub Actions: the CLI tests (including the live `mock.shop` contract test),
+  a Gradle test and build of a generated Android app, and an `xcodebuild` build
+  and test of a generated iOS app on macOS.
+
+### Known limits
+
+- `mock.shop` doesn't implement `nodes(ids:)`, so the Wishlist tab stays empty
+  on the demo store. It works on real stores.
+- Not in this release: Markets, Shop Pay and Apple Pay buttons, discount codes
+  in the cart, wishlist sync to the customer account, push notifications,
+  universal links and App Links.

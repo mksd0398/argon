@@ -1,4 +1,49 @@
 date,project,task,start_time,end_time,status
-2026-10-05,create-shopify-app-storefront,"Brainstorm and design a native iOS + Android Shopify storefront scaffolder",04:26,,pending
+2026-10-05,create-shopify-app-storefront,"Argon: brainstorm, spec, plan and subagent-driven build of native iOS + Android Shopify storefront scaffolder (CLI, contract, Android, iOS, CI); iOS awaiting first CI compile",04:26,11:35,done
 2026-10-05,create-shopify-app-storefront,"subagent: research current Shopify native mobile storefront stack (Buy SDK, Checkout Kit, Customer Account API, Storefront API, theme-like content)",04:27,04:31,done
 2026-10-05,create-shopify-app-storefront,"subagent: review Argon section 1 (CLI flow, provisioning, scopes, auth, templates) against Shopify docs and CLI",04:41,04:48,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 1: CLI skeleton, arguments and naming rules",05:07,05:09,done
+2026-10-05,create-shopify-app-storefront,"subagent: review Argon task 1 (CLI skeleton, arguments and naming rules)",05:08,05:11,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 2: GraphQL contract and fragment resolver",05:12,05:14,done
+2026-10-05,create-shopify-app-storefront,"subagent: review Argon task 2 (GraphQL contract and fragment resolver)",05:15,05:16,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 3: section definitions and seed builder",05:12,05:18,done
+2026-10-05,create-shopify-app-storefront,"subagent: review Argon task 3 (section definitions and seed builder)",05:18,05:19,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 4: store provisioning and checks",05:20,05:24,done
+2026-10-05,create-shopify-app-storefront,"subagent: review Argon task 4 (store provisioning and checks)",05:25,05:28,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 4 fix round 1: shell arg quoting and interactive store auth",05:29,05:31,done
+2026-10-05,create-shopify-app-storefront,"subagent: re-review Argon task 4 fix round 1 (shell arg quoting and interactive store auth)",05:32,05:32,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 5: scaffold and end-to-end CLI flow",05:34,05:40,done
+2026-10-05,create-shopify-app-storefront,"subagent: review Argon task 5 (scaffold and end-to-end CLI flow)",05:41,05:45,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 5 fix round 1: git path safety, xcconfig slashes, gradlew exec bit",05:42,05:48,done
+2026-10-05,create-shopify-app-storefront,"subagent: re-review Argon task 5 fix round 1 (git path safety, xcconfig slashes, gradlew exec bit)",05:48,05:50,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 6: Android skeleton, Storefront client, models and pure logic",05:51,06:12,done
+2026-10-05,create-shopify-app-storefront,"subagent: review Argon task 6 (Android skeleton, Storefront client, models and pure logic)",06:14,06:18,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 7: Android browse UI (Home, Shop, PLP, Search, product card)",06:19,06:49,done
+2026-10-05,create-shopify-app-storefront,"subagent: review Argon task 7 (Android browse UI: Home, Shop, PLP, Search, product card)",06:48,06:53,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 7 fix round 1 (home error handling, search facets reset, footer spinner key)",06:50,06:57,done
+2026-10-05,create-shopify-app-storefront,"subagent: re-review Argon task 7 fix round 1 (home error handling, search facets reset, footer spinner key)",06:57,06:58,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 8: Android PDP, wishlist, card heart",07:02,07:14,done
+2026-10-05,create-shopify-app-storefront,"subagent: review Argon task 8 (Android PDP, wishlist, card heart)",07:09,07:17,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 9: Android cart and Checkout Kit (with R21 hardening)",07:19,07:31,done
+2026-10-05,create-shopify-app-storefront,"subagent: review Argon task 9 (Android cart and Checkout Kit, with R21 hardening)",07:33,07:40,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 9 fix round 1 (stale preload, dead stored cart on add, snackbar scope, DataStore retry)",07:41,07:44,done
+2026-10-05,create-shopify-app-storefront,"subagent: re-review Argon task 9 fix round 1 (stale preload, dead stored cart on add, snackbar scope, DataStore retry)",07:45,07:47,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 10: Android Customer Account login and account screens",07:53,08:12,done
+2026-10-05,create-shopify-app-storefront,"subagent: review Argon task 10 (Android Customer Account login, token storage, account/orders screens)",08:18,08:21,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 10 fix round 1 (R26: explicit sign-out drops cart, 400/401 refusals, IO dispatch, log hygiene, tests)",08:22,08:26,done
+2026-10-05,create-shopify-app-storefront,"subagent: re-review Argon task 10 fix round 1 (R26: explicit sign-out drops cart, 400/401 refusals, IO dispatch, log hygiene, tests)",08:27,08:29,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 11: iOS project, Storefront client, models and pure logic",08:30,08:48,done
+2026-10-05,create-shopify-app-storefront,"subagent: review Argon task 11 (iOS project, Storefront client, models and pure logic)",08:50,08:58,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 11 fix round 1 (R27: module name ArgonStorefront, test imports, fragmentsAllowed)",08:59,08:59,done
+2026-10-05,create-shopify-app-storefront,"subagent: re-review Argon task 11 fix round 1 (R27: module name ArgonStorefront, test imports, fragmentsAllowed)",09:00,09:01,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 12: iOS screens, CartStore, WishlistStore, Checkout Kit",09:02,09:32,done
+2026-10-05,create-shopify-app-storefront,"subagent: review Argon task 12 (iOS screens, CartStore, WishlistStore, Checkout Kit; compiler pass)",09:33,09:53,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 12 fix round 1 (alert after sheet dismissal, R29 minors: currency cache, cart-load log, suggestion submit, ordered filters, comma decimals, label on brand colour)",09:54,09:57,done
+2026-10-05,create-shopify-app-storefront,"subagent: re-review Argon task 12 fix round 1 (alert after sheet dismissal, R29 minors: currency cache, cart-load log, suggestion keyboard, ordered filters, comma decimals, label on brand colour)",09:58,10:03,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 13: iOS Customer Account login and account screens (Pkce, AuthStore, Keychain, Account/Order views; R31 OnBrand isEnabled, checkoutFailure reset)",10:05,10:24,done
+2026-10-05,create-shopify-app-storefront,"subagent: review Argon task 13 (iOS Customer Account login: PKCE, AuthStore, Keychain, ASWebAuthenticationSession, Account/Order views; security + compiler pass)",10:26,10:37,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 14: CI workflow (cli, android, ios), README, CHANGELOG, .gitattributes renormalise, R19 wishlist note",10:38,10:43,done
+2026-10-05,create-shopify-app-storefront,"subagent: review Argon task 14 (CI workflow cli/android/ios, README, CHANGELOG, .gitattributes; runner correctness + README accuracy)",10:44,10:48,done
+2026-10-05,create-shopify-app-storefront,"subagent: final whole-branch review of Argon 64ecae4..89e8168 (CLI/contract, Android, iOS, CI/README; parity, contract, security, compile risk, deferred-minor triage)",10:50,11:08,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon final-review fixes (14 items: iOS reinstall Keychain wipe, sign-out order, price filter, CI simulator + Xcode 26 leg, Headless step, preload while open, non-cancellable refresh, fallback log, password redirect hop, privacy manifest, README/CHANGELOG, auth tests)",11:10,11:25,done
+2026-10-05,create-shopify-app-storefront,"subagent: re-review Argon final-review fix round 89e8168..d9d3746 (14 items; Swift compile pass, Keychain wipe ordering, non-cancellable refresh, CI picker, Android sign-out finally)",11:26,11:35,done

@@ -1,0 +1,57 @@
+package app.storefront.data
+
+import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+
+/** [isGraphQL]: the server answered 200 with an `errors` array (a query it refused), as opposed to an HTTP or response-shape failure. */
+class StorefrontException(val messages: List<String>, val status: Int?, val isGraphQL: Boolean = false) :
+    Exception(messages.joinToString("\n"))
+
+/** Storefront API client. `loadDocument(name)` returns the GraphQL document `queries/<name>.graphql`. */
+class Storefront(
+    domain: String,
+    private val token: String,
+    apiVersion: String,
+    private val loadDocument: (String) -> String,
+    private val http: OkHttpClient,
+) {
+    private val url = "https://$domain/api/$apiVersion/graphql.json"
+    private val documents = ConcurrentHashMap<String, String>()
+
+    /** Runs operation [name] and returns its `data`. */
+    suspend fun query(name: String, variables: JsonObject = JsonObject(emptyMap())): JsonObject {
+        val document = withContext(Dispatchers.IO) { documents.getOrPut(name) { loadDocument(name) } }
+        val request = Request.Builder()
+            .url(url)
+            .post(graphQLBody(document, variables))
+            .apply { if (token.isNotEmpty()) header("X-Shopify-Storefront-Access-Token", token) }
+            .build()
+        return http.graphQL(request)
+    }
+}
+
+internal fun graphQLBody(document: String, variables: JsonObject) =
+    JsonObject(mapOf("query" to JsonPrimitive(document), "variables" to variables)).toString().toRequestBody("application/json".toMediaType())
+
+/** Sends a GraphQL [request] and returns the response's `data`. Shared by the Storefront and Customer Account clients. */
+internal suspend fun OkHttpClient.graphQL(request: Request): JsonObject = withContext(Dispatchers.IO) {
+    newCall(request).execute().use { response ->
+        if (!response.isSuccessful) throw StorefrontException(listOf("HTTP ${response.code}"), response.code)
+        val text = response.body.string()
+        val json = runCatching { Json.parseToJsonElement(text) }.getOrNull() as? JsonObject
+            ?: throw StorefrontException(listOf("Invalid response"), response.code)
+        (json["errors"] as? JsonArray)?.let { errors ->
+            throw StorefrontException(errors.map { (it as? JsonObject)?.str("message") ?: it.toString() }, response.code, isGraphQL = true)
+        }
+        json.obj("data") ?: throw StorefrontException(listOf("No data in response"), response.code)
+    }
+}

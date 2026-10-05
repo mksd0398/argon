@@ -1,0 +1,48 @@
+fragment Image on Image { url altText width height }
+
+fragment Money on MoneyV2 { amount currencyCode }
+
+fragment ProductCard on Product {
+  id
+  handle
+  title
+  availableForSale
+  featuredImage { ...Image }
+  priceRange { minVariantPrice { ...Money } }
+  compareAtPriceRange { minVariantPrice { ...Money } }
+}
+
+fragment CollectionCard on Collection { id handle title image { ...Image } }
+
+fragment Filter on Filter { id label type values { id label count input } }
+
+fragment MenuItem on MenuItem {
+  id
+  title
+  url
+  type
+  resource { ... on Collection { handle } ... on Product { handle } }
+}
+
+fragment Cart on Cart {
+  id
+  checkoutUrl
+  totalQuantity
+  cost { subtotalAmount { ...Money } totalAmount { ...Money } }
+  lines(first: 100) {
+    nodes {
+      id
+      quantity
+      cost { totalAmount { ...Money } }
+      merchandise {
+        ... on ProductVariant {
+          id
+          title
+          image { ...Image }
+          price { ...Money }
+          product { handle title }
+        }
+      }
+    }
+  }
+}
