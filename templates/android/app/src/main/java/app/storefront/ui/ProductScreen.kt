@@ -69,6 +69,9 @@ internal fun initialSelection(product: Product): Map<String, String> =
     (product.variants.firstOrNull { it.available } ?: product.variants.firstOrNull())?.options.orEmpty()
 
 private suspend fun loadProduct(handle: String): Product {
+    // ponytail: the Product query loads variants(first: 250), the Storefront API's page ceiling: a product with more
+    // variants shows "Unavailable" for the combinations that didn't load. Upgrade: paginate the variants, or query
+    // variantBySelectedOptions for each selection.
     val data = AppGraph.storefront.query(
         "Product",
         buildJsonObject { put("handle", handle); put("metafields", metafieldIdentifiers(AppGraph.pdpMetafields)) },
@@ -157,7 +160,8 @@ private fun ProductContent(product: Product) {
             ) {
                 Text(
                     when {
-                        variant != null && !variant.available -> "Sold out"
+                        variant == null -> "Unavailable"
+                        !variant.available -> "Sold out"
                         adding -> "Adding…"
                         else -> "Add to cart"
                     },

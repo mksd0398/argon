@@ -1,9 +1,12 @@
 package app.storefront
 
 import android.app.Application
+import android.content.Context
 import android.content.res.AssetManager
 import android.util.Log
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import app.storefront.data.Brand
 import app.storefront.data.Storefront
@@ -29,16 +32,19 @@ class StorefrontApp : Application(), SingletonImageLoader.Factory {
     override fun onCreate() {
         super.onCreate()
         AppGraph.assets = assets
-        AppGraph.wishlist = WishlistStore(
-            PreferenceDataStoreFactory.create(scope = AppGraph.scope) { preferencesDataStoreFile("wishlist") },
-            AppGraph.scope,
-        )
+        AppGraph.wishlist = WishlistStore(prefs("wishlist"), AppGraph.scope)
     }
 
     // Coil downloads images through the app's one OkHttpClient.
     override fun newImageLoader(context: PlatformContext) =
         ImageLoader.Builder(context).components { add(OkHttpNetworkFetcherFactory(callFactory = { AppGraph.http })) }.build()
 }
+
+/** One preferences file per store; a corrupt file is replaced by an empty one instead of crashing the app. */
+internal fun Context.prefs(name: String) = PreferenceDataStoreFactory.create(
+    corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
+    scope = AppGraph.scope,
+) { preferencesDataStoreFile(name) }
 
 /** The app's single owner of shared objects (no DI framework). Per-store values come from shopify.properties. */
 object AppGraph {

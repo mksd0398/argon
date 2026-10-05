@@ -19,7 +19,7 @@ class WishlistStore(private val dataStore: DataStore<Preferences>, scope: Corout
     private val key = stringPreferencesKey("ids")
 
     val ids: StateFlow<List<String>> =
-        dataStore.data.map { decode(it[key]) }.stateIn(scope, SharingStarted.Eagerly, emptyList())
+        dataStore.safeData().map { decode(it[key]) }.stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     fun contains(id: String) = id in ids.value
 

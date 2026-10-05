@@ -1,5 +1,6 @@
 package app.storefront.ui
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -34,6 +35,7 @@ import app.storefront.AppGraph
 import app.storefront.data.Money
 import app.storefront.data.ProductCard
 import coil3.compose.AsyncImage
+import java.io.IOException
 import java.text.NumberFormat
 import java.util.Currency
 import kotlinx.coroutines.launch
@@ -48,7 +50,19 @@ fun Money.display(): String = runCatching {
 fun WishlistHeart(productId: String, modifier: Modifier = Modifier) {
     val ids by AppGraph.wishlist.ids.collectAsState()
     val saved = productId in ids
-    IconButton(onClick = { AppGraph.scope.launch { AppGraph.wishlist.toggle(productId) } }, modifier) {
+    IconButton(
+        onClick = {
+            AppGraph.scope.launch {
+                // a failed write leaves the heart as it was; it must not crash the app
+                try {
+                    AppGraph.wishlist.toggle(productId)
+                } catch (e: IOException) {
+                    Log.w("Wishlist", "toggle failed", e)
+                }
+            }
+        },
+        modifier,
+    ) {
         Icon(
             if (saved) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
             contentDescription = if (saved) "Remove from wishlist" else "Save to wishlist",
