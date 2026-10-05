@@ -37,7 +37,9 @@ class Storefront(
                 .build()
             http.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) throw StorefrontException(listOf("HTTP ${response.code}"), response.code)
-                val json = Json.parseToJsonElement(response.body.string()) as JsonObject
+                val text = response.body.string()
+                val json = runCatching { Json.parseToJsonElement(text) }.getOrNull() as? JsonObject
+                    ?: throw StorefrontException(listOf("Invalid response"), response.code)
                 (json["errors"] as? JsonArray)?.let { errors ->
                     throw StorefrontException(errors.map { (it as? JsonObject)?.str("message") ?: it.toString() }, response.code)
                 }

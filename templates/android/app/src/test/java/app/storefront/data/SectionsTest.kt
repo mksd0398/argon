@@ -33,4 +33,16 @@ class SectionsTest {
         assertTrue(sections.first() is Section.Collections)
         assertTrue(sections.any { it is Section.Products && it.style == "carousel" && it.items.isNotEmpty() })
     }
+
+    @Test
+    fun emptyObjectsAreSkippedNotCrashed() {
+        val card = fixture("fallback_home").nodes("collections").first().nodes("products").first()
+        val data = json("""{"metaobject":{"field":{"references":{"nodes":[
+            {},
+            {"type":"mobile_products","fields":[{"key":"products","references":{"nodes":[{}, $card]}}]}
+        ]}}}}""")
+        val sections = Sections.fromHome(data)
+        assertEquals(1, sections.size)
+        assertEquals(1, (sections[0] as Section.Products).items.size)
+    }
 }

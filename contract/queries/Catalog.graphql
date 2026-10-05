@@ -1,0 +1,6 @@
+query Catalog($first: Int!, $after: String, $sortKey: ProductSortKeys, $reverse: Boolean) {
+  products(first: $first, after: $after, sortKey: $sortKey, reverse: $reverse) {
+    pageInfo { hasNextPage endCursor }
+    nodes { ...ProductCard }
+  }
+}

@@ -1,9 +1,14 @@
 package app.storefront
 
-import android.content.Context
+import android.app.Application
 import android.content.res.AssetManager
 import app.storefront.data.Storefront
 import okhttp3.OkHttpClient
+
+/** Runs before any activity (in a fresh process too), so [AppGraph] is ready everywhere. */
+class StorefrontApp : Application() {
+    override fun onCreate() { super.onCreate(); AppGraph.assets = assets }
+}
 
 /** The app's single owner of shared objects (no DI framework). Per-store values come from shopify.properties. */
 object AppGraph {
@@ -14,12 +19,10 @@ object AppGraph {
     val apiVersion: String = BuildConfig.API_VERSION
     val pdpMetafields: String = BuildConfig.PDP_METAFIELDS
 
-    private lateinit var assets: AssetManager
+    internal lateinit var assets: AssetManager
 
-    /** Call from every entry activity's onCreate before touching [storefront]. */
-    fun init(context: Context) {
-        assets = context.applicationContext.assets
-    }
+    /** The one HTTP client; the Customer Account client reuses it. */
+    val http = OkHttpClient()
 
     val storefront: Storefront by lazy {
         Storefront(
@@ -27,7 +30,7 @@ object AppGraph {
             token = storefrontToken,
             apiVersion = apiVersion,
             loadDocument = { name -> assets.open("queries/$name.graphql").bufferedReader().use { it.readText() } },
-            http = OkHttpClient(),
+            http = http,
         )
     }
 }

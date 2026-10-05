@@ -7,12 +7,18 @@ import java.net.URLDecoder
 object Links {
     // A leading locale folder such as /fr or /en-in
     private val LOCALE = Regex("^/[a-zA-Z]{2}(-[a-zA-Z]{2})?(?=/)")
+    private val WEB = setOf("http", "https")
 
-    /** Maps a store path, or a full URL on one of [hosts], to an in-app route; other absolute URLs become [Route.Web]. */
+    /**
+     * Maps a store path, or a full URL on one of [hosts], to an in-app route. Any other http(s) URL, and a store path
+     * that isn't a product, collection or search (such as `/pages/shipping`), becomes [Route.Web]; other schemes give null.
+     * [hosts] is ordered: the first is the configured SHOP_DOMAIN, which relative paths are opened against.
+     */
     fun resolve(link: String?, hosts: Set<String>): Route? {
-        val raw = link?.trim().orEmpty()
+        val raw = link?.trim().orEmpty().replace(" ", "%20")
         val uri = runCatching { URI(raw) }.getOrNull() ?: return null
         val absolute = uri.scheme != null
+        if (absolute && uri.scheme.lowercase() !in WEB) return null
         if (absolute && hosts.none { it.equals(uri.host, ignoreCase = true) }) return Route.Web(raw)
         val segments = uri.path.orEmpty().replace(LOCALE, "").split('/').filter { it.isNotEmpty() }
         return when {
@@ -22,7 +28,7 @@ object Links {
             segments == listOf("search") -> Route.Search(param(uri, "q").orEmpty())
             segments.isEmpty() -> null
             absolute -> Route.Web(raw)
-            else -> null
+            else -> hosts.firstOrNull()?.let { Route.Web("https://$it/${raw.trimStart('/')}") }
         }
     }
 

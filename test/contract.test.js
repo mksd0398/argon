@@ -29,9 +29,9 @@ test("resolveDocument: omits unused fragments and leaves inline fragments alone"
   assert.doesNotMatch(doc, /fragment (Image|ProductCard|CollectionCard|Unused) on/);
 });
 
-test("loadContract: 17 documents, operation name equals key, fragments resolved", async () => {
+test("loadContract: 18 documents, operation name equals key, fragments resolved", async () => {
   const contract = await loadContract();
-  assert.equal(contract.size, 17);
+  assert.equal(contract.size, 18);
   for (const [name, doc] of contract) {
     assert.equal(doc.match(/^\s*(?:query|mutation)\s+(\w+)/m)?.[1], name);
     // every spread has a definition and every definition appears once
@@ -66,6 +66,7 @@ test("live: Storefront documents run against mock.shop", { skip: !process.env.AR
   assert.ok(products.length > 0);
   await call("Menu", { handle: "main-menu" });
   await call("Collection", { handle: "men", first: 4 });
+  await call("Catalog", { first: 4, sortKey: "PRICE", reverse: true });
   await call("Search", { query: "shirt", first: 4 });
   await call("PredictiveSearch", { query: "shirt" });
   await call("Products", { ids: products.slice(0, 3).map((p) => p.id) });

@@ -5,7 +5,7 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class LinksTest {
-    private val hosts = setOf("nalli.com", "nalli.myshopify.com")
+    private val hosts = linkedSetOf("nalli.com", "nalli.myshopify.com")
 
     @Test
     fun shopUrlWithLocaleOpensProduct() {
@@ -35,5 +35,27 @@ class LinksTest {
         assertNull(Links.resolve("", hosts))
         assertNull(Links.resolve(null, hosts))
         assertNull(Links.resolve("/", hosts))
+    }
+
+    @Test
+    fun myshopifyHostStaysInApp() {
+        assertEquals(Route.Product("x"), Links.resolve("https://nalli.myshopify.com/products/x", hosts))
+    }
+
+    @Test
+    fun otherStorePathOpensInBrowserOnShopDomain() {
+        assertEquals(Route.Web("https://nalli.com/pages/shipping"), Links.resolve("/pages/shipping", hosts))
+    }
+
+    @Test
+    fun onlyHttpSchemesOpenInBrowser() {
+        assertNull(Links.resolve("javascript:alert(1)", hosts))
+        assertNull(Links.resolve("mailto:hi@nalli.com", hosts))
+        assertEquals(Route.Web("http://instagram.com/x"), Links.resolve("http://instagram.com/x", hosts))
+    }
+
+    @Test
+    fun rawSpaceInQueryIsEncoded() {
+        assertEquals(Route.Search("red saree"), Links.resolve("/search?q=red saree", hosts))
     }
 }

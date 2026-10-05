@@ -90,7 +90,7 @@ test("--demo --yes scaffolds both apps against mock.shop", async () => {
 
     const android = queryFiles(join(dir, "android/app/src/main/assets/queries"));
     const ios = queryFiles(join(dir, "ios/App/Resources/queries"));
-    assert.equal(android.length, 17);
+    assert.equal(android.length, 18);
     assert.deepEqual(ios, android);
     for (const folder of ["android/app/src/main/assets/queries", "ios/App/Resources/queries"]) {
       for (const [name, document] of contract) {
