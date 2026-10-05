@@ -195,7 +195,7 @@ npm run test:live   # also runs every contract query against mock.shop
 
 The tests need Node 22+ (the CLI itself runs on Node 18+).
 
-CI (`.github/workflows/ci.yml`) has three jobs. `cli` runs the two commands above on Node 22. `android` and `ios` each generate a `--demo` project and build and test it: Gradle `testDebugUnitTest assembleDebug` on Linux, `xcodebuild build test` on a macOS runner with Xcode 16. Swift can't be built on Windows or Linux, so the iOS job is what verifies the iOS app.
+CI (`.github/workflows/ci.yml`) has three jobs. `cli` runs the two commands above on Node 22. `android` and `ios` each generate a `--demo` project and build and test it: Gradle `testDebugUnitTest assembleDebug` on Linux, `xcodebuild build test` on macOS. The `ios` job runs twice: with Xcode 16, which must pass, and with the latest stable Xcode (26), which App Store uploads require and which may fail without failing CI. Each run picks an iPhone simulator on the newest iOS runtime (17 or later) that its Xcode supports. Swift can't be built on Windows or Linux, so the iOS job is what verifies the iOS app.
 
 ---
 
