@@ -18,7 +18,10 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 /** Shopify refused a cart change (a `userErrors` entry); the message is Shopify's, meant for the shopper. */
-class CartException(message: String) : Exception(message)
+open class CartException(message: String) : Exception(message)
+
+/** A mutation that answered without a cart: the cart is gone, or the change was refused (a bad variant id). */
+private class NoCart(message: String) : CartException(message)
 
 /**
  * The shopper's cart through the Storefront Cart API. Only the cart id is kept on the device; [cart] is whatever the last
@@ -51,8 +54,9 @@ class CartStore(
     suspend fun add(variantId: String, quantity: Int) {
         lock.withLock {
             val lines = JsonArray(listOf(buildJsonObject { put("merchandiseId", variantId); put("quantity", quantity) }))
-            change("CartLinesAdd", "lines", lines)
-                ?: send("CartCreate", buildJsonObject { put("input", buildJsonObject { put("lines", lines) }) })
+            val create: suspend () -> Cart = { send("CartCreate", buildJsonObject { put("input", buildJsonObject { put("lines", lines) }) }) }
+            // a stored cart that has expired is replaced by a new one holding these lines
+            change("CartLinesAdd", "lines", lines, ifGone = create) ?: create()
         }
     }
 
@@ -89,10 +93,19 @@ class CartStore(
 
     private suspend fun currentId(): String? = state.value?.id ?: prefs.safeData().first()[idKey]
 
-    /** Runs a mutation on the current cart; null (nothing run) when there is no cart. */
-    private suspend fun change(name: String, key: String, value: JsonElement): Cart? {
+    /**
+     * Runs a mutation on the current cart; null (nothing run) when there is no cart. When no cart comes back, the cart lookup
+     * tells a cart Shopify no longer has (forgotten, then [ifGone] runs if given) from a change it refused (the error is thrown).
+     */
+    private suspend fun change(name: String, key: String, value: JsonElement, ifGone: (suspend () -> Cart)? = null): Cart? {
         val id = currentId() ?: return null
-        return send(name, buildJsonObject { put("cartId", id); put(key, value) })
+        return try {
+            send(name, buildJsonObject { put("cartId", id); put(key, value) })
+        } catch (e: NoCart) {
+            if (query("Cart", buildJsonObject { put("id", id) }).obj("cart") != null) throw e
+            forget()
+            ifGone?.invoke() ?: throw e
+        }
     }
 
     /** Runs mutation [name], keeps the cart it returns (even beside userErrors), and throws the first user error. */
@@ -104,8 +117,10 @@ class CartStore(
             if (returned.id != state.value?.id) saveId(returned.id)
             state.value = returned
         }
-        payload.objects("userErrors").firstOrNull()?.let { throw CartException(it.str("message") ?: "The cart could not be updated") }
-        return returned ?: throw CartException("The cart is unavailable")
+        val error = payload.objects("userErrors").firstOrNull()?.let { it.str("message") ?: "The cart could not be updated" }
+        if (returned == null) throw NoCart(error ?: "The cart is unavailable")
+        if (error != null) throw CartException(error)
+        return returned
     }
 
     private suspend fun forget() {
@@ -114,7 +129,6 @@ class CartStore(
     }
 
     // ponytail: a failed write (IOException) only costs the cart across an app restart: the id stays in memory for this run.
-    // A mutation that fails because the cart expired mid-session keeps failing until the next load() drops the id.
     private suspend fun saveId(id: String?) {
         try {
             prefs.edit { if (id == null) it.remove(idKey) else it[idKey] = id }

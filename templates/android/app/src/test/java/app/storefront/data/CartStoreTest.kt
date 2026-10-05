@@ -165,6 +165,54 @@ class CartStoreTest {
     }
 
     @Test
+    fun aDeadStoredCartIsReplacedOnAdd() = runBlocking {
+        store().add("v1", 1)
+        calls.clear()
+
+        // a cold start whose load() never ran (offline): the id is stored, but Shopify no longer has the cart
+        val s = store(restart()) {
+            when (it) {
+                "CartLinesAdd" -> answer(it, cart = null, "The specified cart does not exist")
+                "Cart" -> answer(it, cart = null)
+                else -> answer(it)
+            }
+        }
+        s.add("gid://shopify/ProductVariant/9", 2)
+        assertEquals(listOf("CartLinesAdd", "Cart", "CartCreate"), names)
+        val line = calls[2].second.getValue("input").jsonObject.lines.single()
+        assertEquals("gid://shopify/ProductVariant/9", line.getValue("merchandiseId").jsonPrimitive.content)
+        assertEquals(2, line.getValue("quantity").jsonPrimitive.content.toInt())
+        assertEquals(cartId, s.cart.value?.id)
+    }
+
+    @Test
+    fun aRefusedAddOnALiveCartKeepsTheCart() = runBlocking {
+        val s = store { if (it == "CartLinesAdd") answer(it, cart = null, "The merchandise does not exist") else answer(it) }
+        s.add("v1", 1)
+        val e = assertThrows(CartException::class.java) { runBlocking { s.add("bad", 1) } }
+        assertEquals("The merchandise does not exist", e.message)
+        // the lookup found the cart, so it was not replaced
+        assertEquals(listOf("CartCreate", "CartLinesAdd", "Cart"), names)
+        assertEquals(cartId, s.cart.value?.id)
+    }
+
+    @Test
+    fun anUpdateOnAGoneCartForgetsItAndSaysSo() = runBlocking {
+        val s = store {
+            when (it) {
+                "CartLinesUpdate" -> answer(it, cart = null, "The specified cart does not exist")
+                "Cart" -> answer(it, cart = null)
+                else -> answer(it)
+            }
+        }
+        s.add("v1", 1)
+        val e = assertThrows(CartException::class.java) { runBlocking { s.update(lineId, 2) } }
+        assertEquals("The specified cart does not exist", e.message)
+        assertNull(s.cart.value)
+        assertEquals(listOf("CartCreate", "CartLinesUpdate", "Cart"), names)
+    }
+
+    @Test
     fun updateSetsTheQuantityAndZeroRemovesTheLine() = runBlocking {
         val s = store()
         s.add("v1", 1)

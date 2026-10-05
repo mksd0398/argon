@@ -23,6 +23,7 @@ import com.shopify.checkoutsheetkit.Preloading
 import com.shopify.checkoutsheetkit.ShopifyCheckoutSheetKit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -39,6 +40,8 @@ class StorefrontApp : Application(), SingletonImageLoader.Factory {
         AppGraph.wishlist = WishlistStore(prefs("wishlist"), AppGraph.scope)
         AppGraph.cart = CartStore({ name, variables -> AppGraph.storefront.query(name, variables) }, prefs("cart"))
         ShopifyCheckoutSheetKit.configure { it.preloading = Preloading(enabled = true) }
+        // A preloaded checkout shows the cart as it was, so every change to the cart (a PDP add, a stepper tap) makes it stale.
+        MainScope().launch { AppGraph.cart.cart.collect { ShopifyCheckoutSheetKit.invalidate() } }
         // the Cart tab's badge needs the stored cart before that tab is ever opened
         AppGraph.scope.launch {
             try {

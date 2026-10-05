@@ -25,3 +25,5 @@ date,project,task,start_time,end_time,status
 2026-10-05,create-shopify-app-storefront,"subagent: Argon task 8: Android PDP, wishlist, card heart",07:02,07:14,done
 2026-10-05,create-shopify-app-storefront,"subagent: review Argon task 8 (Android PDP, wishlist, card heart)",07:09,07:17,done
 2026-10-05,create-shopify-app-storefront,"subagent: Argon task 9: Android cart and Checkout Kit (with R21 hardening)",07:19,07:31,done
+2026-10-05,create-shopify-app-storefront,"subagent: review Argon task 9 (Android cart and Checkout Kit, with R21 hardening)",07:33,07:40,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 9 fix round 1 (stale preload, dead stored cart on add, snackbar scope, DataStore retry)",07:41,07:44,done

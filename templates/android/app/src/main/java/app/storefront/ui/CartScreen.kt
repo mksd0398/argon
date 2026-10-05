@@ -112,7 +112,7 @@ fun CartScreen() {
         }
     }
 
-    /** Runs [block] with the screen busy; a failure shows as a snackbar once the screen is usable again. */
+    /** Runs [block] on [scope] with the screen busy; a failure shows as a snackbar once the screen is usable again. */
     fun act(scope: CoroutineScope, block: suspend () -> Unit) {
         busy = true
         scope.launch {
@@ -125,7 +125,9 @@ fun CartScreen() {
                 e.message ?: e.toString()
             }
             busy = false
-            message?.let { snackbar.showSnackbar(it) }
+            // from the screen's scope, not [scope]: a snackbar is only shown while the screen is there (the process-wide
+            // scope would suspend in showSnackbar forever if the shopper had left)
+            message?.let { screen.launch { snackbar.showSnackbar(it) } }
         }
     }
 
