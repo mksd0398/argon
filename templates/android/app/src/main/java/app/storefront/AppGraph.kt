@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import app.storefront.data.Brand
+import app.storefront.data.CartStore
 import app.storefront.data.Storefront
 import app.storefront.data.StorefrontException
 import app.storefront.data.WishlistStore
@@ -18,11 +19,14 @@ import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
+import com.shopify.checkoutsheetkit.Preloading
+import com.shopify.checkoutsheetkit.ShopifyCheckoutSheetKit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import okhttp3.OkHttpClient
@@ -33,6 +37,16 @@ class StorefrontApp : Application(), SingletonImageLoader.Factory {
         super.onCreate()
         AppGraph.assets = assets
         AppGraph.wishlist = WishlistStore(prefs("wishlist"), AppGraph.scope)
+        AppGraph.cart = CartStore({ name, variables -> AppGraph.storefront.query(name, variables) }, prefs("cart"))
+        ShopifyCheckoutSheetKit.configure { it.preloading = Preloading(enabled = true) }
+        // the Cart tab's badge needs the stored cart before that tab is ever opened
+        AppGraph.scope.launch {
+            try {
+                AppGraph.cart.load()
+            } catch (e: Exception) {
+                Log.w("AppGraph", "cart load failed", e)
+            }
+        }
     }
 
     // Coil downloads images through the app's one OkHttpClient.
@@ -64,10 +78,7 @@ object AppGraph {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     internal lateinit var wishlist: WishlistStore
-
-    /** Add to cart from the product page. Stub until the cart task replaces it with CartStore.add. */
-    var addToCart: suspend (variantId: String, quantity: Int) -> Unit =
-        { variantId, quantity -> Log.i("AppGraph", "addToCart $variantId x$quantity") }
+    internal lateinit var cart: CartStore
 
     val storefront: Storefront by lazy {
         Storefront(

@@ -23,3 +23,5 @@ date,project,task,start_time,end_time,status
 2026-10-05,create-shopify-app-storefront,"subagent: Argon task 7 fix round 1 (home error handling, search facets reset, footer spinner key)",06:50,06:57,done
 2026-10-05,create-shopify-app-storefront,"subagent: re-review Argon task 7 fix round 1 (home error handling, search facets reset, footer spinner key)",06:57,06:58,done
 2026-10-05,create-shopify-app-storefront,"subagent: Argon task 8: Android PDP, wishlist, card heart",07:02,07:14,done
+2026-10-05,create-shopify-app-storefront,"subagent: review Argon task 8 (Android PDP, wishlist, card heart)",07:09,07:17,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 9: Android cart and Checkout Kit (with R21 hardening)",07:19,07:31,done

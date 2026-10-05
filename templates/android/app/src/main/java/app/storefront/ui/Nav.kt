@@ -16,6 +16,8 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -82,6 +84,7 @@ fun AppRoot() {
 private fun AppNav() {
     val nav = rememberNavController()
     val current = nav.currentBackStackEntryAsState().value?.destination?.route
+    val cartCount = AppGraph.cart.cart.collectAsState().value?.totalQuantity ?: 0
     Scaffold(
         // each screen's own Scaffold handles the system bars; this one only reserves room for the tab bar
         contentWindowInsets = WindowInsets(0),
@@ -98,7 +101,12 @@ private fun AppNav() {
                                     restoreState = true
                                 }
                             },
-                            icon = { Icon(tab.icon, contentDescription = null) },
+                            icon = {
+                                // the Cart tab shows how many items are in the cart
+                                BadgedBox(badge = { if (tab == Tab.Cart && cartCount > 0) Badge { Text("$cartCount") } }) {
+                                    Icon(tab.icon, contentDescription = null)
+                                }
+                            },
                             label = { Text(tab.name) },
                         )
                     }
@@ -110,7 +118,7 @@ private fun AppNav() {
             composable("home") { HomeScreen(nav) }
             composable("shop") { ShopScreen(nav) }
             composable("wishlist") { WishlistScreen(nav) }
-            composable("cart") { Placeholder("Cart") }
+            composable("cart") { CartScreen() }
             composable("account") { Placeholder("Account") }
             composable("product/{handle}") { ProductScreen(it.arguments?.getString("handle").orEmpty(), nav) }
             composable("collection/{handle}") { CollectionScreen(it.arguments?.getString("handle").orEmpty(), nav) }

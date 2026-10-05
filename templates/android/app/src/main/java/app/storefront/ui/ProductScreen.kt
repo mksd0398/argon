@@ -23,12 +23,15 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -82,15 +85,20 @@ private suspend fun loadProduct(handle: String): Product {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductScreen(handle: String, nav: NavController) {
-    Scaffold(topBar = { TopAppBar(title = {}, navigationIcon = { BackButton(nav) }) }) { padding ->
+    val snackbar = remember { SnackbarHostState() }
+    Scaffold(
+        topBar = { TopAppBar(title = {}, navigationIcon = { BackButton(nav) }) },
+        snackbarHost = { SnackbarHost(snackbar) },
+    ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
-            Loader({ loadProduct(handle) }) { ProductContent(it) }
+            Loader({ loadProduct(handle) }) { ProductContent(it, snackbar) }
         }
     }
 }
 
 @Composable
-private fun ProductContent(product: Product) {
+private fun ProductContent(product: Product, snackbar: SnackbarHostState) {
+    val screen = rememberCoroutineScope()
     var selection by remember { mutableStateOf(initialSelection(product)) }
     var adding by remember { mutableStateOf(false) }
     var addError by remember { mutableStateOf<String?>(null) }
@@ -145,7 +153,8 @@ private fun ProductContent(product: Product) {
                     // AppGraph's scope, not the screen's: leaving right after the tap must not drop the add
                     AppGraph.scope.launch {
                         try {
-                            AppGraph.addToCart(id, 1)
+                            AppGraph.cart.add(id, 1)
+                            screen.launch { snackbar.showSnackbar("Added to cart") }
                         } catch (e: CancellationException) {
                             throw e
                         } catch (e: Exception) {
