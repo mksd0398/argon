@@ -16,5 +16,19 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- Customer Account sign-in callback: shop.<SHOP_ID>.app://callback. singleTask + the app's own task affinity put it
+             in the app's task, above MainActivity and the Custom Tab; it then returns to MainActivity, closing the tab. -->
+        <activity
+            android:name=".auth.CallbackActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="${authScheme}" android:host="callback" />
+            </intent-filter>
+        </activity>
     </application>
 </manifest>

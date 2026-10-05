@@ -16,6 +16,34 @@ internal fun fixture(name: String): JsonObject =
 internal fun json(text: String): JsonObject = Json.parseToJsonElement(text).jsonObject
 
 class ParseTest {
+    // Shaped like Customer.graphql and Order.graphql (no captured response: the Customer Account API needs a signed-in customer).
+    @Test
+    fun customerAndOrderFollowTheirQueries() {
+        val customer = parseCustomer(
+            json(
+                """{"firstName":"Ada","lastName":null,"emailAddress":{"emailAddress":"ada@example.com"},"orders":{"nodes":[
+                {"id":"gid://shopify/Order/1","name":"#1001","processedAt":"2026-10-01T10:00:00Z","financialStatus":"PAID",
+                "totalPrice":{"amount":"190.0","currencyCode":"CAD"}}]}}""",
+            ),
+        )
+        assertEquals("Ada", customer.name)
+        assertEquals("ada@example.com", customer.email)
+        assertEquals(OrderSummary("gid://shopify/Order/1", "#1001", "2026-10-01T10:00:00Z", "PAID", Money("190.0", "CAD")), customer.orders.single())
+
+        val order = parseOrder(
+            json(
+                """{"id":"gid://shopify/Order/1","name":"#1001","processedAt":"2026-10-01T10:00:00Z","financialStatus":"PAID",
+                "fulfillments":{"nodes":[{"status":"SUCCESS"}]},"lineItems":{"nodes":[{"title":"Hoodie","variantTitle":"Small / Green",
+                "quantity":2,"image":{"url":"https://cdn.test/h.jpg"},"totalPrice":{"amount":"180.0","currencyCode":"CAD"}}]},
+                "subtotal":{"amount":"180.0","currencyCode":"CAD"},"totalPrice":{"amount":"190.0","currencyCode":"CAD"}}""",
+            ),
+        )
+        assertEquals(listOf("SUCCESS"), order.fulfillments)
+        assertEquals(OrderLine("Hoodie", "Small / Green", 2, Img("https://cdn.test/h.jpg", null, null, null), Money("180.0", "CAD")), order.lines.single())
+        assertEquals(Money("180.0", "CAD"), order.subtotal)
+        assertEquals(Money("190.0", "CAD"), order.total)
+    }
+
     @Test
     fun productHasAllOptionsAndVariants() {
         val raw = fixture("product").obj("product")!!

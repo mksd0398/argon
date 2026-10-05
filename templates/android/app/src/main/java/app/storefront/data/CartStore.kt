@@ -5,6 +5,9 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import java.io.IOException
+import java.util.logging.Level
+import java.util.logging.Logger
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -34,6 +37,9 @@ class CartStore(
     private val accessToken: suspend () -> String? = { null },
 ) {
     private val idKey = stringPreferencesKey("cartId")
+
+    // java.util.logging: it reaches logcat on Android and also runs in JVM tests (android.util.Log does not)
+    private val log = Logger.getLogger("CartStore")
     private val state = MutableStateFlow<Cart?>(null)
 
     // One change at a time: two quick taps must not create two carts or interleave line updates.
@@ -75,11 +81,22 @@ class CartStore(
         lock.withLock { removeLine(lineId) }
     }
 
-    /** The URL to hand to Checkout Kit, with the signed-in customer attached to the cart first. Null without a cart. */
+    /**
+     * The URL to hand to Checkout Kit, with the signed-in customer attached to the cart first. Null without a cart.
+     * Attaching the customer never blocks checkout: if it fails, the shopper checks out as a guest.
+     */
     suspend fun checkoutUrl(): String? = lock.withLock {
         val current = state.value ?: return null
-        val token = accessToken() ?: return current.checkoutUrl
-        change("CartBuyerIdentityUpdate", "buyerIdentity", buildJsonObject { put("customerAccessToken", token) })?.checkoutUrl
+        try {
+            val token = accessToken() ?: return current.checkoutUrl
+            change("CartBuyerIdentityUpdate", "buyerIdentity", buildJsonObject { put("customerAccessToken", token) })?.checkoutUrl
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // the token provider threw, Shopify refused the token (CartException), or the request failed (StorefrontException, IO)
+            log.log(Level.WARNING, "customer not attached to the cart; checking out as a guest", e)
+            state.value?.checkoutUrl // null if the cart turned out to be gone
+        }
     }
 
     /** The order was placed: the cart is spent, so the next add starts a new one. */

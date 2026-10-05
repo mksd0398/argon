@@ -3,7 +3,6 @@ package app.storefront.ui
 import android.net.Uri
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -119,20 +118,16 @@ private fun AppNav() {
             composable("shop") { ShopScreen(nav) }
             composable("wishlist") { WishlistScreen(nav) }
             composable("cart") { CartScreen() }
-            composable("account") { Placeholder("Account") }
+            composable("account") { AccountScreen(nav) }
             composable("product/{handle}") { ProductScreen(it.arguments?.getString("handle").orEmpty(), nav) }
             composable("collection/{handle}") { CollectionScreen(it.arguments?.getString("handle").orEmpty(), nav) }
             composable("search?q={q}", arguments = listOf(navArgument("q") { type = NavType.StringType; defaultValue = "" })) {
                 SearchScreen(it.arguments?.getString("q").orEmpty(), nav)
             }
-            composable("order/{id}") { Placeholder("Order: ${it.arguments?.getString("id")}") }
+            composable("order/{id}") { OrderScreen(it.arguments?.getString("id").orEmpty(), nav) }
         }
     }
 }
-
-// Screens that arrive in later tasks.
-@Composable
-private fun Placeholder(text: String) = Box(Modifier.fillMaxSize(), Alignment.Center) { Text(text) }
 
 @Composable
 private fun SetupScreen() = Column(

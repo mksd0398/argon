@@ -110,6 +110,28 @@ fun parseCart(cart: JsonObject) = Cart(
     },
 )
 
+/** `Customer.graphql`'s `customer`. */
+fun parseCustomer(c: JsonObject) = Customer(
+    name = listOfNotNull(c.str("firstName"), c.str("lastName")).joinToString(" "),
+    email = c.obj("emailAddress")?.str("emailAddress"),
+    orders = c.nodes("orders").map { o ->
+        OrderSummary(o.string("id"), o.string("name"), o.string("processedAt"), o.str("financialStatus"), money(o.obj("totalPrice")))
+    },
+)
+
+/** `Order.graphql`'s `order`. */
+fun parseOrder(o: JsonObject) = Order(
+    name = o.string("name"),
+    processedAt = o.string("processedAt"),
+    financialStatus = o.str("financialStatus"),
+    fulfillments = o.nodes("fulfillments").mapNotNull { it.str("status") },
+    lines = o.nodes("lineItems").map { l ->
+        OrderLine(l.string("title"), l.str("variantTitle"), l.int("quantity") ?: 0, img(l.obj("image")), l.obj("totalPrice")?.let(::money))
+    },
+    subtotal = o.obj("subtotal")?.let(::money),
+    total = money(o.obj("totalPrice")),
+)
+
 /** Menu items route through their linked resource, else through [Links]. Unroutable leaves are dropped. */
 fun parseMenu(menu: JsonObject, hosts: Set<String>): List<MenuItem> = menu.objects("items").mapNotNull { item ->
     val children = parseMenu(item, hosts)

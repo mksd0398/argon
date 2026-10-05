@@ -31,19 +31,20 @@ internal class Loaded : ViewModel() {
 /**
  * Shows [content] with the result of [load]: a spinner meanwhile, the error message with Retry on failure.
  * One per screen: the result is kept for the back stack entry, so coming back from a product doesn't reload.
+ * With [keep] false nothing is kept: the screen loads again each time it is shown (the customer's own data).
  * ponytail: no refresh until the app restarts; add pull-to-refresh if merchants need live edits.
  */
 @Suppress("UNCHECKED_CAST")
 @Composable
-fun <T : Any> Loader(load: suspend () -> T, content: @Composable (T) -> Unit) {
+fun <T : Any> Loader(load: suspend () -> T, keep: Boolean = true, content: @Composable (T) -> Unit) {
     val cache = viewModel<Loaded>()
     var attempt by remember { mutableIntStateOf(0) }
-    var value by remember(attempt) { mutableStateOf(cache.value as T?) }
+    var value by remember(attempt) { mutableStateOf(if (keep) cache.value as T? else null) }
     var error by remember(attempt) { mutableStateOf<String?>(null) }
     LaunchedEffect(attempt) {
         if (value == null) {
             try {
-                value = load().also { cache.value = it }
+                value = load().also { if (keep) cache.value = it }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

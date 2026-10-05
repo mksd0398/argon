@@ -28,28 +28,30 @@ class Storefront(
     private val documents = ConcurrentHashMap<String, String>()
 
     /** Runs operation [name] and returns its `data`. */
-    suspend fun query(name: String, variables: JsonObject = JsonObject(emptyMap())): JsonObject =
-        withContext(Dispatchers.IO) {
-            val document = documents.getOrPut(name) { loadDocument(name) }
-            val body = JsonObject(mapOf("query" to JsonPrimitive(document), "variables" to variables)).toString()
-            val request = Request.Builder()
-                .url(url)
-                .post(body.toRequestBody(JSON))
-                .apply { if (token.isNotEmpty()) header("X-Shopify-Storefront-Access-Token", token) }
-                .build()
-            http.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) throw StorefrontException(listOf("HTTP ${response.code}"), response.code)
-                val text = response.body.string()
-                val json = runCatching { Json.parseToJsonElement(text) }.getOrNull() as? JsonObject
-                    ?: throw StorefrontException(listOf("Invalid response"), response.code)
-                (json["errors"] as? JsonArray)?.let { errors ->
-                    throw StorefrontException(errors.map { (it as? JsonObject)?.str("message") ?: it.toString() }, response.code, isGraphQL = true)
-                }
-                json.obj("data") ?: throw StorefrontException(listOf("No data in response"), response.code)
-            }
-        }
+    suspend fun query(name: String, variables: JsonObject = JsonObject(emptyMap())): JsonObject {
+        val document = documents.getOrPut(name) { loadDocument(name) }
+        val request = Request.Builder()
+            .url(url)
+            .post(graphQLBody(document, variables))
+            .apply { if (token.isNotEmpty()) header("X-Shopify-Storefront-Access-Token", token) }
+            .build()
+        return http.graphQL(request)
+    }
+}
 
-    private companion object {
-        val JSON = "application/json".toMediaType()
+internal fun graphQLBody(document: String, variables: JsonObject) =
+    JsonObject(mapOf("query" to JsonPrimitive(document), "variables" to variables)).toString().toRequestBody("application/json".toMediaType())
+
+/** Sends a GraphQL [request] and returns the response's `data`. Shared by the Storefront and Customer Account clients. */
+internal suspend fun OkHttpClient.graphQL(request: Request): JsonObject = withContext(Dispatchers.IO) {
+    newCall(request).execute().use { response ->
+        if (!response.isSuccessful) throw StorefrontException(listOf("HTTP ${response.code}"), response.code)
+        val text = response.body.string()
+        val json = runCatching { Json.parseToJsonElement(text) }.getOrNull() as? JsonObject
+            ?: throw StorefrontException(listOf("Invalid response"), response.code)
+        (json["errors"] as? JsonArray)?.let { errors ->
+            throw StorefrontException(errors.map { (it as? JsonObject)?.str("message") ?: it.toString() }, response.code, isGraphQL = true)
+        }
+        json.obj("data") ?: throw StorefrontException(listOf("No data in response"), response.code)
     }
 }

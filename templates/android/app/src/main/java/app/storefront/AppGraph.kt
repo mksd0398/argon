@@ -8,6 +8,8 @@ import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.preferencesDataStoreFile
+import app.storefront.auth.AuthStore
+import app.storefront.auth.TokenCrypto
 import app.storefront.data.Brand
 import app.storefront.data.CartStore
 import app.storefront.data.Storefront
@@ -27,6 +29,7 @@ import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -38,16 +41,45 @@ class StorefrontApp : Application(), SingletonImageLoader.Factory {
         super.onCreate()
         AppGraph.assets = assets
         AppGraph.wishlist = WishlistStore(prefs("wishlist"), AppGraph.scope)
-        AppGraph.cart = CartStore({ name, variables -> AppGraph.storefront.query(name, variables) }, prefs("cart"))
+        AppGraph.auth = AuthStore(
+            domain = AppGraph.shopDomain,
+            clientId = AppGraph.customerClientId,
+            redirectUri = "shop.${AppGraph.shopId}.app://callback", // the scheme is the manifest's authScheme
+            http = AppGraph.http,
+            prefs = prefs("auth"),
+            encrypt = TokenCrypto::encrypt,
+            decrypt = TokenCrypto::decrypt,
+            loadDocument = AppGraph::document,
+        )
+        AppGraph.cart = CartStore(
+            { name, variables -> AppGraph.storefront.query(name, variables) },
+            prefs("cart"),
+            accessToken = { AppGraph.auth.validAccessToken() },
+        )
         ShopifyCheckoutSheetKit.configure { it.preloading = Preloading(enabled = true) }
-        // A preloaded checkout shows the cart as it was, so every change to the cart (a PDP add, a stepper tap) makes it stale.
-        MainScope().launch { AppGraph.cart.cart.collect { ShopifyCheckoutSheetKit.invalidate() } }
+        // A preloaded checkout shows the cart and the buyer as they were: a cart change (a PDP add, a stepper tap), a sign-in
+        // or a sign-out makes it stale.
+        MainScope().launch { merge(AppGraph.cart.cart, AppGraph.auth.signedIn).collect { ShopifyCheckoutSheetKit.invalidate() } }
+        // Signing out also drops the cart: one the customer was attached to would still check out as them
+        // (shopify.dev Checkout Kit "Authenticate checkouts": clear the stored tokens and authenticated carts).
+        AppGraph.scope.launch {
+            var wasSignedIn = false
+            AppGraph.auth.signedIn.collect { if (wasSignedIn && !it) AppGraph.cart.completed(); wasSignedIn = it }
+        }
         // the Cart tab's badge needs the stored cart before that tab is ever opened
         AppGraph.scope.launch {
             try {
                 AppGraph.cart.load()
             } catch (e: Exception) {
                 Log.w("AppGraph", "cart load failed", e)
+            }
+        }
+        // the stored session, so the Account tab opens signed in
+        AppGraph.scope.launch {
+            try {
+                AppGraph.auth.load()
+            } catch (e: Exception) {
+                Log.w("AppGraph", "session load failed", e)
             }
         }
     }
@@ -82,15 +114,13 @@ object AppGraph {
 
     internal lateinit var wishlist: WishlistStore
     internal lateinit var cart: CartStore
+    internal lateinit var auth: AuthStore
+
+    /** The GraphQL document `assets/queries/<name>.graphql` (written by the CLI from contract/queries). */
+    fun document(name: String): String = assets.open("queries/$name.graphql").bufferedReader().use { it.readText() }
 
     val storefront: Storefront by lazy {
-        Storefront(
-            domain = shopDomain,
-            token = storefrontToken,
-            apiVersion = apiVersion,
-            loadDocument = { name -> assets.open("queries/$name.graphql").bufferedReader().use { it.readText() } },
-            http = http,
-        )
+        Storefront(domain = shopDomain, token = storefrontToken, apiVersion = apiVersion, loadDocument = ::document, http = http)
     }
 
     private val brandState = MutableStateFlow<Brand?>(null)

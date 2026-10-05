@@ -72,8 +72,9 @@ class CartStoreTest {
     private fun store(
         prefs: DataStore<Preferences> = disk(),
         token: String? = null,
+        accessToken: suspend () -> String? = { token },
         reply: suspend (String) -> JsonObject = { answer(it) },
-    ) = CartStore({ name, vars -> calls += name to vars; reply(name) }, prefs, { token })
+    ) = CartStore({ name, vars -> calls += name to vars; reply(name) }, prefs, accessToken)
 
     private val JsonObject.lines get() = getValue("lines").jsonArray.map { it.jsonObject }
 
@@ -145,6 +146,29 @@ class CartStoreTest {
         s.add("v1", 1)
         assertEquals(cartJson.string("checkoutUrl"), s.checkoutUrl())
         assertEquals(listOf("CartCreate"), names)
+    }
+
+    @Test
+    fun checkoutFallsBackToTheGuestUrlWhenTheBuyerCantBeAttached() = runBlocking {
+        var tokenFailure: Exception? = IOException("token endpoint unreachable")
+        var identityReply: () -> JsonObject = { answer("CartBuyerIdentityUpdate", cartJson, "Customer access token is invalid") }
+        val s = store(accessToken = { tokenFailure?.let { throw it }; "tok" }) {
+            if (it == "CartBuyerIdentityUpdate") identityReply() else answer(it)
+        }
+        s.add("v1", 1)
+        val guest = cartJson.string("checkoutUrl")
+
+        // the token provider throws: no identity update is tried
+        assertEquals(guest, s.checkoutUrl())
+        assertEquals(listOf("CartCreate"), names)
+
+        // Shopify refuses the token (a userError), then the request itself fails
+        tokenFailure = null
+        assertEquals(guest, s.checkoutUrl())
+        identityReply = { throw StorefrontException(listOf("Throttled"), 200, isGraphQL = true) }
+        assertEquals(guest, s.checkoutUrl())
+        assertEquals(listOf("CartCreate", "CartBuyerIdentityUpdate", "CartBuyerIdentityUpdate"), names)
+        assertEquals("the cart is kept", cartId, s.cart.value?.id)
     }
 
     @Test

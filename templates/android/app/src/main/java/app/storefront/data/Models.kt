@@ -71,6 +71,23 @@ data class Cart(
     val lines: List<CartLine>,
 )
 
+// Customer Account API. Dates are ISO-8601 strings and statuses Shopify's enum values; the UI formats both.
+data class OrderSummary(val id: String, val name: String, val processedAt: String, val financialStatus: String?, val total: Money)
+
+data class Customer(val name: String, val email: String?, val orders: List<OrderSummary>)
+
+data class OrderLine(val title: String, val variantTitle: String?, val quantity: Int, val image: Img?, val total: Money?)
+
+data class Order(
+    val name: String,
+    val processedAt: String,
+    val financialStatus: String?,
+    val fulfillments: List<String>, // one status per fulfillment; empty: nothing fulfilled yet
+    val lines: List<OrderLine>,
+    val subtotal: Money?,
+    val total: Money,
+)
+
 data class MenuItem(val title: String, val route: Route, val children: List<MenuItem>)
 
 data class Brand(val name: String, val logo: Img?, val cover: Img?, val accent: String?, val hosts: Set<String>)
