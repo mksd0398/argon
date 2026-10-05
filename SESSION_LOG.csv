@@ -20,4 +20,4 @@ date,project,task,start_time,end_time,status
 2026-10-05,create-shopify-app-storefront,"subagent: review Argon task 6 (Android skeleton, Storefront client, models and pure logic)",06:14,06:18,done
 2026-10-05,create-shopify-app-storefront,"subagent: Argon task 7: Android browse UI (Home, Shop, PLP, Search, product card)",06:19,06:49,done
 2026-10-05,create-shopify-app-storefront,"subagent: review Argon task 7 (Android browse UI: Home, Shop, PLP, Search, product card)",06:48,06:53,done
-2026-10-05,create-shopify-app-storefront,"subagent: Argon task 7 fix round 1 (home error handling, search facets reset, footer spinner key)",06:52,07:08,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 7 fix round 1 (home error handling, search facets reset, footer spinner key)",06:50,06:57,done
