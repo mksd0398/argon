@@ -9,14 +9,22 @@ import { loadContract } from "../lib/contract.js";
 const WHICH = process.platform === "win32" ? "where" : "command";
 const flag = (args, name) => args[args.indexOf(name) + 1];
 
-/** Fake exec/fetch. Records every call; `shopify store execute` answers from the query text (everything exists). */
-function fakes({ git = true, shopify = true, shopName = "Mock.shop", password = false, passwordFails = false } = {}) {
+/**
+ * Fake exec/fetch. Records every call; `shopify store execute` answers from the query text (everything exists).
+ * gitThrows: every `git -C <dir> ...` call throws, like defaultExec refusing an unsafe path.
+ * gradlew: the generated project has android/gradlew (written when `git init` runs; the template has none yet).
+ */
+function fakes({ git = true, gitThrows = false, gradlew = false, shopify = true, shopName = "Mock.shop", password = false, passwordFails = false } = {}) {
   const calls = [];
   const urls = [];
   const exec = async (cmd, args) => {
     calls.push([cmd, ...args]);
     if (cmd === WHICH) return { code: shopify ? 0 : 1, stdout: "", stderr: "" };
-    if (cmd === "git") return { code: git ? 0 : 1, stdout: "", stderr: "" };
+    if (cmd === "git") {
+      if (gitThrows && args[0] === "-C") throw new Error("Unsafe argument for shell: " + args[1]);
+      if (gradlew && args[2] === "init") writeFileSync(join(args[1], "android", "gradlew"), "#!/bin/sh\n");
+      return { code: git ? 0 : 1, stdout: "", stderr: "" };
+    }
     if (cmd === "shopify" && args[1] === "execute") {
       const query = readFileSync(flag(args, "--query-file"), "utf8");
       const data = /metaobjectDefinitionByType/.test(query)
@@ -122,6 +130,30 @@ test("no git, no git commands beyond the version probe", async () => {
   });
 });
 
+test("git: android/gradlew is marked executable in the index before the commit", async () => {
+  const f = fakes({ gradlew: true });
+  await withRun(["demo-app", "--demo", "--yes"], f, (cwd) => {
+    const dir = join(cwd, "demo-app");
+    assert.deepEqual(f.calls.filter(([cmd]) => cmd === "git"), [
+      ["git", "--version"],
+      ["git", "-C", dir, "init"],
+      ["git", "-C", dir, "add", "-A"],
+      ["git", "-C", dir, "update-index", "--chmod=+x", "android/gradlew"],
+      ["git", "-C", dir, "commit", "-m", "Initial Argon scaffold"],
+    ]);
+  });
+});
+
+test("git failing (an unsafe path, say) only warns; the run still finishes with next steps", async () => {
+  const f = fakes({ gitThrows: true });
+  await withRun(["demo-app", "--demo", "--yes"], f, (cwd, out) => {
+    assert.ok(existsSync(join(cwd, "demo-app", "android", "shopify.properties")), "project was written");
+    assert.ok(out.includes("Couldn't create the git repo: Unsafe argument for shell"));
+    assert.ok(!out.includes("Initialized a git repository"));
+    assert.ok(out.includes("Open ios/App.xcodeproj in Xcode 16+"), "next steps still printed");
+  });
+});
+
 test("real store: auth, provision, password check, Headless steps, verify, config", async () => {
   const f = fakes({ shopName: "Nalli Silks", password: true });
   const argv = ["store-app", "--store", "https://Nalli.myshopify.com/", "--token", "tok123", "--client-id", "cid456", "--yes"];
@@ -206,4 +238,9 @@ test("configText: one line per key, no scheme, values safe for each file format"
   const values = { SHOP_DOMAIN: "https://a.myshopify.com/", APP_NAME: "Café \\ // Shop", PDP_METAFIELDS: "" };
   assert.equal(configText(values, "ios"), "SHOP_DOMAIN = a.myshopify.com\nAPP_NAME = Café \\ /$()/ Shop\nPDP_METAFIELDS = \n");
   assert.equal(configText(values, "android"), "SHOP_DOMAIN=a.myshopify.com\nAPP_NAME=Caf\\u00e9 \\\\ // Shop\nPDP_METAFIELDS=\n");
+});
+
+test("configText: xcconfig never keeps two slashes in a row, however many there are", () => {
+  assert.equal(configText({ APP_NAME: "a///b" }, "ios"), "APP_NAME = a/$()/$()/b\n");
+  assert.equal(configText({ APP_NAME: "a////b//" }, "ios").includes("//"), false);
 });

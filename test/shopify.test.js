@@ -270,6 +270,9 @@ test("defaultExec: refuses arguments that could escape the quotes, before anythi
     `a" & node -p 1 > "${marker}" & "b`,
     "%PATH%",
     "C:\\some dir\\",
+    "x$(echo hi)",
+    "$HOME",
+    "a`echo hi`b",
   ];
   for (const arg of unsafe) {
     await assert.rejects(defaultExec("node", ["-e", "0", arg]), { message: `Unsafe argument for shell: ${arg}` });
