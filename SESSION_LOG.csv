@@ -1,5 +1,5 @@
 date,project,task,start_time,end_time,status
-2026-10-05,create-shopify-app-storefront,"Argon: brainstorm, spec, plan and subagent-driven build of native iOS + Android Shopify storefront scaffolder (CLI, contract, Android, iOS, CI); iOS awaiting first CI compile",04:26,11:35,done
+2026-10-05,create-shopify-app-storefront,"Argon: brainstorm, spec, plan and subagent-driven build of native iOS + Android Shopify storefront scaffolder (CLI, contract, Android, iOS, CI); private repo mksd0398/argon, PR #1 merged; CI green: iOS 94 tests on Xcode 16.4 + 26.6, Android, CLI",04:26,12:44,done
 2026-10-05,create-shopify-app-storefront,"subagent: research current Shopify native mobile storefront stack (Buy SDK, Checkout Kit, Customer Account API, Storefront API, theme-like content)",04:27,04:31,done
 2026-10-05,create-shopify-app-storefront,"subagent: review Argon section 1 (CLI flow, provisioning, scopes, auth, templates) against Shopify docs and CLI",04:41,04:48,done
 2026-10-05,create-shopify-app-storefront,"subagent: Argon task 1: CLI skeleton, arguments and naming rules",05:07,05:09,done
