@@ -1,6 +1,6 @@
 import SwiftUI
 
-// The target (and so the module) is named App, hence the qualified protocol.
+// The target is named App (its module is ArgonStorefront); the qualified protocol keeps "App" unambiguous.
 @main
 struct ArgonApp: SwiftUI.App {
     var body: some Scene {

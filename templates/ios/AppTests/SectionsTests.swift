@@ -1,5 +1,5 @@
 import XCTest
-@testable import App
+@testable import ArgonStorefront
 
 /// The case name, so tests can compare section lists by kind.
 fileprivate func kind(_ section: Section) -> String {

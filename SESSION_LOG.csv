@@ -33,3 +33,5 @@ date,project,task,start_time,end_time,status
 2026-10-05,create-shopify-app-storefront,"subagent: Argon task 10 fix round 1 (R26: explicit sign-out drops cart, 400/401 refusals, IO dispatch, log hygiene, tests)",08:22,08:26,done
 2026-10-05,create-shopify-app-storefront,"subagent: re-review Argon task 10 fix round 1 (R26: explicit sign-out drops cart, 400/401 refusals, IO dispatch, log hygiene, tests)",08:27,08:29,done
 2026-10-05,create-shopify-app-storefront,"subagent: Argon task 11: iOS project, Storefront client, models and pure logic",08:30,08:48,done
+2026-10-05,create-shopify-app-storefront,"subagent: review Argon task 11 (iOS project, Storefront client, models and pure logic)",08:50,08:58,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 11 fix round 1 (R27: module name ArgonStorefront, test imports, fragmentsAllowed)",08:59,08:59,done

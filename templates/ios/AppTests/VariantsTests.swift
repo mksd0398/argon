@@ -1,5 +1,5 @@
 import XCTest
-@testable import App
+@testable import ArgonStorefront
 
 final class VariantsTests: XCTestCase {
     private func variant(_ id: String, _ size: String, _ color: String) -> Variant {

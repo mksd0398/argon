@@ -1,5 +1,5 @@
 import XCTest
-@testable import App
+@testable import ArgonStorefront
 
 /// Answers every request with `body` and `status`, so nothing touches the network.
 final class StubProtocol: URLProtocol {

@@ -1,5 +1,5 @@
 import XCTest
-@testable import App
+@testable import ArgonStorefront
 
 final class LinksTests: XCTestCase {
     private let hosts = ["nalli.com", "nalli.myshopify.com"]

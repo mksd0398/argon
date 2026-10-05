@@ -1,5 +1,5 @@
 import XCTest
-@testable import App
+@testable import ArgonStorefront
 
 /// A captured mock.shop response's `data` object from AppTests/Fixtures.
 func fixture(_ name: String) throws -> [String: Any] {

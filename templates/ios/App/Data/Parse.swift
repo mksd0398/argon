@@ -123,8 +123,9 @@ func parseProduct(_ p: [String: Any]) throws -> Product {
 // `input` is a JSON scalar; Shopify sends it as a string of JSON.
 private func jsonText(_ value: Any?) -> String {
     if let text = value as? String { return text }
-    guard let value = value, JSONSerialization.isValidJSONObject(value),
-          let data = try? JSONSerialization.data(withJSONObject: value) else { return "null" }
+    // wrapped in an array, a scalar passes the validity check that keeps JSONSerialization from raising
+    guard let value = value, JSONSerialization.isValidJSONObject([value]),
+          let data = try? JSONSerialization.data(withJSONObject: value, options: .fragmentsAllowed) else { return "null" }
     return String(decoding: data, as: UTF8.self)
 }
 
