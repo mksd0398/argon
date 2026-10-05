@@ -109,10 +109,10 @@ private fun AppNav() {
         NavHost(nav, startDestination = "home", modifier = Modifier.padding(padding).consumeWindowInsets(padding)) {
             composable("home") { HomeScreen(nav) }
             composable("shop") { ShopScreen(nav) }
-            composable("wishlist") { Placeholder("Wishlist") }
+            composable("wishlist") { WishlistScreen(nav) }
             composable("cart") { Placeholder("Cart") }
             composable("account") { Placeholder("Account") }
-            composable("product/{handle}") { Placeholder("Product: ${it.arguments?.getString("handle")}") }
+            composable("product/{handle}") { ProductScreen(it.arguments?.getString("handle").orEmpty(), nav) }
             composable("collection/{handle}") { CollectionScreen(it.arguments?.getString("handle").orEmpty(), nav) }
             composable("search?q={q}", arguments = listOf(navArgument("q") { type = NavType.StringType; defaultValue = "" })) {
                 SearchScreen(it.arguments?.getString("q").orEmpty(), nav)

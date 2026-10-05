@@ -2,15 +2,22 @@ package app.storefront
 
 import android.app.Application
 import android.content.res.AssetManager
+import android.util.Log
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.preferencesDataStoreFile
 import app.storefront.data.Brand
 import app.storefront.data.Storefront
 import app.storefront.data.StorefrontException
+import app.storefront.data.WishlistStore
 import app.storefront.data.obj
 import app.storefront.data.parseBrand
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
@@ -19,7 +26,14 @@ import okhttp3.OkHttpClient
 
 /** Runs before any activity (in a fresh process too), so [AppGraph] is ready everywhere. */
 class StorefrontApp : Application(), SingletonImageLoader.Factory {
-    override fun onCreate() { super.onCreate(); AppGraph.assets = assets }
+    override fun onCreate() {
+        super.onCreate()
+        AppGraph.assets = assets
+        AppGraph.wishlist = WishlistStore(
+            PreferenceDataStoreFactory.create(scope = AppGraph.scope) { preferencesDataStoreFile("wishlist") },
+            AppGraph.scope,
+        )
+    }
 
     // Coil downloads images through the app's one OkHttpClient.
     override fun newImageLoader(context: PlatformContext) =
@@ -39,6 +53,15 @@ object AppGraph {
 
     /** The one HTTP client; the Customer Account client reuses it. */
     val http = OkHttpClient()
+
+    /** Outlives every screen: a tap that starts a write (wishlist, cart) finishes even if the screen goes away. */
+    val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    internal lateinit var wishlist: WishlistStore
+
+    /** Add to cart from the product page. Stub until the cart task replaces it with CartStore.add. */
+    var addToCart: suspend (variantId: String, quantity: Int) -> Unit =
+        { variantId, quantity -> Log.i("AppGraph", "addToCart $variantId x$quantity") }
 
     val storefront: Storefront by lazy {
         Storefront(
