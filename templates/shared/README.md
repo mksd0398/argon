@@ -27,6 +27,10 @@ One key list, two files with the same key names. Edit, then rebuild.
 
 With an empty `STOREFRONT_TOKEN` on any store other than `mock.shop`, the app shows a setup screen naming the missing key.
 
+## Demo store (`mock.shop`)
+
+`mock.shop` has no metaobjects, so Home shows the fallback home. It also doesn't implement `nodes(ids:)`, so the Wishlist tab stays empty there. It works on real stores.
+
 ## Edit the home screen
 
 In Shopify admin go to **Content → Metaobjects → Mobile screen → Home**. The home screen is an ordered list of sections: *Mobile banner*, *Mobile products* and *Mobile collections* entries. Add, reorder or edit them and save; the apps pick it up with no release. If the entry is missing or empty, the apps show a fallback home built from the store's brand, collections and products.

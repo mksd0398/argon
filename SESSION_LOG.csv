@@ -41,3 +41,5 @@ date,project,task,start_time,end_time,status
 2026-10-05,create-shopify-app-storefront,"subagent: Argon task 12 fix round 1 (alert after sheet dismissal, R29 minors: currency cache, cart-load log, suggestion submit, ordered filters, comma decimals, label on brand colour)",09:54,09:57,done
 2026-10-05,create-shopify-app-storefront,"subagent: re-review Argon task 12 fix round 1 (alert after sheet dismissal, R29 minors: currency cache, cart-load log, suggestion keyboard, ordered filters, comma decimals, label on brand colour)",09:58,10:03,done
 2026-10-05,create-shopify-app-storefront,"subagent: Argon task 13: iOS Customer Account login and account screens (Pkce, AuthStore, Keychain, Account/Order views; R31 OnBrand isEnabled, checkoutFailure reset)",10:05,10:24,done
+2026-10-05,create-shopify-app-storefront,"subagent: review Argon task 13 (iOS Customer Account login: PKCE, AuthStore, Keychain, ASWebAuthenticationSession, Account/Order views; security + compiler pass)",10:26,10:37,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 14: CI workflow (cli, android, ios), README, CHANGELOG, .gitattributes renormalise, R19 wishlist note",10:38,10:43,done
