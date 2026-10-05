@@ -39,6 +39,7 @@ In Shopify admin go to **Content → Metaobjects → Mobile screen → Home**. T
 
 - **New customer accounts** are on (Settings → Customer accounts), or login won't work.
 - The **storefront password is off** (Online Store → Preferences), or Checkout Kit can't open checkout.
+- **Products and collections are available to the Headless channel**, and its storefront keeps the metaobject read permission, or the app shows an empty or fallback home.
 - **Collection and search filters** appear only after the Search & Discovery app has filters configured.
 
 ## Publishing

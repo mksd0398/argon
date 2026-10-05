@@ -215,6 +215,22 @@ test("passwordProtected: true for a redirect to /password, false otherwise", asy
   assert.equal(await setup(t, undefined, { fetch: reply(elsewhere) }).shopify.passwordProtected("nalli.myshopify.com"), false);
 });
 
+test("passwordProtected: follows one redirect to a custom domain, and no more", async (t) => {
+  const asked = [];
+  const redirects = (hops) => async (url, init) => (asked.push(url), new Response(null, { status: 301, headers: { location: hops[url] } }));
+  const custom = setup(t, undefined, { fetch: redirects({ "https://nalli.myshopify.com/": "https://www.nalli.com/", "https://www.nalli.com/": "/password" }) });
+
+  assert.equal(await custom.shopify.passwordProtected("nalli.myshopify.com"), true);
+  assert.deepEqual(asked, ["https://nalli.myshopify.com/", "https://www.nalli.com/"]);
+
+  asked.length = 0;
+  const chain = setup(t, undefined, {
+    fetch: redirects({ "https://nalli.myshopify.com/": "https://www.nalli.com/", "https://www.nalli.com/": "https://nalli.com/", "https://nalli.com/": "/password" }),
+  });
+  assert.equal(await chain.shopify.passwordProtected("nalli.myshopify.com"), false);
+  assert.deepEqual(asked, ["https://nalli.myshopify.com/", "https://www.nalli.com/"], "a third hop isn't followed");
+});
+
 test("passwordProtected: a network error rejects", async (t) => {
   const { shopify } = setup(t, undefined, { fetch: async () => { throw new TypeError("fetch failed"); } });
   await assert.rejects(shopify.passwordProtected("nalli.myshopify.com"), /fetch failed/);

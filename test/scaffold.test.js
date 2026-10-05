@@ -157,9 +157,11 @@ test("real store: auth, provision, password check, Headless steps, verify, confi
       return i;
     };
     assert.ok(at("1. Install the Headless channel") < at("2. Create a storefront"));
-    assert.ok(at("2. Create a storefront") < at("3. Copy the public Storefront token"));
-    assert.ok(at("3. Copy the public Storefront token") < at("4. In Customer Account API settings"));
-    assert.ok(at("4. In Customer Account API settings") < at("shop.68817551382.app://callback"), "callback needs the shop id");
+    assert.ok(at("2. Create a storefront") < at("3. Make your products and collections available to the Headless channel"));
+    assert.ok(at("3. Make your products") < at("metaobject read permission on (otherwise the app shows an empty or fallback home)"));
+    assert.ok(at("metaobject read permission on") < at("4. Copy the public Storefront token"));
+    assert.ok(at("4. Copy the public Storefront token") < at("5. In Customer Account API settings"));
+    assert.ok(at("5. In Customer Account API settings") < at("shop.68817551382.app://callback"), "callback needs the shop id");
     assert.ok(!out.includes("Login hidden"), "a client id was given");
 
     const dir = join(cwd, "store-app");

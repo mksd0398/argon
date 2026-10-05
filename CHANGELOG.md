@@ -27,7 +27,7 @@ First release.
   `--token`, `--client-id`, `--bundle-id`, `--skip-content`, `--yes`. With no
   terminal, nothing is asked.
 - Every generated project carries a README, an `AGENTS.md` and a `CLAUDE.md`
-  that imports it.
+  that points to it.
 - GitHub Actions: the CLI tests (including the live `mock.shop` contract test),
   a Gradle test and build of a generated Android app, and an `xcodebuild` build
   and test of a generated iOS app on macOS.

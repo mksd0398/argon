@@ -49,7 +49,7 @@ The apps work the way a Liquid theme does. They render whatever the store contai
 |------|-----|-----------|
 | Node.js 18+ | The CLI | Yes |
 | [Shopify CLI](https://shopify.dev/docs/api/shopify-cli) (`npm i -g @shopify/cli`) | Creating the home screen content on a real store | Not with `--demo` or `--skip-content` |
-| Android Studio | Building and running the Android app | To run Android |
+| Android Studio Quail 4 (2026.1.4)+, the first to support AGP 9.4 ([table](https://developer.android.com/build/releases/about-agp)) | Building and running the Android app | To run Android |
 | A Mac with Xcode 16+ | Building and running the iOS app | To run iOS |
 | git | The initial commit | Optional |
 
@@ -89,8 +89,9 @@ npx @mksd0398/argon my-store-app --store=my-store --token=PUBLIC_TOKEN --client-
 Argon prints these with your store's values filled in:
 
 1. In Shopify admin, install the **Headless** channel and create a storefront.
-2. Copy the **public** Storefront access token.
-3. In its **Customer Account API** settings, add a **Mobile** client with the callback `shop.<shop id>.app://callback`, then copy its client ID.
+2. Make your products and collections available to the **Headless** channel, and keep the storefront's metaobject read permission on. Otherwise the app shows an empty or fallback home.
+3. Copy the **public** Storefront access token.
+4. In its **Customer Account API** settings, add a **Mobile** client with the callback `shop.<shop id>.app://callback`, then copy its client ID.
 
 The client ID can be skipped: login is then hidden until `CUSTOMER_CLIENT_ID` is set.
 
@@ -98,6 +99,7 @@ The client ID can be skipped: login is then hidden until `CUSTOMER_CLIENT_ID` is
 
 - **New customer accounts are on** (Settings → Customer accounts). Legacy accounts are not supported.
 - **The storefront password is off.** Checkout Kit can't open checkout while it's on.
+- **Products and collections are available to the Headless channel**, and its storefront keeps the metaobject read permission. Without them the app shows an empty or fallback home.
 - **Search & Discovery filters are configured.** Product-list and search filters appear only after that.
 
 ### Run the apps
@@ -190,6 +192,8 @@ npm ci
 npm test            # CLI, scaffolding, provisioning (stubbed), link parser
 npm run test:live   # also runs every contract query against mock.shop
 ```
+
+The tests need Node 22+ (the CLI itself runs on Node 18+).
 
 CI (`.github/workflows/ci.yml`) has three jobs. `cli` runs the two commands above on Node 22. `android` and `ios` each generate a `--demo` project and build and test it: Gradle `testDebugUnitTest assembleDebug` on Linux, `xcodebuild build test` on a macOS runner with Xcode 16. Swift can't be built on Windows or Linux, so the iOS job is what verifies the iOS app.
 
