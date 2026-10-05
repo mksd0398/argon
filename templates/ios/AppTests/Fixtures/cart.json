@@ -1,0 +1,77 @@
+{
+  "cart": {
+    "id": "gid://shopify/Cart/c1-81c4a836598c4281b3e996e4107d7e57?key=99fbd75d03ec09c9229266979cef10fb",
+    "checkoutUrl": "https://demostore.hydrogen.mock.shop/checkout",
+    "totalQuantity": 3,
+    "cost": {
+      "subtotalAmount": {
+        "amount": "360.0",
+        "currencyCode": "CAD"
+      },
+      "totalAmount": {
+        "amount": "360.0",
+        "currencyCode": "CAD"
+      }
+    },
+    "lines": {
+      "nodes": [
+        {
+          "id": "gid://shopify/CartLine/34639",
+          "quantity": 1,
+          "cost": {
+            "totalAmount": {
+              "amount": "120.0",
+              "currencyCode": "CAD"
+            }
+          },
+          "merchandise": {
+            "id": "gid://shopify/ProductVariant/43696905322518",
+            "title": "Small / Red",
+            "image": {
+              "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/dfe6fa49317d241f5dc7295e8eff79027fd51b512d04f2441aa4b7060f7e35f7.jpg",
+              "altText": null,
+              "width": 4096,
+              "height": 4096
+            },
+            "price": {
+              "amount": "120.0",
+              "currencyCode": "CAD"
+            },
+            "product": {
+              "handle": "men-crewneck",
+              "title": "Men's Crewneck"
+            }
+          }
+        },
+        {
+          "id": "gid://shopify/CartLine/34638",
+          "quantity": 2,
+          "cost": {
+            "totalAmount": {
+              "amount": "240.0",
+              "currencyCode": "CAD"
+            }
+          },
+          "merchandise": {
+            "id": "gid://shopify/ProductVariant/43696905224214",
+            "title": "Small / Green",
+            "image": {
+              "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/4ecbbab490d5a90c04074428b4b0e09358c6895050db590ffbb84e1f8e05fbbc.jpg",
+              "altText": null,
+              "width": 4096,
+              "height": 4096
+            },
+            "price": {
+              "amount": "120.0",
+              "currencyCode": "CAD"
+            },
+            "product": {
+              "handle": "men-crewneck",
+              "title": "Men's Crewneck"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
