@@ -83,17 +83,24 @@ class Listing(
     var items by mutableStateOf(emptyList<ProductCard>()); private set
     var filters by mutableStateOf(emptyList<Filter>()); private set
     var hasNext by mutableStateOf(false); private set
+
+    /** Counts pages that have arrived, even ones that add no new items; a list footer keys its load-more trigger on it. */
+    var pagesLoaded by mutableStateOf(0); private set
     var loading by mutableStateOf(false); private set
     var error by mutableStateOf<String?>(null); private set
     private var cursor: String? = null
     private var job: Job? = null
     private var generation = 0
 
-    /** Starts over from the first page, with a new [sort] and/or filter selection. */
-    fun reload(sort: Sort = this.sort, applied: List<String> = this.applied) {
+    /**
+     * Starts over from the first page, with a new [sort] and/or filter selection. [resetFilters] also forgets the filters
+     * the last response offered: pass it when the products behind the list change (a new search query).
+     */
+    fun reload(sort: Sort = this.sort, applied: List<String> = this.applied, resetFilters: Boolean = false) {
         job?.cancel()
         this.sort = sort
         this.applied = applied
+        if (resetFilters) filters = emptyList()
         items = emptyList()
         hasNext = false
         cursor = null
@@ -114,7 +121,8 @@ class Listing(
                 val page = fetch(cursor, sort, applied)
                 items = (items + page.items).distinctBy { it.id } // a catalog that changes between pages can repeat a product
                 cursor = page.endCursor
-                hasNext = page.hasNext
+                hasNext = page.hasNext && page.endCursor != null // without a cursor "more" can only repeat the first page
+                pagesLoaded++
                 // a filtered first page that comes back without filters keeps the old ones, so the user can still clear them
                 if (first && page.filters.isNotEmpty()) filters = page.filters
             } catch (e: CancellationException) {
@@ -138,7 +146,7 @@ fun ListingView(l: Listing, emptyText: String, onOpen: (Route) -> Unit) {
             val error = l.error
             when {
                 l.items.isNotEmpty() ->
-                    ProductGrid(l.items, l.hasNext, { l.loadMore() }, { onOpen(Route.Product(it.handle)) }, error = error)
+                    ProductGrid(l.items, l.hasNext, { l.loadMore() }, { onOpen(Route.Product(it.handle)) }, error = error, loadKey = l.pagesLoaded)
                 error != null -> ErrorView(error) { l.reload() }
                 l.loading -> Spinner()
                 else -> Text(emptyText, Modifier.align(Alignment.Center).padding(24.dp))

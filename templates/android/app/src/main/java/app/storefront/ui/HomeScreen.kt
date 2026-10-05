@@ -26,25 +26,39 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import app.storefront.AppGraph
+import app.storefront.data.Brand
 import app.storefront.data.Route
 import app.storefront.data.Section
 import app.storefront.data.Sections
 import app.storefront.data.StorefrontException
 import coil3.compose.AsyncImage
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
-/** The store's `mobile_screen` "home" sections; the fallback home (brand cover, collections, a carousel) when there are none. */
-private suspend fun loadHome(): List<Section> {
-    val brand = AppGraph.loadBrand()
-    val api = AppGraph.storefront
-    // a token without metaobject access errors here; it still gets the fallback home
+/**
+ * The sections of the `mobile_screen` "home" ([home] runs the HomeScreen query); the fallback home ([fallback] runs
+ * FallbackHome) when it has none to render, or when the store refuses the metaobject query with GraphQL errors (a token
+ * without metaobject access). HTTP and response-shape failures are rethrown: the screen shows an error with Retry
+ * instead of caching a degraded home.
+ */
+internal suspend fun homeSections(brand: Brand, home: suspend () -> JsonObject, fallback: suspend () -> JsonObject): List<Section> {
     val sections = try {
-        Sections.fromHome(api.query("HomeScreen", buildJsonObject { put("handle", "home") }), brand.hosts)
+        Sections.fromHome(home(), brand.hosts)
     } catch (e: StorefrontException) {
+        if (!e.isGraphQL) throw e
         emptyList()
     }
-    return sections.ifEmpty { Sections.fallback(brand, api.query("FallbackHome")) }
+    return sections.ifEmpty { Sections.fallback(brand, fallback()) }
+}
+
+private suspend fun loadHome(): List<Section> {
+    val api = AppGraph.storefront
+    return homeSections(
+        AppGraph.loadBrand(),
+        home = { api.query("HomeScreen", buildJsonObject { put("handle", "home") }) },
+        fallback = { api.query("FallbackHome") },
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

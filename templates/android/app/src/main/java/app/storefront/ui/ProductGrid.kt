@@ -21,7 +21,8 @@ import app.storefront.data.ProductCard
 
 /**
  * Two-column grid of product cards. While [hasNext], a footer spinner calls [onLoadMore] as it scrolls into view;
- * if loading failed ([error]) the footer is a Retry button instead.
+ * if loading failed ([error]) the footer is a Retry button instead. [loadKey] must change whenever a page arrives, even
+ * one that adds no items, or the footer would stall (the default, the item count, is enough for a list that only grows).
  */
 @Composable
 fun ProductGrid(
@@ -31,6 +32,7 @@ fun ProductGrid(
     onOpen: (ProductCard) -> Unit,
     modifier: Modifier = Modifier,
     error: String? = null,
+    loadKey: Any = items.size,
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
@@ -44,7 +46,7 @@ fun ProductGrid(
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Box(Modifier.fillMaxWidth().padding(8.dp), Alignment.Center) {
                     if (error == null) {
-                        LaunchedEffect(items.size) { onLoadMore() }
+                        LaunchedEffect(loadKey) { onLoadMore() }
                         CircularProgressIndicator()
                     } else {
                         TextButton(onClick = onLoadMore) { Text("$error. Retry") }

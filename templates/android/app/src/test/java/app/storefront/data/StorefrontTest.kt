@@ -7,7 +7,9 @@ import okhttp3.Protocol
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class StorefrontTest {
@@ -30,6 +32,7 @@ class StorefrontTest {
         val e = assertThrows(StorefrontException::class.java) { query("<html>") }
         assertEquals(listOf("Invalid response"), e.messages)
         assertEquals(200, e.status)
+        assertFalse(e.isGraphQL)
     }
 
     @Test
@@ -42,5 +45,14 @@ class StorefrontTest {
     fun graphqlErrorsAreAStorefrontException() {
         val e = assertThrows(StorefrontException::class.java) { query("""{"errors":[{"message":"boom"}]}""") }
         assertEquals(listOf("boom"), e.messages)
+        assertTrue("a 200 carrying errors is a GraphQL failure", e.isGraphQL)
+    }
+
+    @Test
+    fun httpFailureIsNotGraphql() {
+        val e = assertThrows(StorefrontException::class.java) { query("service unavailable", code = 503) }
+        assertEquals(listOf("HTTP 503"), e.messages)
+        assertEquals(503, e.status)
+        assertFalse(e.isGraphQL)
     }
 }

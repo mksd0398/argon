@@ -84,7 +84,7 @@ class SearchModel(initial: String) : ViewModel() {
         if (q.isEmpty()) return
         text = q
         submitted = q
-        listing.reload(SEARCH_SORTS.first(), emptyList())
+        listing.reload(SEARCH_SORTS.first(), emptyList(), resetFilters = true)
     }
 }
 

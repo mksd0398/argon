@@ -12,7 +12,9 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 
-class StorefrontException(val messages: List<String>, val status: Int?) : Exception(messages.joinToString("\n"))
+/** [isGraphQL]: the server answered 200 with an `errors` array (a query it refused), as opposed to an HTTP or response-shape failure. */
+class StorefrontException(val messages: List<String>, val status: Int?, val isGraphQL: Boolean = false) :
+    Exception(messages.joinToString("\n"))
 
 /** Storefront API client. `loadDocument(name)` returns the GraphQL document `queries/<name>.graphql`. */
 class Storefront(
@@ -41,7 +43,7 @@ class Storefront(
                 val json = runCatching { Json.parseToJsonElement(text) }.getOrNull() as? JsonObject
                     ?: throw StorefrontException(listOf("Invalid response"), response.code)
                 (json["errors"] as? JsonArray)?.let { errors ->
-                    throw StorefrontException(errors.map { (it as? JsonObject)?.str("message") ?: it.toString() }, response.code)
+                    throw StorefrontException(errors.map { (it as? JsonObject)?.str("message") ?: it.toString() }, response.code, isGraphQL = true)
                 }
                 json.obj("data") ?: throw StorefrontException(listOf("No data in response"), response.code)
             }

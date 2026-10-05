@@ -6,6 +6,7 @@ import app.storefront.data.Money
 import app.storefront.data.ProductCard
 import app.storefront.data.ProductPage
 import app.storefront.data.StorefrontException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonNull
@@ -108,6 +109,58 @@ class ListingTest {
         withFilters = false
         l.reload(applied = listOf("""{"available":true}"""))
         assertEquals(listOf(color), l.filters)
+    }
+
+    @Test
+    fun aNewQueryDropsTheFiltersOfTheOldOne() {
+        val color = Filter("f", "Color", "LIST", listOf(FilterValue("v", "Red", 2, """{"variantOption":{"name":"Color","value":"Red"}}""")))
+        var query = "shirt"
+        val l = Listing(scope, SEARCH_SORTS) { _, _, _ -> page(listOf("a"), null, if (query == "shirt") listOf(color) else emptyList()) }
+        l.reload()
+        assertEquals(listOf(color), l.filters)
+        query = "hat" // a different search: no facets of its own, and none of the old query's either
+        l.reload(SEARCH_SORTS[0], emptyList(), resetFilters = true)
+        assertTrue(l.filters.isEmpty())
+        assertTrue(l.applied.isEmpty())
+    }
+
+    @Test
+    fun filtersAreClearedAtOnceNotWhenTheNewPageArrives() {
+        val color = Filter("f", "Color", "LIST", emptyList())
+        var pending: CompletableDeferred<ProductPage>? = null
+        val l = Listing(scope, SEARCH_SORTS) { _, _, _ -> pending?.await() ?: page(listOf("a"), null, listOf(color)) }
+        l.reload()
+        pending = CompletableDeferred()
+        l.reload(resetFilters = true)
+        assertTrue("the old query's facets must not show while the new one loads", l.filters.isEmpty())
+        assertTrue(l.loading)
+    }
+
+    @Test
+    fun pageCounterAdvancesEvenWhenAPageAddsNothing() {
+        val l = Listing(scope, COLLECTION_SORTS) { after, _, _ ->
+            when (after) {
+                null -> page(listOf("a", "b"), "c1")
+                "c1" -> page(listOf("a"), "c2") // only a repeat
+                else -> page(emptyList(), "c3") // an empty page that still has a next
+            }
+        }
+        l.reload()
+        assertEquals(1, l.pagesLoaded)
+        l.loadMore()
+        assertEquals(2, l.pagesLoaded)
+        assertEquals(2, l.items.size)
+        l.loadMore()
+        assertEquals("a footer keyed on this restarts although items.size didn't change", 3, l.pagesLoaded)
+        assertEquals(2, l.items.size)
+        assertTrue(l.hasNext)
+    }
+
+    @Test
+    fun moreWithoutACursorIsNotMore() {
+        val l = Listing(scope, COLLECTION_SORTS) { _, _, _ -> ProductPage(listOf(card("a")), emptyList(), null, hasNext = true) }
+        l.reload()
+        assertFalse(l.hasNext)
     }
 
     @Test
