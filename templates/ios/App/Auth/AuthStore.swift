@@ -47,7 +47,8 @@ private func logged(_ error: Error) -> String {
 /// The customer's Customer Account API session: the OAuth 2.0 authorization code flow for a public client with PKCE (S256),
 /// as in shopify.dev/docs/api/customer. Endpoints come from the shop's discovery documents. The session and the sign-in in
 /// progress are kept through `read`/`write` (the Keychain); a stored value that can't be read means signed out.
-/// `open` shows the authorize URL in a browser and returns the callback URL it was redirected to.
+/// `open` shows the authorize URL in a browser and returns the callback URL it was redirected to. `defaults` remembers that
+/// this install has run: the Keychain outlives the app, so a reinstall starts by forgetting what the last install stored.
 @MainActor
 @Observable
 final class AuthStore {
@@ -73,6 +74,7 @@ final class AuthStore {
 
     private static let tokensKey = "tokens"
     private static let pendingKey = "pending"
+    private static let installedKey = "argon.installed"
 
     private let domain: String
     private let clientId: String
@@ -82,6 +84,7 @@ final class AuthStore {
     private let session: URLSession
     private let read: (String) async -> Data?
     private let write: (String, Data?) async -> Void
+    private let defaults: UserDefaults
     private let now: () -> Date
 
     // One change at a time: two refreshes with the same refresh token would get the second one refused (and sign out).
@@ -102,6 +105,7 @@ final class AuthStore {
         session: URLSession = .shared,
         read: @escaping (String) async -> Data? = Keychain.load,
         write: @escaping (String, Data?) async -> Void = Keychain.save,
+        defaults: UserDefaults = .standard,
         now: @escaping () -> Date = { Date() }
     ) {
         self.domain = domain
@@ -112,6 +116,7 @@ final class AuthStore {
         self.session = session
         self.read = read
         self.write = write
+        self.defaults = defaults
         self.now = now
         lock = AsyncLock()
     }
@@ -149,6 +154,8 @@ final class AuthStore {
             await ensureLoaded()
             signInError = nil
             let config = try await openId()
+            // the code goes back to the token endpoint: one that isn't https stops the sign-in before the browser opens
+            _ = try endpoint(config, "token_endpoint")
             let authorize = try endpoint(config, "authorization_endpoint")
             let verifier = Pkce.verifier()
             let state = Pkce.verifier()
@@ -281,21 +288,31 @@ final class AuthStore {
             return nil
         }
         let request = try await tokenRequest([("grant_type", "refresh_token"), ("client_id", clientId), ("refresh_token", refreshToken)])
-        let json: [String: Any]
-        do {
-            json = try await fetch(request)
-        } catch let error as AuthException where error.status == 400 || error.status == 401 {
-            await setTokens(nil)
-            return nil
-        }
-        let refreshed = try parseTokens(json, previous: current)
-        await setTokens(refreshed)
-        return refreshed.access
+        // An unstructured task, which the caller's cancellation doesn't reach: once Shopify has rotated the refresh token,
+        // the caller going away mustn't lose the new one.
+        return try await Task { () async throws -> String? in
+            let json: [String: Any]
+            do {
+                json = try await self.fetch(request)
+            } catch let error as AuthException where error.status == 400 || error.status == 401 {
+                await self.setTokens(nil)
+                return nil
+            }
+            let refreshed = try self.parseTokens(json, previous: current)
+            await self.setTokens(refreshed)
+            return refreshed.access
+        }.value
     }
 
     /// With the lock held.
     private func ensureLoaded() async {
         if loaded { return }
+        // UserDefaults goes with the app; the Keychain doesn't. Without this a reinstall comes back signed in as the last customer.
+        if !defaults.bool(forKey: Self.installedKey) {
+            await write(Self.tokensKey, nil)
+            await write(Self.pendingKey, nil)
+            defaults.set(true, forKey: Self.installedKey)
+        }
         tokens = await stored(Tokens.self, Self.tokensKey)
         pending = await stored(Pending.self, Self.pendingKey)
         signedIn = tokens != nil

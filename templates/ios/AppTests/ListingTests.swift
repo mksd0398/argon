@@ -179,5 +179,6 @@ final class ListingTests: XCTestCase {
         XCTAssertEqual(try price(priceFilter("", "20")), ["max": 20])
         XCTAssertEqual(try price(priceFilter("12,5", "")), ["min": 12.5], "a comma-decimal keyboard's comma")
         XCTAssertNil(priceFilter("", "abc"))
+        XCTAssertNil(priceFilter("NaN", "Infinity"), "not a JSON number")
     }
 }

@@ -67,6 +67,12 @@ final class AuthStoreTests: XCTestCase {
     /// The device's Keychain: a new store over it is the app after a restart.
     private var keychain: [String: Data] = [:]
 
+    /// The app's UserDefaults suite, which (unlike the Keychain) goes when the app is deleted.
+    private var suite = UUID().uuidString
+
+    /// The shop's OpenID discovery document.
+    private var discovery = #"{"authorization_endpoint":"https://shop.test/authentication/oauth/authorize","token_endpoint":"https://shop.test/authentication/oauth/token","end_session_endpoint":"https://shop.test/authentication/logout"}"#
+
     /// The token endpoint's answer to a form: status and JSON body.
     private var tokenReply: ([String: String]) throws -> (Int, String) = { _ in (500, "") }
 
@@ -92,6 +98,7 @@ final class AuthStoreTests: XCTestCase {
 
     override func tearDown() {
         AuthStub.reset()
+        UserDefaults.standard.removePersistentDomain(forName: suite)
         super.tearDown()
     }
 
@@ -101,7 +108,7 @@ final class AuthStoreTests: XCTestCase {
     private func route(_ request: URLRequest) throws -> (Int, String) {
         switch request.url?.path ?? "" {
         case "/.well-known/openid-configuration":
-            return (200, #"{"authorization_endpoint":"https://shop.test/authentication/oauth/authorize","token_endpoint":"https://shop.test/authentication/oauth/token","end_session_endpoint":"https://shop.test/authentication/logout"}"#)
+            return (200, discovery)
         case "/.well-known/customer-account-api":
             return (200, #"{"graphql_api":"https://shop.test/customer/api/2026-10/graphql"}"#)
         case "/authentication/oauth/token":
@@ -169,6 +176,7 @@ final class AuthStoreTests: XCTestCase {
             session: session,
             read: read ?? { account in self.keychain[account] },
             write: { account, data in self.keychain[account] = data },
+            defaults: UserDefaults(suiteName: suite)!,
             now: { self.clock }
         )
     }
@@ -234,6 +242,9 @@ final class AuthStoreTests: XCTestCase {
         XCTAssertFalse(paths.contains("/authentication/oauth/token"), "no code is exchanged")
         let otherApp = await thrown { try await s.handleCallback("other.app://callback?code=c1&state=\(state)") }
         XCTAssertTrue(otherApp is AuthException, "the right state on another scheme is still rejected")
+        let otherHost = await thrown { try await s.handleCallback("shop.1.app://evil?code=c1&state=\(state)") }
+        XCTAssertTrue(otherHost is AuthException, "the right state on another host is still rejected")
+        XCTAssertFalse(paths.contains("/authentication/oauth/token"))
 
         // the forgeries didn't end the sign-in in progress
         try await s.handleCallback("shop.1.app://callback?code=c1&state=\(state)")
@@ -246,6 +257,49 @@ final class AuthStoreTests: XCTestCase {
         let rejected = await thrown { try await s.handleCallback("shop.1.app://callback?code=c1&state=") }
         XCTAssertTrue(rejected is AuthException)
         XCTAssertEqual(paths, [])
+    }
+
+    @MainActor
+    func testAUsedCallbackCantBeReplayed() async throws {
+        let s = store()
+        let state = try await start(s)["state"] ?? ""
+        let callback = "shop.1.app://callback?code=c1&state=\(state)"
+        try await s.handleCallback(callback)
+        let replayed = await thrown { try await s.handleCallback(callback) }
+        XCTAssertTrue(replayed is AuthException)
+        XCTAssertEqual(paths.filter { $0 == "/authentication/oauth/token" }.count, 1)
+        XCTAssertTrue(s.signedIn, "the replay doesn't end the session")
+    }
+
+    @MainActor
+    func testAnInsecureTokenEndpointStopsSignInBeforeTheBrowser() async throws {
+        discovery = discovery.replacingOccurrences(of: "https://shop.test/authentication/oauth/token", with: "http://shop.test/authentication/oauth/token")
+        let s = store()
+        let failed = await thrown { try await s.start() }
+        XCTAssertTrue(failed is AuthException)
+        XCTAssertNil(keychain["pending"], "no sign-in in progress")
+        XCTAssertFalse(paths.contains("/authentication/oauth/token"), "nothing is sent to it")
+    }
+
+    @MainActor
+    func testAReinstallStartsSignedOut() async throws {
+        _ = try await signedIn(store())
+        XCTAssertEqual(Array(keychain.keys), ["tokens"])
+
+        // the app is deleted and installed again: its UserDefaults go, the Keychain stays
+        let firstInstall = suite
+        defer { UserDefaults.standard.removePersistentDomain(forName: firstInstall) }
+        suite = UUID().uuidString
+        let reinstalled = store()
+        await reinstalled.load()
+        XCTAssertFalse(reinstalled.signedIn)
+        XCTAssertEqual(keychain, [:], "the last install's session is gone from the Keychain")
+
+        // only the first launch forgets: this install's session outlives a restart
+        _ = try await signedIn(reinstalled)
+        let restarted = store()
+        await restarted.load()
+        XCTAssertTrue(restarted.signedIn)
     }
 
     @MainActor
@@ -330,6 +384,38 @@ final class AuthStoreTests: XCTestCase {
         XCTAssertEqual([a, b], ["a2", "a2"])
         let refreshes = requests.filter { $0.url?.path == "/authentication/oauth/token" && form($0)["grant_type"] == "refresh_token" }
         XCTAssertEqual(refreshes.count, 1)
+    }
+
+    @MainActor
+    func testACallerCancelledMidRefreshKeepsTheRotatedToken() async throws {
+        let s = try await signedIn(store())
+        let gate = DispatchSemaphore(value: 0)
+        tokenReply = { _ in
+            _ = gate.wait(timeout: .now() + 5)
+            return (200, self.tokens("a2", "r2"))
+        }
+        clock = clock.addingTimeInterval(3600)
+        let caller = Task { try await s.validAccessToken() }
+        let isRefresh: (URLRequest) -> Bool = { $0.url?.path == "/authentication/oauth/token" && self.form($0)["grant_type"] == "refresh_token" }
+        var waited = 0
+        while !requests.contains(where: isRefresh), waited < 500 {
+            try await Task.sleep(nanoseconds: 10_000_000)
+            waited += 1
+        }
+        // the screen goes away while Shopify is rotating r1 into r2
+        caller.cancel()
+        gate.signal()
+        _ = try? await caller.value
+        XCTAssertTrue(s.signedIn)
+
+        // r1 is spent: the next refresh, after a restart too, must send r2
+        let restarted = store()
+        tokenReply = { _ in (200, self.tokens("a3", "r3")) }
+        clock = clock.addingTimeInterval(3600)
+        let token = try await restarted.validAccessToken()
+        XCTAssertEqual(token, "a3")
+        let refresh = try XCTUnwrap(requests.last)
+        XCTAssertEqual(form(refresh)["refresh_token"], "r2")
     }
 
     @MainActor

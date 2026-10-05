@@ -1,4 +1,7 @@
 import Foundation
+import os
+
+private let homeLog = Logger(subsystem: "app.storefront", category: "HomeScreen")
 
 enum Sections {
     /// Sections of the `mobile_screen` metaobject in a `HomeScreen` response. Unknown types, broken references and
@@ -82,6 +85,8 @@ func homeSections(
         sections = try Sections.fromHome(data, hosts: brand.hosts)
     } catch let error as StorefrontException {
         if !error.isGraphQL { throw error }
+        // GraphQL messages name fields and permissions, never a token: logged so a merchant can see why the home fell back
+        homeLog.warning("home screen query refused, showing the fallback home: \(error.messages.joined(separator: "; "), privacy: .public)")
     }
     if !sections.isEmpty { return sections }
     let data = try await fallback()

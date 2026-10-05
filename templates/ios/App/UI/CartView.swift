@@ -115,6 +115,7 @@ struct CartView: View {
     }
 
     /// The sleep is a debounce: tapping the stepper quickly restarts this task, so only the last cart is preloaded.
+    /// Nothing is preloaded while checkout is open.
     private func preload(_ cart: Cart?) async {
         guard let cart = cart, !cart.lines.isEmpty else { return }
         do {
@@ -124,6 +125,8 @@ struct CartView: View {
         }
         // preloading is only a hint: checkout still works without it, and Checkout reports real problems
         guard let link = await AppGraph.cart.checkoutUrl(), let url = URL(string: link), !Task.isCancelled else { return }
+        // not while the sheet is open: Checkout Kit 3.9.1 would swap the view under it and lose its onComplete and onFail
+        guard !checkingOut else { return }
         ShopifyCheckoutSheetKit.preload(checkout: url)
     }
 
