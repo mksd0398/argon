@@ -12,9 +12,8 @@ const flag = (args, name) => args[args.indexOf(name) + 1];
 /**
  * Fake exec/fetch. Records every call; `shopify store execute` answers from the query text (everything exists).
  * gitThrows: every `git -C <dir> ...` call throws, like defaultExec refusing an unsafe path.
- * gradlew: the generated project has android/gradlew (written when `git init` runs; the template has none yet).
  */
-function fakes({ git = true, gitThrows = false, gradlew = false, shopify = true, shopName = "Mock.shop", password = false, passwordFails = false } = {}) {
+function fakes({ git = true, gitThrows = false, shopify = true, shopName = "Mock.shop", password = false, passwordFails = false } = {}) {
   const calls = [];
   const urls = [];
   const exec = async (cmd, args) => {
@@ -22,7 +21,6 @@ function fakes({ git = true, gitThrows = false, gradlew = false, shopify = true,
     if (cmd === WHICH) return { code: shopify ? 0 : 1, stdout: "", stderr: "" };
     if (cmd === "git") {
       if (gitThrows && args[0] === "-C") throw new Error("Unsafe argument for shell: " + args[1]);
-      if (gradlew && args[2] === "init") writeFileSync(join(args[1], "android", "gradlew"), "#!/bin/sh\n");
       return { code: git ? 0 : 1, stdout: "", stderr: "" };
     }
     if (cmd === "shopify" && args[1] === "execute") {
@@ -115,6 +113,7 @@ test("--demo --yes scaffolds both apps against mock.shop", async () => {
       ["git", "--version"],
       ["git", "-C", dir, "init"],
       ["git", "-C", dir, "add", "-A"],
+      ["git", "-C", dir, "update-index", "--chmod=+x", "android/gradlew"],
       ["git", "-C", dir, "commit", "-m", "Initial Argon scaffold"],
     ]);
     for (const text of ["Open ios/App.xcodeproj in Xcode 16+", "Open android/ in Android Studio", "README.md"]) {
@@ -127,20 +126,6 @@ test("no git, no git commands beyond the version probe", async () => {
   const f = fakes({ git: false });
   await withRun(["demo-app", "--demo", "--yes"], f, () => {
     assert.deepEqual(f.calls.filter(([cmd]) => cmd === "git"), [["git", "--version"]]);
-  });
-});
-
-test("git: android/gradlew is marked executable in the index before the commit", async () => {
-  const f = fakes({ gradlew: true });
-  await withRun(["demo-app", "--demo", "--yes"], f, (cwd) => {
-    const dir = join(cwd, "demo-app");
-    assert.deepEqual(f.calls.filter(([cmd]) => cmd === "git"), [
-      ["git", "--version"],
-      ["git", "-C", dir, "init"],
-      ["git", "-C", dir, "add", "-A"],
-      ["git", "-C", dir, "update-index", "--chmod=+x", "android/gradlew"],
-      ["git", "-C", dir, "commit", "-m", "Initial Argon scaffold"],
-    ]);
   });
 });
 

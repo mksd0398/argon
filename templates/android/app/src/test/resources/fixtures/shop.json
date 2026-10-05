@@ -1,0 +1,20 @@
+{
+  "shop": {
+    "id": "gid://shopify/Shop/68817551382",
+    "name": "Mock.shop",
+    "primaryDomain": {
+      "host": "demostore.hydrogen.mock.shop"
+    },
+    "brand": {
+      "logo": {
+        "image": {
+          "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/9fdb5c70aefed10890ecb9ad4d15895c00c1281d9de1ab7acf7200c8f1e838df.png"
+        }
+      },
+      "coverImage": null,
+      "colors": {
+        "primary": []
+      }
+    }
+  }
+}
