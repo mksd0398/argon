@@ -20,7 +20,11 @@ struct CartView: View {
     @State private var failure: String? = nil
     @State private var attempt = 0
     @State private var message: String? = nil
+    // The URL stays set until the sheet has gone, so it doesn't blank while animating out; `checkingOut` drives it.
     @State private var checkout: URL? = nil
+    @State private var checkingOut = false
+    // A checkout failure, shown once the sheet is gone: an alert raised while it is still dismissing can be lost.
+    @State private var checkoutFailure: String? = nil
 
     var body: some View {
         let cart = AppGraph.cart.cart
@@ -44,21 +48,28 @@ struct CartView: View {
         .alert(message ?? "", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
             Button("OK", role: .cancel) {}
         }
-        .sheet(isPresented: Binding(get: { checkout != nil }, set: { if !$0 { checkout = nil } })) {
+        .sheet(isPresented: $checkingOut, onDismiss: { checkoutDismissed() }) {
             if let url = checkout {
                 CheckoutSheet(checkout: url)
-                    .onCancel { checkout = nil }
+                    .onCancel { checkingOut = false }
                     // the sheet stays open on the order confirmation until the shopper closes it (onCancel)
                     .onComplete { _ in Task { await AppGraph.cart.completed() } }
                     .onFail { error in
-                        checkout = nil
                         // the cart is kept; one Shopify no longer has (expired, already paid) is dropped by loading it again
                         if case .checkoutExpired = error { Task { _ = try? await AppGraph.cart.load() } }
-                        message = checkoutMessage(error)
+                        checkoutFailure = checkoutMessage(error)
+                        checkingOut = false
                     }
                     .ignoresSafeArea()
             }
         }
+    }
+
+    /// Runs once the checkout sheet has finished dismissing, whoever dismissed it (the shopper, the kit or `onFail`).
+    private func checkoutDismissed() {
+        checkout = nil
+        if let failure = checkoutFailure { message = failure }
+        checkoutFailure = nil
     }
 
     private func content(_ cart: Cart) -> some View {
@@ -82,7 +93,7 @@ struct CartView: View {
                 }
                 .font(.headline)
                 Button { startCheckout() } label: {
-                    Text("Checkout").frame(maxWidth: .infinity)
+                    Text("Checkout").onBrand().frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
@@ -133,6 +144,7 @@ struct CartView: View {
         act {
             guard let link = await AppGraph.cart.checkoutUrl(), let url = URL(string: link) else { return }
             checkout = url
+            checkingOut = true
         }
     }
 }

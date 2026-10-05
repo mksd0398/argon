@@ -1,5 +1,6 @@
 import Observation
 import SwiftUI
+import UIKit
 
 /// The typed text and, once submitted, the results of that query. State lives here so it survives opening a product.
 @MainActor
@@ -96,7 +97,7 @@ struct SearchView: View {
             }
             if let s = suggestions {
                 ForEach(s.queries, id: \.self) { q in
-                    Button { model.submit(q) } label: { Label(q, systemImage: "magnifyingglass") }
+                    Button { submitSuggestion(q) } label: { Label(q, systemImage: "magnifyingglass") }
                 }
                 if !s.collections.isEmpty {
                     SwiftUI.Section("Collections") {
@@ -116,6 +117,13 @@ struct SearchView: View {
         }
         .listStyle(.plain)
         .tint(Color.primary)
+    }
+
+    /// Searches for a suggested query and ends editing, as the keyboard's Search key does. It resigns the field rather
+    /// than setting `searching = false`: dismissing the search clears its text, which would hide the results again.
+    private func submitSuggestion(_ query: String) {
+        model.submit(query)
+        _ = UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 
     private func suggest() async {

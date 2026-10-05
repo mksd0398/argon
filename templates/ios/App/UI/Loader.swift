@@ -48,7 +48,7 @@ struct ErrorView: View {
     var body: some View {
         VStack(spacing: 16) {
             Text(message).multilineTextAlignment(.center)
-            Button("Retry", action: onRetry).buttonStyle(.borderedProminent)
+            Button(action: onRetry) { Text("Retry").onBrand() }.buttonStyle(.borderedProminent)
         }
         .padding(24)
     }

@@ -177,6 +177,7 @@ final class ListingTests: XCTestCase {
     func testPriceFilterGivesMinAndOrMax() throws {
         XCTAssertEqual(try price(priceFilter("10", " 50.5 ")), ["min": 10, "max": 50.5])
         XCTAssertEqual(try price(priceFilter("", "20")), ["max": 20])
+        XCTAssertEqual(try price(priceFilter("12,5", "")), ["min": 12.5], "a comma-decimal keyboard's comma")
         XCTAssertNil(priceFilter("", "abc"))
     }
 }

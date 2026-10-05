@@ -57,14 +57,20 @@ private struct BannerView: View {
                 if let text = text { Text(text).font(.subheadline) }
                 if let buttonLabel = buttonLabel, let link = link {
                     if image != nil {
-                        Button(buttonLabel) { router.open(link) }.buttonStyle(.borderedProminent)
+                        Button { router.open(link) } label: { Text(buttonLabel).onBrand() }
+                            .buttonStyle(.borderedProminent)
                     } else {
-                        // on the accent box: a light button, not one the colour of the box
-                        Button(buttonLabel) { router.open(link) }.buttonStyle(.bordered).tint(Color.white)
+                        // on the accent box the button is inverted (Android: onPrimary container, primary label)
+                        Button { router.open(link) } label: {
+                            Text(buttonLabel).foregroundStyle(brandColor(AppGraph.brand.value?.accent) ?? Color.accentColor)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(onBrandColor())
                     }
                 }
             }
-            .foregroundStyle(.white)
+            // white over the image's dark gradient; black or white on the accent box
+            .foregroundStyle(image != nil ? Color.white : onBrandColor())
             .padding(16)
             .frame(maxWidth: .infinity, minHeight: 180, alignment: .bottomLeading)
         }

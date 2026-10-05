@@ -3,7 +3,9 @@ import SwiftUI
 /// `{"price":{"min":x,"max":y}}` for the min/max fields (either may be empty); nil when neither is a number.
 func priceFilter(_ low: String, _ high: String) -> String? {
     func number(_ text: String) -> Double? {
-        guard let value = Double(text.trimmingCharacters(in: .whitespaces)), value.isFinite else { return nil }
+        // the decimal pad types "," in comma-decimal locales
+        let typed = text.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")
+        guard let value = Double(typed), value.isFinite else { return nil }
         return value
     }
     var price: [String: Double] = [:]
@@ -61,14 +63,15 @@ struct ListingBar: View {
 struct FilterSheet: View {
     let filters: [Filter]
     let onApply: ([String]) -> Void
-    @State private var picked: Set<String>
+    // in the order they were picked, so the same choices always send the same filters
+    @State private var picked: [String]
     @State private var low: String
     @State private var high: String
 
     init(filters: [Filter], applied: [String], onApply: @escaping ([String]) -> Void) {
         self.filters = filters
         self.onApply = onApply
-        _picked = State(initialValue: Set(applied.filter { priceBounds($0) == nil }))
+        _picked = State(initialValue: applied.filter { priceBounds($0) == nil })
         _low = State(initialValue: Self.bound("min", applied))
         _high = State(initialValue: Self.bound("max", applied))
     }
@@ -103,7 +106,7 @@ struct FilterSheet: View {
                     Button("Clear") { onApply([]) }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Apply") { onApply(Array(picked) + [priceFilter(low, high)].compactMap { $0 }) }
+                    Button("Apply") { onApply(picked + [priceFilter(low, high)].compactMap { $0 }) }
                 }
             }
         }
@@ -113,7 +116,11 @@ struct FilterSheet: View {
         Binding(
             get: { picked.contains(input) },
             set: { on in
-                if on { picked.insert(input) } else { picked.remove(input) }
+                if !on {
+                    picked.removeAll { $0 == input }
+                } else if !picked.contains(input) {
+                    picked.append(input)
+                }
             }
         )
     }

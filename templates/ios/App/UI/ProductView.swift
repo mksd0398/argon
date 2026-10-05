@@ -111,7 +111,7 @@ private struct ProductContent: View {
                     }
 
                     Button { add(variant) } label: {
-                        Text(buttonTitle(variant)).frame(maxWidth: .infinity)
+                        Text(buttonTitle(variant)).onBrand().frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
@@ -157,7 +157,7 @@ private struct ProductContent: View {
                 HStack(spacing: 8) {
                     ForEach(values, id: \.self) { value in
                         if selection[name] == value {
-                            Button(value) { selection[name] = value }.buttonStyle(.borderedProminent)
+                            Button { selection[name] = value } label: { Text(value).onBrand() }.buttonStyle(.borderedProminent)
                         } else {
                             Button(value) { selection[name] = value }.buttonStyle(.bordered)
                         }

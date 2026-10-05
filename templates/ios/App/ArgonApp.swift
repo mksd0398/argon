@@ -24,8 +24,6 @@ struct AppRoot: View {
         } else {
             Tabs()
                 .tint(brandColor(AppGraph.brand.value?.accent) ?? .accentColor)
-                // the Cart tab's badge needs the stored cart before that tab is ever opened
-                .task { _ = try? await AppGraph.cart.load() }
                 // A preloaded checkout shows the cart as it was: any change to the cart makes it stale.
                 .onChange(of: AppGraph.cart.cart) { ShopifyCheckoutSheetKit.invalidate() }
         }

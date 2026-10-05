@@ -1,6 +1,9 @@
 import Observation
+import os
 import SafariServices
 import SwiftUI
+
+private let appLog = Logger(subsystem: "app.storefront", category: "AppGraph")
 
 /// A screen pushed onto a tab's stack.
 enum Destination: Hashable {
@@ -74,6 +77,14 @@ struct Tabs: View {
             TabStack(root: CartView()).tabItem { Label("Cart", systemImage: "cart") }
                 .badge(AppGraph.cart.cart?.totalQuantity ?? 0)
             TabStack(root: Text("Account").navigationTitle("Account")).tabItem { Label("Account", systemImage: "person") }
+        }
+        // the Cart tab's badge needs the stored cart before that tab is ever opened
+        .task {
+            do {
+                try await AppGraph.cart.load()
+            } catch {
+                appLog.warning("cart load failed: \(error.localizedDescription)")
+            }
         }
     }
 }

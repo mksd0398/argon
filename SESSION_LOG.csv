@@ -37,3 +37,5 @@ date,project,task,start_time,end_time,status
 2026-10-05,create-shopify-app-storefront,"subagent: Argon task 11 fix round 1 (R27: module name ArgonStorefront, test imports, fragmentsAllowed)",08:59,08:59,done
 2026-10-05,create-shopify-app-storefront,"subagent: re-review Argon task 11 fix round 1 (R27: module name ArgonStorefront, test imports, fragmentsAllowed)",09:00,09:01,done
 2026-10-05,create-shopify-app-storefront,"subagent: Argon task 12: iOS screens, CartStore, WishlistStore, Checkout Kit",09:02,09:32,done
+2026-10-05,create-shopify-app-storefront,"subagent: review Argon task 12 (iOS screens, CartStore, WishlistStore, Checkout Kit; compiler pass)",09:33,09:53,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 12 fix round 1 (alert after sheet dismissal, R29 minors: currency cache, cart-load log, suggestion submit, ordered filters, comma decimals, label on brand colour)",09:54,09:57,done

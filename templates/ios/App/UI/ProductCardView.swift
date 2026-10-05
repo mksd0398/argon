@@ -3,15 +3,32 @@ import SwiftUI
 extension Money {
     /// "$25.00": the amount in its currency, in `locale`; "5.0 XYZ" when the amount or the currency isn't known.
     func display(locale: Locale = .current) -> String {
-        guard let value = Decimal(string: amount),
-              Locale.Currency.isoCurrencies.contains(where: { $0.identifier == currencyCode }) else {
+        guard let value = Decimal(string: amount), CurrencyFormat.codes.contains(currencyCode),
+              let text = CurrencyFormat.string(NSDecimalNumber(decimal: value), currencyCode, locale) else {
             return "\(amount) \(currencyCode)"
         }
+        return text
+    }
+}
+
+/// The ISO currency codes, and one formatter per locale and currency: a grid formats every card, and a NumberFormatter
+/// is expensive to build. The lock makes the cache safe from any thread.
+private enum CurrencyFormat {
+    static let codes = Set(Locale.Currency.isoCurrencies.map { $0.identifier })
+    private static let lock = NSLock()
+    private static var formatters: [String: NumberFormatter] = [:]
+
+    static func string(_ number: NSDecimalNumber, _ code: String, _ locale: Locale) -> String? {
+        lock.lock()
+        defer { lock.unlock() }
+        let key = locale.identifier + " " + code
+        if let formatter = formatters[key] { return formatter.string(from: number) }
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.locale = locale
-        formatter.currencyCode = currencyCode
-        return formatter.string(from: NSDecimalNumber(decimal: value)) ?? "\(amount) \(currencyCode)"
+        formatter.currencyCode = code
+        formatters[key] = formatter
+        return formatter.string(from: number)
     }
 }
 
