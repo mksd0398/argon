@@ -43,8 +43,10 @@ import kotlinx.serialization.json.put
 
 /** `{"price":{"min":x,"max":y}}` for the min/max fields (either may be empty); null when neither is a number. */
 internal fun priceFilter(min: String, max: String): String? {
-    val low = min.trim().toDoubleOrNull()
-    val high = max.trim().toDoubleOrNull()
+    // the decimal keyboard types "," in comma-decimal locales; NaN and Infinity aren't JSON numbers
+    fun number(text: String) = text.trim().replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() }
+    val low = number(min)
+    val high = number(max)
     if (low == null && high == null) return null
     return buildJsonObject {
         put("price", buildJsonObject {

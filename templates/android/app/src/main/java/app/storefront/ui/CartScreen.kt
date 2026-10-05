@@ -61,6 +61,7 @@ import com.shopify.checkoutsheetkit.ShopifyCheckoutSheetKit
 import com.shopify.checkoutsheetkit.lifecycleevents.CheckoutCompletedEvent
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -100,7 +101,10 @@ fun CartScreen() {
 
     // Warm up checkout once the shopper is looking at a non-empty cart, and again after every change to it.
     // The delay is a debounce: tapping the stepper quickly restarts this effect, so only the last cart is preloaded.
+    // Presenting checkout cancels it: a preload landing on the open sheet would cut it off from its events.
+    var preload by remember { mutableStateOf<Job?>(null) }
     LaunchedEffect(cart) {
+        preload = coroutineContext[Job]
         if (activity == null || cart?.lines.isNullOrEmpty()) return@LaunchedEffect
         delay(500)
         try {
@@ -146,6 +150,7 @@ fun CartScreen() {
 
             override fun onCheckoutCanceled() {}
         }
+        preload?.cancel()
         ShopifyCheckoutSheetKit.present(url, host, processor)
     }
 

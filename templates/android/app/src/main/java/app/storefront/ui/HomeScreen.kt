@@ -32,6 +32,7 @@ import app.storefront.data.Section
 import app.storefront.data.Sections
 import app.storefront.data.StorefrontException
 import coil3.compose.AsyncImage
+import java.util.logging.Logger
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -47,6 +48,8 @@ internal suspend fun homeSections(brand: Brand, home: suspend () -> JsonObject, 
         Sections.fromHome(home(), brand.hosts)
     } catch (e: StorefrontException) {
         if (!e.isGraphQL) throw e
+        // GraphQL messages name fields and permissions, never a token: logged so a merchant can see why the home fell back
+        Logger.getLogger("HomeScreen").warning("home screen query refused, showing the fallback home: ${e.messages.joinToString("; ")}")
         emptyList()
     }
     return sections.ifEmpty { Sections.fallback(brand, fallback()) }

@@ -163,11 +163,12 @@ private fun CustomerContent(customer: Customer, nav: NavController) {
                         // on the app's scope: signing out finishes even if the shopper leaves the tab
                         AppGraph.scope.launch {
                             try {
-                                AppGraph.auth.signOut()
                                 // the cart too: one the customer was attached to would still check out as them (shopify.dev
                                 // Checkout Kit "Authenticate checkouts": clear the stored tokens and authenticated carts).
                                 // Only here, on an explicit sign-out: a session that ends mid-checkout must not lose the cart.
+                                // First, so a slow or failing logout call can't leave it behind.
                                 AppGraph.cart.completed()
+                                AppGraph.auth.signOut()
                             } catch (e: Exception) {
                                 Log.w("Account", "sign-out failed", e)
                             }

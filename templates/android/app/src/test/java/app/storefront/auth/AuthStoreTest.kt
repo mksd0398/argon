@@ -20,6 +20,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 import okhttp3.FormBody
@@ -58,6 +59,10 @@ class AuthStoreTest {
     /** The Customer Account API's answer, by the `Authorization` header it got. */
     private var graphqlReply: (String?) -> Pair<Int, String> = { 200 to """{"data":{"customer":{"firstName":"Ada"}}}""" }
 
+    /** The shop's OpenID discovery document. */
+    private var discovery = """{"authorization_endpoint":"https://shop.test/authentication/oauth/authorize",""" +
+        """"token_endpoint":"https://shop.test/authentication/oauth/token","end_session_endpoint":"https://shop.test/authentication/logout"}"""
+
     /** The id_token's nonce; null means "echo the one the store sent". */
     private var idTokenNonce: String? = null
     private var sentNonce = ""
@@ -78,8 +83,7 @@ class AuthStoreTest {
         val request = chain.request()
         requests += request
         val (code, body) = when (request.url.encodedPath) {
-            "/.well-known/openid-configuration" -> 200 to """{"authorization_endpoint":"https://shop.test/authentication/oauth/authorize",""" +
-                """"token_endpoint":"https://shop.test/authentication/oauth/token","end_session_endpoint":"https://shop.test/authentication/logout"}"""
+            "/.well-known/openid-configuration" -> 200 to discovery
             "/.well-known/customer-account-api" -> 200 to """{"graphql_api":"https://shop.test/customer/api/2026-10/graphql"}"""
             "/authentication/oauth/token" -> tokenReply(request.form())
             "/customer/api/2026-10/graphql" -> graphqlReply(request.header("Authorization"))
@@ -165,8 +169,15 @@ class AuthStoreTest {
         assertThrows(AuthException::class.java) { runBlocking { s.handleCallback("shop.1.app://callback?code=c1&state=forged") } }
         assertFalse(s.signedIn.value)
         assertFalse("no code is exchanged", "/authentication/oauth/token" in paths)
+        assertThrows("the right state on another scheme is still rejected", AuthException::class.java) {
+            runBlocking { s.handleCallback("other.app://callback?code=c1&state=$state") }
+        }
+        assertThrows("the right state on another host is still rejected", AuthException::class.java) {
+            runBlocking { s.handleCallback("shop.1.app://evil?code=c1&state=$state") }
+        }
+        assertFalse("/authentication/oauth/token" in paths)
 
-        // the forgery didn't end the sign-in in progress
+        // the forgeries didn't end the sign-in in progress
         s.handleCallback("shop.1.app://callback?code=c1&state=$state")
         assertTrue(s.signedIn.value)
     }
@@ -176,6 +187,26 @@ class AuthStoreTest {
         val s = store()
         assertThrows(AuthException::class.java) { runBlocking { s.handleCallback("shop.1.app://callback?code=c1&state=") } }
         assertEquals(emptyList<String>(), paths)
+    }
+
+    @Test
+    fun aUsedCallbackCantBeReplayed() = runBlocking {
+        val s = store()
+        val callback = "shop.1.app://callback?code=c1&state=${s.start().queryParameter("state")}"
+        s.handleCallback(callback)
+        assertThrows(AuthException::class.java) { runBlocking { s.handleCallback(callback) } }
+        assertEquals(1, paths.count { it == "/authentication/oauth/token" })
+        assertTrue("the replay doesn't end the session", s.signedIn.value)
+    }
+
+    @Test
+    fun anInsecureTokenEndpointStopsSignInBeforeTheBrowser() = runBlocking {
+        discovery = discovery.replace("https://shop.test/authentication/oauth/token", "http://shop.test/authentication/oauth/token")
+        val s = store()
+        var opened: String? = null
+        assertThrows(AuthException::class.java) { runBlocking { s.signIn { opened = it } } }
+        assertNull("the browser isn't opened", opened)
+        assertFalse("nothing is sent to it", "/authentication/oauth/token" in paths)
     }
 
     @Test
@@ -248,6 +279,29 @@ class AuthStoreTest {
         gate.countDown()
         assertEquals(listOf("a2", "a2"), calls.awaitAll())
         assertEquals(1, requests.count { it.url.encodedPath == "/authentication/oauth/token" && it.form()["grant_type"] == "refresh_token" })
+    }
+
+    @Test
+    fun aCallerCancelledMidRefreshKeepsTheRotatedToken() = runBlocking {
+        val s = store().signedInStore()
+        val asked = CountDownLatch(1)
+        val gate = CountDownLatch(1)
+        tokenReply = { asked.countDown(); gate.await(5, TimeUnit.SECONDS); 200 to tokens("a2", "r2") }
+        clock += 3_600_000
+        val caller = launch(Dispatchers.Default) { s.validAccessToken() }
+        assertTrue(asked.await(5, TimeUnit.SECONDS))
+        // the screen goes away while Shopify is rotating r1 into r2
+        caller.cancel()
+        gate.countDown()
+        caller.join()
+        assertTrue(s.signedIn.value)
+
+        // r1 is spent: the next refresh, after a restart too, must send r2
+        val restarted = store(restart())
+        tokenReply = { 200 to tokens("a3", "r3") }
+        clock += 3_600_000
+        assertEquals("a3", restarted.validAccessToken())
+        assertEquals("r2", requests.last().form()["refresh_token"])
     }
 
     @Test

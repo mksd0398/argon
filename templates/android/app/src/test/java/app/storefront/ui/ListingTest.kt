@@ -184,6 +184,8 @@ class ListingTest {
     fun priceFilterGivesMinAndOrMax() {
         assertEquals("""{"price":{"min":10.0,"max":50.5}}""", priceFilter("10", " 50.5 "))
         assertEquals("""{"price":{"max":20.0}}""", priceFilter("", "20"))
+        assertEquals("a comma-decimal keyboard's comma", """{"price":{"min":12.5}}""", priceFilter("12,5", ""))
         assertNull(priceFilter("", "abc"))
+        assertNull("not a JSON number", priceFilter("NaN", "Infinity"))
     }
 }

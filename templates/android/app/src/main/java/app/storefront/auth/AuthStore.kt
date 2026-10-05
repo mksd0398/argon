@@ -18,6 +18,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.logging.Logger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -96,6 +97,8 @@ class AuthStore(
             val verifier = Pkce.verifier()
             val state = Pkce.verifier()
             val nonce = Pkce.verifier()
+            // the code goes back to the token endpoint: one that isn't https stops the sign-in before the browser opens
+            openId().endpoint("token_endpoint")
             val url = openId().endpoint("authorization_endpoint").newBuilder()
                 .addQueryParameter("scope", "openid email customer-account-api:full")
                 .addQueryParameter("client_id", clientId)
@@ -213,12 +216,15 @@ class AuthStore(
     private suspend fun refresh(current: Tokens): String? {
         val refreshToken = current.refresh ?: return setTokens(null)
         val request = tokenRequest("grant_type" to "refresh_token", "client_id" to clientId, "refresh_token" to refreshToken)
-        val json = try {
-            fetch(request)
-        } catch (e: AuthException) {
-            if (e.status == 400 || e.status == 401) return setTokens(null) else throw e
+        // Not cancellable: once Shopify has rotated the refresh token, the caller going away mustn't lose the new one.
+        return withContext(NonCancellable) {
+            val json = try {
+                fetch(request)
+            } catch (e: AuthException) {
+                if (e.status == 400 || e.status == 401) return@withContext setTokens(null) else throw e
+            }
+            setTokens(parseTokens(json, previous = current))
         }
-        return setTokens(parseTokens(json, previous = current))
     }
 
     // Keystore and disk work runs on IO: callers include the main thread (the Account screen's scope).
