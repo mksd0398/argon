@@ -9,3 +9,5 @@ date,project,task,start_time,end_time,status
 2026-10-05,create-shopify-app-storefront,"subagent: Argon task 3: section definitions and seed builder",05:12,05:18,done
 2026-10-05,create-shopify-app-storefront,"subagent: review Argon task 3 (section definitions and seed builder)",05:18,05:19,done
 2026-10-05,create-shopify-app-storefront,"subagent: Argon task 4: store provisioning and checks",05:20,05:24,done
+2026-10-05,create-shopify-app-storefront,"subagent: review Argon task 4 (store provisioning and checks)",05:25,05:28,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 4 fix round 1: shell arg quoting and interactive store auth",05:29,05:31,done

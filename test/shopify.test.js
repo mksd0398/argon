@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createShopify, defaultExec } from "../lib/shopify.js";
@@ -51,8 +52,8 @@ function fakeAdmin({ collections = [], accounts = "NEW_CUSTOMER_ACCOUNTS", accou
     throw new Error(`fake admin: unexpected query ${query}`);
   };
 
-  admin.exec = async (cmd, args) => {
-    admin.calls.push({ cmd, args });
+  admin.exec = async (cmd, args, opts) => {
+    admin.calls.push({ cmd, args, opts });
     if (args[1] === "auth") return { code: 0, stdout: "", stderr: "" };
     const query = readFileSync(flag(args, "--query-file"), "utf8");
     const vars = JSON.parse(readFileSync(flag(args, "--variable-file"), "utf8"));
@@ -156,13 +157,19 @@ test("provision: a failing customer accounts query only adds a warning", async (
   assert.equal(result.seeded, true);
 });
 
-test("storeAuth runs shopify store auth with the three scopes", async (t) => {
+test("storeAuth runs shopify store auth with the three scopes, interactively", async (t) => {
   const { admin, shopify } = setup(t);
   await shopify.storeAuth(STORE);
   assert.deepEqual(admin.calls, [{
     cmd: "shopify",
     args: ["store", "auth", "--store", STORE, "--scopes", "read_products,write_metaobject_definitions,write_metaobjects"],
+    opts: { interactive: true },
   }]);
+});
+
+test("storeAuth: a non-zero interactive exit rejects, and there is no output to quote", async (t) => {
+  const { shopify } = setup(t, undefined, { exec: async () => ({ code: 2, stdout: "", stderr: "" }) });
+  await assert.rejects(shopify.storeAuth(STORE), { message: "shopify store auth failed (exit 2)" });
 });
 
 test("a non-zero exit rejects with the trimmed stderr, for auth and execute alike", async (t) => {
@@ -243,10 +250,38 @@ test("verifyStorefront: 401/403 and GraphQL errors throw", async (t) => {
   await assert.rejects(shopify.verifyStorefront("nalli.myshopify.com", "t"), /Field 'shop' doesn't exist; Second/);
 });
 
-test("defaultExec: runs through a shell, quotes args and returns code, stdout and stderr", async () => {
+test("defaultExec: runs through a shell and returns code, stdout and stderr; a path with spaces is one argument", async (t) => {
+  const dir = mkdtempSync(join(tmpdir(), "argon test-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const spaced = join(dir, "dir with spaces", "file name.txt");
   const code = "console.log(process.argv[1]); console.error('oops'); process.exit(3)";
-  const result = await defaultExec("node", ["-e", code, 'two words "quoted"']);
+  const result = await defaultExec("node", ["-e", code, spaced]);
   assert.equal(result.code, 3);
-  assert.equal(result.stdout.trim(), 'two words "quoted"');
+  assert.equal(result.stdout.trim(), spaced);
   assert.equal(result.stderr.trim(), "oops");
+});
+
+test("defaultExec: refuses arguments that could escape the quotes, before anything is spawned", async (t) => {
+  const dir = mkdtempSync(join(tmpdir(), "argon-test-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const marker = join(dir, "ran");
+  const unsafe = [
+    'a" & echo PWNED & "b',
+    `a" & node -p 1 > "${marker}" & "b`,
+    "%PATH%",
+    "C:\\some dir\\",
+  ];
+  for (const arg of unsafe) {
+    await assert.rejects(defaultExec("node", ["-e", "0", arg]), { message: `Unsafe argument for shell: ${arg}` });
+  }
+  assert.equal(existsSync(marker), false);
+});
+
+test("defaultExec: interactive hands the terminal to the child instead of capturing its output", () => {
+  // run defaultExec in a grandchild whose stdout we capture: the child's own output must show up there
+  const lib = new URL("../lib/shopify.js", import.meta.url).href;
+  const script = `import { defaultExec } from "${lib}";
+    console.log(JSON.stringify(await defaultExec("node", ["-e", "console.log('visible'); process.exit(4)"], { interactive: true })));`;
+  const out = execFileSync(process.execPath, ["--input-type=module", "-e", script], { encoding: "utf8" });
+  assert.equal(out.replace(/\r\n/g, "\n"), 'visible\n{"code":4,"stdout":"","stderr":""}\n');
 });
