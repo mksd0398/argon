@@ -167,8 +167,11 @@ private fun CustomerContent(customer: Customer, nav: NavController) {
                                 // Checkout Kit "Authenticate checkouts": clear the stored tokens and authenticated carts).
                                 // Only here, on an explicit sign-out: a session that ends mid-checkout must not lose the cart.
                                 // First, so a slow or failing logout call can't leave it behind.
-                                AppGraph.cart.completed()
-                                AppGraph.auth.signOut()
+                                try {
+                                    AppGraph.cart.completed()
+                                } finally {
+                                    AppGraph.auth.signOut()
+                                }
                             } catch (e: Exception) {
                                 Log.w("Account", "sign-out failed", e)
                             }
