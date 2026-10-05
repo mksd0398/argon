@@ -1,17 +1,33 @@
+import ShopifyCheckoutSheetKit
 import SwiftUI
 
 // The target is named App (its module is ArgonStorefront); the qualified protocol keeps "App" unambiguous.
+// This file imports Checkout Kit, whose public `Image` would clash with SwiftUI's: no unqualified `Image` here.
 @main
 struct ArgonApp: SwiftUI.App {
+    init() {
+        ShopifyCheckoutSheetKit.configure { $0.preloading.enabled = true }
+    }
+
     var body: some Scene {
-        WindowGroup {
-            TabView {
-                Text("Home").tabItem { Label("Home", systemImage: "house") }
-                Text("Shop").tabItem { Label("Shop", systemImage: "list.bullet") }
-                Text("Wishlist").tabItem { Label("Wishlist", systemImage: "heart") }
-                Text("Cart").tabItem { Label("Cart", systemImage: "cart") }
-                Text("Account").tabItem { Label("Account", systemImage: "person") }
-            }
+        WindowGroup { AppRoot() }
+    }
+}
+
+/// The tabs in the shop's colour, or the setup screen when the app can't reach the store.
+@MainActor
+struct AppRoot: View {
+    var body: some View {
+        // the app can't reach a real store without its Storefront token (mock.shop needs none)
+        if AppGraph.storefrontToken.trimmingCharacters(in: .whitespaces).isEmpty && AppGraph.shopDomain != "mock.shop" {
+            SetupView()
+        } else {
+            Tabs()
+                .tint(brandColor(AppGraph.brand.value?.accent) ?? .accentColor)
+                // the Cart tab's badge needs the stored cart before that tab is ever opened
+                .task { _ = try? await AppGraph.cart.load() }
+                // A preloaded checkout shows the cart as it was: any change to the cart makes it stale.
+                .onChange(of: AppGraph.cart.cart) { ShopifyCheckoutSheetKit.invalidate() }
         }
     }
 }
