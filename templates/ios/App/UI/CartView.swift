@@ -141,6 +141,7 @@ struct CartView: View {
     }
 
     private func startCheckout() {
+        checkoutFailure = nil
         act {
             guard let link = await AppGraph.cart.checkoutUrl(), let url = URL(string: link) else { return }
             checkout = url

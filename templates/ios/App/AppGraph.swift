@@ -15,7 +15,18 @@ enum AppGraph {
     @MainActor static let wishlist = WishlistStore(defaults: .standard)
     @MainActor static let cart = CartStore(
         query: { name, variables in try await AppGraph.storefront.query(name, variables) },
-        defaults: .standard
+        defaults: .standard,
+        accessToken: { try await AppGraph.auth.validAccessToken() }
+    )
+
+    @MainActor private static let browser = BrowserSignIn()
+    // The callback scheme shop.<SHOP_ID>.app is the one Shopify allows a mobile client; the browser session catches it.
+    @MainActor static let auth = AuthStore(
+        domain: shopDomain,
+        clientId: customerClientId,
+        redirectUri: "shop.\(shopId).app://callback",
+        loadDocument: AppGraph.document,
+        open: { url in try await AppGraph.browser.open(url, scheme: "shop.\(AppGraph.shopId).app") }
     )
 
     /// The loaded brand (nil until `loadBrand` succeeds); the theme follows it.

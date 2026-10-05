@@ -47,7 +47,7 @@ struct TabStack<Root: View>: View {
                 case let .product(handle): ProductView(handle: handle)
                 case let .collection(handle): CollectionView(handle: handle)
                 case let .search(query): SearchView(initial: query)
-                case .order: EmptyView() // Task 13: the order screen
+                case let .order(id): OrderView(id: id)
                 }
             }
         }
@@ -76,7 +76,7 @@ struct Tabs: View {
             // the Cart tab shows how many items are in the cart (no badge at 0)
             TabStack(root: CartView()).tabItem { Label("Cart", systemImage: "cart") }
                 .badge(AppGraph.cart.cart?.totalQuantity ?? 0)
-            TabStack(root: Text("Account").navigationTitle("Account")).tabItem { Label("Account", systemImage: "person") }
+            TabStack(root: AccountView()).tabItem { Label("Account", systemImage: "person") }
         }
         // the Cart tab's badge needs the stored cart before that tab is ever opened
         .task {
@@ -86,6 +86,8 @@ struct Tabs: View {
                 appLog.warning("cart load failed: \(error.localizedDescription)")
             }
         }
+        // the stored session, so the Account tab opens signed in
+        .task { await AppGraph.auth.load() }
     }
 }
 

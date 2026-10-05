@@ -38,7 +38,15 @@ extension View {
 }
 
 struct OnBrand: ViewModifier {
+    @Environment(\.isEnabled) private var isEnabled
+
+    // a disabled button keeps the system's disabled label colour
+    @ViewBuilder
     func body(content: Content) -> some View {
-        content.foregroundStyle(onBrandColor())
+        if isEnabled {
+            content.foregroundStyle(onBrandColor())
+        } else {
+            content
+        }
     }
 }

@@ -24,8 +24,10 @@ struct AppRoot: View {
         } else {
             Tabs()
                 .tint(brandColor(AppGraph.brand.value?.accent) ?? .accentColor)
-                // A preloaded checkout shows the cart as it was: any change to the cart makes it stale.
+                // A preloaded checkout shows the cart and the buyer as they were: a cart change (a product added, a stepper
+                // tap), a sign-in or a sign-out makes it stale.
                 .onChange(of: AppGraph.cart.cart) { ShopifyCheckoutSheetKit.invalidate() }
+                .onChange(of: AppGraph.auth.signedIn) { ShopifyCheckoutSheetKit.invalidate() }
         }
     }
 }
