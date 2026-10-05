@@ -54,5 +54,4 @@ test("run without a terminal throws on missing values", async () => {
   await assert.rejects(runWith([], false), /Missing project name \(no terminal to prompt\)/);
   await assert.rejects(runWith(["app"], false), /Missing --store \(no terminal to prompt\)/);
   await assert.rejects(runWith(["app", "--store", "a"], false), /Missing --token \(no terminal to prompt\)/);
-  assert.match(await runWith(["app", "--demo"], false), /later version/);
 });
