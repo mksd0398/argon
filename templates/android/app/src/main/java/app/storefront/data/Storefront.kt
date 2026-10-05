@@ -29,7 +29,7 @@ class Storefront(
 
     /** Runs operation [name] and returns its `data`. */
     suspend fun query(name: String, variables: JsonObject = JsonObject(emptyMap())): JsonObject {
-        val document = documents.getOrPut(name) { loadDocument(name) }
+        val document = withContext(Dispatchers.IO) { documents.getOrPut(name) { loadDocument(name) } }
         val request = Request.Builder()
             .url(url)
             .post(graphQLBody(document, variables))

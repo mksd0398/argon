@@ -7,12 +7,18 @@ import app.storefront.data.StorefrontException
 import java.io.File
 import java.io.IOException
 import java.util.Base64
+import java.util.Collections
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
@@ -42,9 +48,9 @@ class AuthStoreTest {
 
     private var clock = 1_000_000L
 
-    /** Every request the store made, in order. */
-    private val requests = mutableListOf<Request>()
-    private val paths get() = requests.map { it.url.encodedPath }
+    /** Every request the store made, in order (requests arrive on IO threads). */
+    private val requests: MutableList<Request> = Collections.synchronizedList(mutableListOf())
+    private val paths get() = synchronized(requests) { requests.map { it.url.encodedPath } }
 
     /** The token endpoint's answer to a form: status and JSON body. */
     private var tokenReply: (Map<String, String>) -> Pair<Int, String> = { 200 to tokens("a1", "r1") }
@@ -153,12 +159,16 @@ class AuthStoreTest {
     }
 
     @Test
-    fun aStateMismatchThrows() = runBlocking {
+    fun aStateMismatchThrowsAndTheRealCallbackStillWorks() = runBlocking {
         val s = store()
-        s.start()
+        val state = s.start().queryParameter("state")!!
         assertThrows(AuthException::class.java) { runBlocking { s.handleCallback("shop.1.app://callback?code=c1&state=forged") } }
         assertFalse(s.signedIn.value)
         assertFalse("no code is exchanged", "/authentication/oauth/token" in paths)
+
+        // the forgery didn't end the sign-in in progress
+        s.handleCallback("shop.1.app://callback?code=c1&state=$state")
+        assertTrue(s.signedIn.value)
     }
 
     @Test
@@ -218,10 +228,26 @@ class AuthStoreTest {
         tokenReply = { throw IOException("offline") }
         assertThrows(IOException::class.java) { runBlocking { s.validAccessToken() } }
         assertTrue(s.signedIn.value)
-        // a server error isn't a refusal either
-        tokenReply = { 503 to "" }
-        assertThrows(AuthException::class.java) { runBlocking { s.validAccessToken() } }
-        assertTrue(s.signedIn.value)
+        // only 400 and 401 are refusals: rate limits and server errors aren't
+        for (status in listOf(429, 503)) {
+            tokenReply = { status to """{"error":"slow_down"}""" }
+            assertThrows(AuthException::class.java) { runBlocking { s.validAccessToken() } }
+            assertTrue("$status keeps the session", s.signedIn.value)
+        }
+    }
+
+    @Test
+    fun concurrentCallersShareOneRefresh() = runBlocking {
+        val s = store().signedInStore()
+        // the token endpoint answers only once the test lets it: both callers are in flight by then
+        val gate = CountDownLatch(1)
+        tokenReply = { gate.await(5, TimeUnit.SECONDS); 200 to tokens("a2", "r2") }
+        clock += 3_600_000
+        val calls = List(2) { async(Dispatchers.Default) { s.validAccessToken() } }
+        delay(300)
+        gate.countDown()
+        assertEquals(listOf("a2", "a2"), calls.awaitAll())
+        assertEquals(1, requests.count { it.url.encodedPath == "/authentication/oauth/token" && it.form()["grant_type"] == "refresh_token" })
     }
 
     @Test

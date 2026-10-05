@@ -60,12 +60,6 @@ class StorefrontApp : Application(), SingletonImageLoader.Factory {
         // A preloaded checkout shows the cart and the buyer as they were: a cart change (a PDP add, a stepper tap), a sign-in
         // or a sign-out makes it stale.
         MainScope().launch { merge(AppGraph.cart.cart, AppGraph.auth.signedIn).collect { ShopifyCheckoutSheetKit.invalidate() } }
-        // Signing out also drops the cart: one the customer was attached to would still check out as them
-        // (shopify.dev Checkout Kit "Authenticate checkouts": clear the stored tokens and authenticated carts).
-        AppGraph.scope.launch {
-            var wasSignedIn = false
-            AppGraph.auth.signedIn.collect { if (wasSignedIn && !it) AppGraph.cart.completed(); wasSignedIn = it }
-        }
         // the Cart tab's badge needs the stored cart before that tab is ever opened
         AppGraph.scope.launch {
             try {

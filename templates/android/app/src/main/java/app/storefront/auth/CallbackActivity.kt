@@ -22,7 +22,8 @@ class CallbackActivity : Activity() {
                 try {
                     AppGraph.auth.handleCallback(uri)
                 } catch (e: Exception) {
-                    Log.w("CallbackActivity", "sign-in callback not accepted: ${e.message}")
+                    // AuthException messages are ours; any other message may quote the callback, code included
+                    Log.w("CallbackActivity", "sign-in callback not accepted: ${if (e is AuthException) e.message else e.javaClass.name}")
                 }
             }
         }

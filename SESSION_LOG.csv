@@ -29,3 +29,5 @@ date,project,task,start_time,end_time,status
 2026-10-05,create-shopify-app-storefront,"subagent: Argon task 9 fix round 1 (stale preload, dead stored cart on add, snackbar scope, DataStore retry)",07:41,07:44,done
 2026-10-05,create-shopify-app-storefront,"subagent: re-review Argon task 9 fix round 1 (stale preload, dead stored cart on add, snackbar scope, DataStore retry)",07:45,07:47,done
 2026-10-05,create-shopify-app-storefront,"subagent: Argon task 10: Android Customer Account login and account screens",07:53,08:12,done
+2026-10-05,create-shopify-app-storefront,"subagent: review Argon task 10 (Android Customer Account login, token storage, account/orders screens)",08:18,08:21,done
+2026-10-05,create-shopify-app-storefront,"subagent: Argon task 10 fix round 1 (R26: explicit sign-out drops cart, 400/401 refusals, IO dispatch, log hygiene, tests)",08:22,08:26,done

@@ -14,6 +14,8 @@ import app.storefront.data.string
 import java.net.URI
 import java.net.URLDecoder
 import java.util.Base64
+import java.util.concurrent.ConcurrentHashMap
+import java.util.logging.Logger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -69,6 +71,10 @@ class AuthStore(
     @Volatile private var openId: JsonObject? = null
 
     @Volatile private var graphqlUrl: HttpUrl? = null
+    private val documents = ConcurrentHashMap<String, String>()
+
+    // java.util.logging: it reaches logcat on Android and also runs in JVM tests. Only exception classes are logged, never values.
+    private val log = Logger.getLogger("AuthStore")
 
     private val signedInState = MutableStateFlow(false)
     private val signInErrorState = MutableStateFlow<String?>(null)
@@ -148,7 +154,7 @@ class AuthStore(
 
     /**
      * The access token, refreshed first when it expires within 60 s. Null when signed out, or when Shopify refuses the
-     * refresh (that signs out). A token endpoint that can't be reached throws and keeps the session.
+     * refresh (400/401: that signs out). Any other refresh failure throws and keeps the session.
      */
     suspend fun validAccessToken(): String? = lock.withLock {
         ensureLoaded()
@@ -159,7 +165,7 @@ class AuthStore(
     /** Runs Customer Account API operation [name] and returns its `data`. A 401 refreshes and retries once; a second signs out. */
     suspend fun customerQuery(name: String, variables: JsonObject): JsonObject {
         val url = graphqlUrl ?: get("https://$domain/.well-known/customer-account-api").endpoint("graphql_api").also { graphqlUrl = it }
-        val body = graphQLBody(loadDocument(name), variables)
+        val body = graphQLBody(withContext(Dispatchers.IO) { documents.getOrPut(name) { loadDocument(name) } }, variables)
         // The header is the bare access token, with no "Bearer" (shopify.dev/docs/api/customer, "Endpoints and queries").
         fun request(token: String) = Request.Builder().url(url).header("Authorization", token).post(body).build()
 
@@ -196,34 +202,49 @@ class AuthStore(
             throw e
         } catch (e: Exception) {
             // signed out on the device already; Shopify's session then simply runs out
+            log.warning("logout call failed (${e.javaClass.name})")
         }
     }
 
-    /** With the lock held. Shopify refusing the refresh (4xx) signs out and returns null; any other failure throws. */
+    /**
+     * With the lock held. Shopify refusing the refresh (400 or 401, RFC 6749 §5.2) signs out and returns null; anything else
+     * (offline, 408, 429, 5xx) throws and keeps the session.
+     */
     private suspend fun refresh(current: Tokens): String? {
         val refreshToken = current.refresh ?: return setTokens(null)
         val request = tokenRequest("grant_type" to "refresh_token", "client_id" to clientId, "refresh_token" to refreshToken)
         val json = try {
             fetch(request)
         } catch (e: AuthException) {
-            if (e.status in 400..499) return setTokens(null) else throw e
+            if (e.status == 400 || e.status == 401) return setTokens(null) else throw e
         }
         return setTokens(parseTokens(json, previous = current))
     }
 
+    // Keystore and disk work runs on IO: callers include the main thread (the Account screen's scope).
     private suspend fun ensureLoaded() {
         if (loaded) return
-        val stored = prefs.safeData().first()
-        tokens = open(stored[tokensKey])?.let { t ->
+        val (storedTokens, storedPending) = withContext(Dispatchers.IO) {
+            val stored = prefs.safeData().first()
+            open(stored[tokensKey]) to open(stored[pendingKey])
+        }
+        tokens = storedTokens?.let { t ->
             t.str("access")?.let { Tokens(it, t.str("refresh"), t.str("idToken"), (t["expiresAt"] as? JsonPrimitive)?.longOrNull ?: 0) }
         }
-        pending = open(stored[pendingKey])
+        pending = storedPending
         signedInState.value = tokens != null
         loaded = true
     }
 
     /** A stored value; null when there is none, or it can't be decrypted (the Keystore key is gone) or parsed. */
-    private fun open(sealed: String?): JsonObject? = sealed?.let { runCatching { Json.parseToJsonElement(decrypt(it)) as? JsonObject }.getOrNull() }
+    private fun open(sealed: String?): JsonObject? = sealed?.let {
+        try {
+            Json.parseToJsonElement(decrypt(it)) as? JsonObject
+        } catch (e: Exception) {
+            log.warning("stored session unreadable (${e.javaClass.name})")
+            null
+        }
+    }
 
     /** Sets the session and returns its access token (null: signed out). */
     private suspend fun setTokens(value: Tokens?): String? {
@@ -246,12 +267,14 @@ class AuthStore(
     // ponytail: a failed write (disk full, Keystore unavailable) only costs the session across a restart: memory stays right.
     private suspend fun save(key: Preferences.Key<String>, value: JsonObject?) {
         try {
-            val sealed = value?.let { encrypt(it.toString()) }
-            prefs.edit { if (sealed == null) it.remove(key) else it[key] = sealed }
+            withContext(Dispatchers.IO) {
+                val sealed = value?.let { encrypt(it.toString()) }
+                prefs.edit { if (sealed == null) it.remove(key) else it[key] = sealed }
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            // see above
+            log.warning("session not saved (${e.javaClass.name})")
         }
     }
 
