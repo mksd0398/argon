@@ -6,7 +6,11 @@ import SwiftUI
 @main
 struct ArgonApp: SwiftUI.App {
     init() {
-        ShopifyCheckoutSheetKit.configure { $0.preloading.enabled = true }
+        // .web = the store's own checkout branding (Checkout Kit's default is a generic light/dark theme)
+        ShopifyCheckoutSheetKit.configure {
+            $0.colorScheme = .web
+            $0.preloading.enabled = true
+        }
     }
 
     var body: some Scene {

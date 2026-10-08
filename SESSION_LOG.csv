@@ -47,3 +47,4 @@ date,project,task,start_time,end_time,status
 2026-10-05,create-shopify-app-storefront,"subagent: final whole-branch review of Argon 64ecae4..89e8168 (CLI/contract, Android, iOS, CI/README; parity, contract, security, compile risk, deferred-minor triage)",10:50,11:08,done
 2026-10-05,create-shopify-app-storefront,"subagent: Argon final-review fixes (14 items: iOS reinstall Keychain wipe, sign-out order, price filter, CI simulator + Xcode 26 leg, Headless step, preload while open, non-cancellable refresh, fallback log, password redirect hop, privacy manifest, README/CHANGELOG, auth tests)",11:10,11:25,done
 2026-10-05,create-shopify-app-storefront,"subagent: re-review Argon final-review fix round 89e8168..d9d3746 (14 items; Swift compile pass, Keychain wipe ordering, non-cancellable refresh, CI picker, Android sign-out finally)",11:26,11:35,done
+2026-10-08,create-shopify-app-storefront,"Explain how Argon apps connect to Shopify (setup + runtime)",23:52,23:52,done

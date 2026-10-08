@@ -21,6 +21,7 @@ import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
+import com.shopify.checkoutsheetkit.ColorScheme
 import com.shopify.checkoutsheetkit.Preloading
 import com.shopify.checkoutsheetkit.ShopifyCheckoutSheetKit
 import kotlinx.coroutines.CoroutineScope
@@ -56,7 +57,11 @@ class StorefrontApp : Application(), SingletonImageLoader.Factory {
             prefs("cart"),
             accessToken = { AppGraph.auth.validAccessToken() },
         )
-        ShopifyCheckoutSheetKit.configure { it.preloading = Preloading(enabled = true) }
+        // Web = the store's own checkout branding (Checkout Kit's default is a generic light/dark theme)
+        ShopifyCheckoutSheetKit.configure {
+            it.colorScheme = ColorScheme.Web()
+            it.preloading = Preloading(enabled = true)
+        }
         // A preloaded checkout shows the cart and the buyer as they were: a cart change (a PDP add, a stepper tap), a sign-in
         // or a sign-out makes it stale.
         MainScope().launch { merge(AppGraph.cart.cart, AppGraph.auth.signedIn).collect { ShopifyCheckoutSheetKit.invalidate() } }
