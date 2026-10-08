@@ -13,7 +13,10 @@ const flag = (args, name) => args[args.indexOf(name) + 1];
  * Fake exec/fetch. Records every call; `shopify store execute` answers from the query text (everything exists).
  * gitThrows: every `git -C <dir> ...` call throws, like defaultExec refusing an unsafe path.
  */
-function fakes({ git = true, gitThrows = false, shopify = true, shopName = "Mock.shop", password = false, passwordFails = false } = {}) {
+function fakes({
+  git = true, gitThrows = false, shopify = true, shopName = "Mock.shop", password = false, passwordFails = false,
+  content = { products: true, home: true },
+} = {}) {
   const calls = [];
   const urls = [];
   const exec = async (cmd, args) => {
@@ -40,7 +43,9 @@ function fakes({ git = true, gitThrows = false, shopify = true, shopName = "Mock
       if (passwordFails) throw new Error("network down");
       return { status: password ? 302 : 200, headers: new Headers(password ? { location: "/password" } : {}) };
     }
-    const body = { data: { shop: { id: "gid://shopify/Shop/68817551382", name: shopName } } };
+    const body = JSON.parse(init.body).query.startsWith("query Content")
+      ? { data: { products: { nodes: content.products ? [{ id: "p" }] : [] }, metaobject: content.home ? { id: "m" } : null } }
+      : { data: { shop: { id: "gid://shopify/Shop/68817551382", name: shopName } } };
     return { ok: true, status: 200, json: async () => body };
   };
   return { calls, urls, exec, fetch };
@@ -140,14 +145,17 @@ test("git failing (an unsafe path, say) only warns; the run still finishes with 
 });
 
 test("real store: auth, provision, password check, Headless steps, verify, config", async () => {
-  const f = fakes({ shopName: "Nalli Silks", password: true });
-  const argv = ["store-app", "--store", "https://Nalli.myshopify.com/", "--token", "tok123", "--client-id", "cid456", "--yes"];
+  const f = fakes({ shopName: "Nalli Silks", password: true, content: { products: false, home: false } });
+  const clientId = "shp_3cecd990-4824-4e27-beb2-46c8e822ec14";
+  const argv = ["store-app", "--store", "https://Nalli.myshopify.com/", "--token", "tok123", "--client-id", clientId, "--yes"];
   await withRun(argv, f, (cwd, out) => {
     const cli = f.calls.filter(([cmd]) => cmd === WHICH || cmd === "shopify").map((c) => c.slice(0, 3).join(" "));
     assert.equal(cli[0], `${WHICH} ${process.platform === "win32" ? "shopify" : "-v shopify"}`);
     assert.equal(cli[1], "shopify store auth");
     assert.ok(cli.slice(2).every((c) => c === "shopify store execute"));
-    assert.deepEqual(f.urls, ["https://nalli.myshopify.com/", "https://nalli.myshopify.com/api/2026-10/graphql.json"]);
+    const graphql = "https://nalli.myshopify.com/api/2026-10/graphql.json";
+    assert.deepEqual(f.urls, ["https://nalli.myshopify.com/", graphql, graphql]);
+    assert.ok(f.calls.every(([cmd]) => !["start", "open", "xdg-open"].includes(cmd)), "no browser without a terminal");
 
     assert.ok(out.includes("Store uses legacy customer accounts"), "provision warnings are printed");
     assert.ok(out.includes("Storefront password is on — Checkout Kit can't open checkout until it's off"));
@@ -156,17 +164,20 @@ test("real store: auth, provision, password check, Headless steps, verify, confi
       assert.ok(i >= 0, `output has "${text}"`);
       return i;
     };
-    assert.ok(at("1. Install the Headless channel") < at("2. Create a storefront"));
-    assert.ok(at("2. Create a storefront") < at("3. Make your products and collections available to the Headless channel"));
-    assert.ok(at("3. Make your products") < at("metaobject read permission on (otherwise the app shows an empty or fallback home)"));
-    assert.ok(at("metaobject read permission on") < at("4. Copy the public Storefront token"));
-    assert.ok(at("4. Copy the public Storefront token") < at("5. In Customer Account API settings"));
-    assert.ok(at("5. In Customer Account API settings") < at("shop.68817551382.app://callback"), "callback needs the shop id");
+    assert.ok(at("https://apps.shopify.com/headless") < at("1. Create a storefront"));
+    assert.ok(at("1. Create a storefront") < at("2. Make your products and collections available to the Headless channel"));
+    assert.ok(at("2. Make your products") < at("3. Storefront API: under Permissions allow reading metaobjects"));
+    assert.ok(at("3. Storefront API") < at("Storefront token works for Nalli Silks"));
+    assert.ok(at("Storefront token works") < at("The app sees no products: make them available to the Headless channel"));
+    assert.ok(at("The app sees no products") < at("The app can't read the home screen: allow reading metaobjects"));
+    assert.ok(at("can't read the home screen") < at("4. Customer Account API settings: set Client type to Mobile clients"));
+    assert.ok(at("4. Customer Account API settings") < at("shop.68817551382.app://callback"), "callback needs the shop id");
     assert.ok(!out.includes("Login hidden"), "a client id was given");
+    assert.ok(!out.includes("doesn't look like a Customer Account API client ID"));
 
     const dir = join(cwd, "store-app");
     const props = readFileSync(join(dir, "android/shopify.properties"), "utf8").split("\n");
-    for (const line of ["SHOP_DOMAIN=nalli.myshopify.com", "STOREFRONT_TOKEN=tok123", "CUSTOMER_CLIENT_ID=cid456",
+    for (const line of ["SHOP_DOMAIN=nalli.myshopify.com", "STOREFRONT_TOKEN=tok123", `CUSTOMER_CLIENT_ID=${clientId}`,
       "SHOP_ID=68817551382", "APP_NAME=Nalli Silks", "BUNDLE_ID=com.nalli.storeapp"]) {
       assert.ok(props.includes(line), line);
     }
@@ -179,6 +190,7 @@ test("--skip-content skips the Shopify CLI; a failed password check and a blank 
   await withRun(["store-app", "--store", "nalli", "--token", "t", "--skip-content", "--yes"], f, (cwd, out) => {
     assert.ok(f.calls.every(([cmd]) => cmd !== "shopify" && cmd !== WHICH));
     assert.ok(out.includes("Couldn't check storefront password"));
+    assert.ok(out.includes("The app can see your products") && out.includes("The app can read the home screen"));
     assert.ok(out.includes("Login hidden until CUSTOMER_CLIENT_ID is set"));
     assert.ok(readFileSync(join(cwd, "store-app/android/shopify.properties"), "utf8").includes("CUSTOMER_CLIENT_ID=\n"));
   });

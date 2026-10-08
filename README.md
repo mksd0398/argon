@@ -35,7 +35,7 @@ The apps work the way a Liquid theme does. They render whatever the store contai
 - **One Shopify SDK**: Checkout Kit. A hand-written GraphQL client, no Mobile Buy SDK, no Apollo, no DI framework
 - **`AGENTS.md`, `CLAUDE.md` and a README** in every generated project, so an AI coding agent follows the same rules with nothing installed
 
-`--demo` runs against `mock.shop` with no credentials. A real store takes one CLI session and one manual Headless-channel step.
+`--demo` runs against `mock.shop` with no credentials. A real store takes one CLI session and a few clicks in the Headless channel; Argon opens it and checks each value you paste.
 
 > Argon is an independent community project. **Not affiliated with or endorsed by Shopify.**
 
@@ -73,7 +73,7 @@ npx @mksd0398/argon my-store-app
 2. **Store**: your `*.myshopify.com` domain.
 3. **Admin session**: `shopify store auth` as a staff user, with `read_products`, `write_metaobject_definitions` and `write_metaobjects`.
 4. **Provision**: creates the four content definitions if missing, and seeds the `home` screen from your collections and products if it doesn't exist. Warns if the storefront password is on or legacy customer accounts are in use. Existing definitions and an existing `home` entry are left as they are.
-5. **Headless channel**: the one manual step ([below](#the-headless-channel-step)). Argon checks the token with a live call.
+5. **Headless channel**: the part Shopify only allows in admin ([below](#the-headless-channel-step)). Argon opens it in your browser and checks the token with live calls.
 6. **Generate** both apps, write the config, run `git init` and commit.
 
 Argon never stores Admin credentials and never changes your Shopify CLI config.
@@ -86,14 +86,15 @@ npx @mksd0398/argon my-store-app --store=my-store --token=PUBLIC_TOKEN --client-
 
 ### The Headless channel step
 
-Argon prints these with your store's values filled in:
+Shopify has no API to create a Headless storefront or its login client, so these are clicks in admin. The Hydrogen CLI's automatic setup only works through Shopify's own CLI and sets up a web login client, not the Mobile one a native app needs, so Argon uses the Headless channel. Argon opens the [Headless channel](https://apps.shopify.com/headless) and prints these with your store's values filled in:
 
-1. In Shopify admin, install the **Headless** channel and create a storefront.
-2. Make your products and collections available to the **Headless** channel, and keep the storefront's metaobject read permission on. Otherwise the app shows an empty or fallback home.
-3. Copy the **public** Storefront access token.
-4. In its **Customer Account API** settings, add a **Mobile** client with the callback `shop.<shop id>.app://callback`, then copy its client ID.
+1. Install the **Headless** channel and create a storefront (Sales channels → Headless).
+2. Make your products and collections available to the **Headless** channel.
+3. In **Storefront API**, allow reading metaobjects under Permissions (the home screen), then copy the **public** access token.
+   Argon checks it as you paste it, asks again if Shopify rejects it, and then checks that the app can see your products and read the home screen.
+4. In **Customer Account API settings**, set Client type to **Mobile clients**, add the Callback URL `shop.<shop id>.app://callback`, then copy the client ID from **Credentials**.
 
-The client ID can be skipped: login is then hidden until `CUSTOMER_CLIENT_ID` is set.
+The client ID can be skipped: login is then hidden until `CUSTOMER_CLIENT_ID` is set. Argon only checks its format (`shp_…`); Shopify doesn't let scripts test a login client, so the first sign-in in the app is the real check.
 
 ### Store prerequisites
 
