@@ -146,7 +146,7 @@ test("git failing (an unsafe path, say) only warns; the run still finishes with 
 
 test("real store: auth, provision, password check, Headless steps, verify, config", async () => {
   const f = fakes({ shopName: "Nalli Silks", password: true, content: { products: false, home: false } });
-  const clientId = "shp_3cecd990-4824-4e27-beb2-46c8e822ec14";
+  const clientId = "3cecd990-4824-4e27-beb2-46c8e822ec14"; // Headless issues a bare UUID
   const argv = ["store-app", "--store", "https://Nalli.myshopify.com/", "--token", "tok123", "--client-id", clientId, "--yes"];
   await withRun(argv, f, (cwd, out) => {
     const cli = f.calls.filter(([cmd]) => cmd === WHICH || cmd === "shopify").map((c) => c.slice(0, 3).join(" "));
@@ -165,13 +165,13 @@ test("real store: auth, provision, password check, Headless steps, verify, confi
       return i;
     };
     assert.ok(at("https://apps.shopify.com/headless") < at("1. Create a storefront"));
-    assert.ok(at("1. Create a storefront") < at("2. Make your products and collections available to the Headless channel"));
-    assert.ok(at("2. Make your products") < at("3. Storefront API: under Permissions allow reading metaobjects"));
+    assert.ok(at("1. Create a storefront") < at("2. Make your products and collections available to the storefront"));
+    assert.ok(at("2. Make your products") < at("3. Storefront API: copy the public access token"));
     assert.ok(at("3. Storefront API") < at("Storefront token works for Nalli Silks"));
-    assert.ok(at("Storefront token works") < at("The app sees no products: make them available to the Headless channel"));
-    assert.ok(at("The app sees no products") < at("The app can't read the home screen: allow reading metaobjects"));
-    assert.ok(at("can't read the home screen") < at("4. Customer Account API settings: set Client type to Mobile clients"));
-    assert.ok(at("4. Customer Account API settings") < at("shop.68817551382.app://callback"), "callback needs the shop id");
+    assert.ok(at("Storefront token works") < at("The app sees no products: make them available to the storefront's sales channel"));
+    assert.ok(at("The app sees no products") < at("The app can't read the home screen: allow unauthenticated_read_metaobjects"));
+    assert.ok(at("can't read the home screen") < at("4. Customer Account API: edit Client type to Public (mobile app)"));
+    assert.ok(at("4. Customer Account API: edit") < at("shop.68817551382.app://callback"), "callback needs the shop id");
     assert.ok(!out.includes("Login hidden"), "a client id was given");
     assert.ok(!out.includes("doesn't look like a Customer Account API client ID"));
 

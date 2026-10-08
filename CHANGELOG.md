@@ -5,7 +5,7 @@
 ### Changed
 
 - The Headless channel step is guided:
-  - Argon opens the channel in your browser and prints Shopify's exact admin path for each value, including setting the login client type to Mobile clients.
+  - Argon opens the channel in your browser and prints Shopify's exact admin path for each value, including setting the login client type to Public (mobile app).
   - It checks the Storefront token as you paste it and asks again if Shopify rejects it.
   - It confirms that the app can see your products and read the home screen.
   - It warns when a client ID doesn't look like one.

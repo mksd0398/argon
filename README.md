@@ -89,18 +89,18 @@ npx @mksd0398/argon my-store-app --store=my-store --token=PUBLIC_TOKEN --client-
 Shopify has no API to create a Headless storefront or its login client, so these are clicks in admin. The Hydrogen CLI's automatic setup only works through Shopify's own CLI and sets up a web login client, not the Mobile one a native app needs, so Argon uses the Headless channel. Argon opens the [Headless channel](https://apps.shopify.com/headless) and prints these with your store's values filled in:
 
 1. Install the **Headless** channel and create a storefront (Sales channels → Headless).
-2. Make your products and collections available to the **Headless** channel.
-3. In **Storefront API**, allow reading metaobjects under Permissions (the home screen), then copy the **public** access token.
+2. Make your products and collections available to the storefront. Each Headless storefront is its own sales channel, listed by its name (Products → filter by Online Store → select all → Include in sales channels).
+3. In **Storefront API**, copy the **public** access token. Its permissions allow reading metaobjects (the home screen) by default.
    Argon checks it as you paste it, asks again if Shopify rejects it, and then checks that the app can see your products and read the home screen.
-4. In **Customer Account API settings**, set Client type to **Mobile clients**, add the Callback URL `shop.<shop id>.app://callback`, then copy the client ID from **Credentials**.
+4. In **Customer Account API**, edit Client type to **Public (mobile app)** and save. Shopify fills in the Callback URI `shop.<shop id>.app://callback`; check it, then copy the **Client ID**.
 
-The client ID can be skipped: login is then hidden until `CUSTOMER_CLIENT_ID` is set. Argon only checks its format (`shp_…`); Shopify doesn't let scripts test a login client, so the first sign-in in the app is the real check.
+The client ID can be skipped: login is then hidden until `CUSTOMER_CLIENT_ID` is set. Argon only checks its format (a UUID); Shopify doesn't let scripts test a login client, so the first sign-in in the app is the real check.
 
 ### Store prerequisites
 
 - **New customer accounts are on** (Settings → Customer accounts). Legacy accounts are not supported.
 - **The storefront password is off.** Checkout Kit can't open checkout while it's on.
-- **Products and collections are available to the Headless channel**, and its storefront keeps the metaobject read permission. Without them the app shows an empty or fallback home.
+- **Products and collections are available to the storefront's sales channel**, and its Storefront API keeps the metaobject read permission. Without them the app shows an empty or fallback home.
 - **Search & Discovery filters are configured.** Product-list and search filters appear only after that.
 
 ### Run the apps
