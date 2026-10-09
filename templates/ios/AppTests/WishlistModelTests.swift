@@ -33,7 +33,7 @@ final class WishlistModelTests: XCTestCase {
     func testAFailureShowsItsMessageUntilARetrySucceeds() async {
         var fail = true
         let m = WishlistModel { ids in
-            if fail { throw StorefrontException(messages: ["HTTP 503"], status: 503) }
+            if fail { throw ArgonAPIError.http(status: 503) }
             return ids.map { self.card($0) }
         }
         await m.sync(["a"])

@@ -1,13 +1,47 @@
 import Foundation
+import os
 
-/// `isGraphQL`: the server answered 200 with an `errors` array (a query it refused), as opposed to an HTTP or response-shape failure.
-struct StorefrontException: LocalizedError {
-    let messages: [String]
-    let status: Int?
-    var isGraphQL: Bool = false
+private let apiLog = Logger(subsystem: "app.storefront", category: "API")
 
-    var errorDescription: String? { messages.joined(separator: "\n") }
+/// Why an API call failed. `network`: no answer (offline, timed out, cancelled). `http`: the server answered with a non-2xx
+/// status. `graphql`: the server refused the operation (a 200 carrying an `errors` array). `userErrors`: a mutation refused
+/// the change, in Shopify's words, meant for the shopper. `decoding`: the response doesn't have the shape the operation's
+/// document asks for (`detail` says where; it is logged too).
+enum ArgonAPIError: LocalizedError {
+    case network(URLError)
+    case http(status: Int)
+    case graphql(messages: [String])
+    case userErrors([UserError])
+    case decoding(operation: String, detail: String)
+
+    var errorDescription: String? {
+        switch self {
+        case let .network(error): return error.localizedDescription
+        case let .http(status): return "HTTP \(status)"
+        case let .graphql(messages): return messages.joined(separator: "\n")
+        case let .userErrors(errors): return errors.map { $0.message }.joined(separator: "\n")
+        case .decoding: return "Invalid response"
+        }
+    }
 }
+
+/// A mutation's `userErrors` entry. `field` is the path to the input it is about; `code` is Shopify's error code (may be null).
+struct UserError: Decodable, Equatable, Sendable {
+    var field: [String]? = nil
+    var code: String? = nil
+    let message: String
+}
+
+/// Something the app asked for doesn't exist: "Product not found".
+struct NotFound: LocalizedError {
+    let what: String
+
+    var errorDescription: String? { "\(what) not found" }
+}
+
+/// Runs a named GraphQL operation with its variables and returns the response body: `Storefront.query`,
+/// `AuthStore.customerQuery`, or a test's canned answers.
+typealias GraphQLTransport = (String, [String: Any]) async throws -> Data
 
 /// Storefront API client. `loadDocument(name)` returns the GraphQL document `queries/<name>.graphql`.
 final class Storefront {
@@ -25,9 +59,9 @@ final class Storefront {
         self.session = session
     }
 
-    /// Runs operation `name` and returns its `data`.
-    func query(_ name: String, _ variables: [String: Any] = [:]) async throws -> [String: Any] {
-        guard let url = url else { throw StorefrontException(messages: ["Invalid shop domain"], status: nil) }
+    /// Runs operation `name` and returns the response body, for `decodeResponse`.
+    func query(_ name: String, _ variables: [String: Any] = [:]) async throws -> Data {
+        guard let url = url else { throw ArgonAPIError.network(URLError(.badURL)) }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -51,31 +85,95 @@ func graphQLBody(_ document: String, _ variables: [String: Any]) throws -> Data 
     let body: [String: Any] = ["query": document, "variables": variables]
     // JSONSerialization raises (crashes) instead of throwing on values JSON can't hold
     guard JSONSerialization.isValidJSONObject(body) else {
-        throw StorefrontException(messages: ["Invalid variables"], status: nil)
+        throw EncodingError.invalidValue(variables, EncodingError.Context(codingPath: [], debugDescription: "GraphQL variables must be JSON values"))
     }
     return try JSONSerialization.data(withJSONObject: body)
 }
 
 extension URLSession {
-    /// Sends a GraphQL `request` and returns the response's `data`. Shared by the Storefront and Customer Account clients.
-    func graphQL(_ request: URLRequest) async throws -> [String: Any] {
-        let (body, response) = try await self.data(for: request)
-        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-        if !(200...299).contains(status) {
-            throw StorefrontException(messages: ["HTTP \(status)"], status: status)
+    /// Sends a GraphQL `request` and returns the response body. Shared by the Storefront and Customer Account clients.
+    func graphQL(_ request: URLRequest) async throws -> Data {
+        let result: (Data, URLResponse)
+        do {
+            result = try await data(for: request)
+        } catch let error as URLError {
+            throw ArgonAPIError.network(error)
         }
-        guard let json = (try? JSONSerialization.jsonObject(with: body)) as? [String: Any] else {
-            throw StorefrontException(messages: ["Invalid response"], status: status)
-        }
-        if let errors = json["errors"] as? [Any] {
-            let messages: [String] = errors.map { error in
-                ((error as? [String: Any])?["message"] as? String) ?? "\(error)"
-            }
-            throw StorefrontException(messages: messages, status: status, isGraphQL: true)
-        }
-        guard let result = json["data"] as? [String: Any] else {
-            throw StorefrontException(messages: ["No data in response"], status: status)
-        }
-        return result
+        let status = (result.1 as? HTTPURLResponse)?.statusCode ?? 0
+        if !(200...299).contains(status) { throw ArgonAPIError.http(status: status) }
+        return result.0
     }
+}
+
+private struct GraphQLErrors: Decodable {
+    struct Entry: Decodable {
+        let message: String?
+    }
+
+    let errors: [Entry]?
+}
+
+private struct GraphQLData<T: Decodable>: Decodable {
+    let data: T
+}
+
+/// The `data` of response `body` as `T`. An `errors` array is ArgonAPIError.graphql, checked first (data that comes with errors
+/// may be partial); anything else that doesn't fit `T` is .decoding.
+func decodeResponse<T: Decodable>(_ type: T.Type, from body: Data, operation: String) throws -> T {
+    let decoder = JSONDecoder()
+    do {
+        let errors = try decoder.decode(GraphQLErrors.self, from: body).errors ?? []
+        if !errors.isEmpty { throw ArgonAPIError.graphql(messages: errors.map { $0.message ?? "Unknown error" }) }
+        return try decoder.decode(GraphQLData<T>.self, from: body).data
+    } catch let error as DecodingError {
+        let detail = describe(error)
+        // field paths and types only, never values
+        apiLog.error("\(operation, privacy: .public) response not decoded: \(detail, privacy: .public)")
+        throw ArgonAPIError.decoding(operation: operation, detail: detail)
+    }
+}
+
+/// Root field `root` of operation `name`'s `data`. `T` is optional for a root the schema allows to be null.
+func fetchField<T: Decodable>(_ transport: GraphQLTransport, _ name: String, _ variables: [String: Any], root: String) async throws -> T {
+    let body = try await transport(name, variables)
+    let data = try decodeResponse([String: T].self, from: body, operation: name)
+    guard let value = data[root] else { throw ArgonAPIError.decoding(operation: name, detail: "\(root) missing") }
+    return value
+}
+
+/// A mutation's payload field: the operation name with a lowercase first letter (`CartLinesAdd` -> `cartLinesAdd`).
+func payloadField(_ operation: String) -> String {
+    operation.prefix(1).lowercased() + String(operation.dropFirst())
+}
+
+/// `value` as JSONSerialization objects, to sit in a variables dictionary.
+func jsonValue<T: Encodable>(_ value: T) throws -> Any {
+    try JSONSerialization.jsonObject(with: JSONEncoder().encode(value), options: .fragmentsAllowed)
+}
+
+/// A decoding failure as "<what> at <path>".
+private func describe(_ error: DecodingError) -> String {
+    func at(_ context: DecodingError.Context) -> String {
+        let path = context.codingPath.map { key in key.intValue.map { "\($0)" } ?? key.stringValue }.joined(separator: ".")
+        return path.isEmpty ? "the root" : path
+    }
+    switch error {
+    case let .keyNotFound(key, context): return "\(key.stringValue) missing at \(at(context))"
+    case let .valueNotFound(_, context): return "null at \(at(context))"
+    case let .typeMismatch(type, context): return "\(type) expected at \(at(context))"
+    case let .dataCorrupted(context): return "\(context.debugDescription) at \(at(context))"
+    @unknown default: return String(describing: error)
+    }
+}
+
+extension KeyedDecodingContainer {
+    /// The `nodes` of the connection under `key`; empty when the connection is null or not selected.
+    func nodes<T: Decodable>(_ key: Key) throws -> [T] {
+        try decodeIfPresent(Nodes<T>.self, forKey: key)?.nodes ?? []
+    }
+}
+
+/// A connection read for its `nodes` only.
+struct Nodes<T: Decodable>: Decodable {
+    let nodes: [T]
 }

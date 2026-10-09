@@ -30,28 +30,18 @@ let searchSorts = [
     Sort(label: "Price: high to low", key: "PRICE", reverse: true),
 ]
 
-private let pageSize = 24
-
-extension Dictionary where Key == String, Value == Any {
-    /// The object under `key`, or a StorefrontException when the response doesn't have it.
-    func connection(_ key: String) throws -> [String: Any] {
-        guard let value = obj(key) else { throw StorefrontException(messages: ["Invalid response"], status: nil) }
-        return value
-    }
+/// A page of a product listing (collection, catalog or search results) and the filters it offers.
+struct ProductPage: Equatable {
+    let items: [ProductCard]
+    let filters: [Filter]
+    let endCursor: String?
+    let hasNext: Bool
 }
 
-/// Variables shared by the Collection, Catalog and Search queries; `applied` are filter `input` JSON strings.
-func listingVars(_ after: String?, _ sort: Sort, _ applied: [String], _ extra: [String: String] = [:]) -> [String: Any] {
-    var vars: [String: Any] = [:]
-    for (name, value) in extra { vars[name] = value }
-    vars["first"] = pageSize
-    if let after = after { vars["after"] = after } else { vars["after"] = NSNull() }
-    vars["sortKey"] = sort.key
-    vars["reverse"] = sort.reverse
-    if !applied.isEmpty {
-        vars["filters"] = applied.compactMap { try? JSONSerialization.jsonObject(with: Data($0.utf8)) }
+extension ProductPage {
+    init(_ page: Page<ProductCard>, filters: [Filter]) {
+        self.init(items: page.items, filters: filters, endCursor: page.endCursor, hasNext: page.hasNextPage)
     }
-    return vars
 }
 
 /// A cursor-paged product list with a sort and filter selection (collection or search results). `fetch` loads the page

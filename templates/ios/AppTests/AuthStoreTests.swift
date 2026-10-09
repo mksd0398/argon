@@ -434,9 +434,9 @@ final class AuthStoreTests: XCTestCase {
         let s = try await signedIn(store())
         graphqlReply = { auth in auth == "a1" ? (401, "") : (200, #"{"data":{"customer":{"firstName":"Ada"}}}"#) }
         tokenReply = { _ in (200, self.tokens("a2", "r2")) }
-        let data = try await s.customerQuery("Customer")
-        XCTAssertEqual(data.count, 1)
-        XCTAssertEqual(data.obj("customer")?.str("firstName"), "Ada")
+        let body = try await s.customerQuery("Customer")
+        let data = try decodeResponse([String: [String: String]].self, from: body, operation: "Customer")
+        XCTAssertEqual(data, ["customer": ["firstName": "Ada"]])
         let graphql = requests.filter { $0.url?.path == "/customer/api/2026-10/graphql" }
         XCTAssertEqual(graphql.map { $0.value(forHTTPHeaderField: "Authorization") }, ["a1", "a2"])
     }
@@ -447,7 +447,8 @@ final class AuthStoreTests: XCTestCase {
         graphqlReply = { _ in (401, "") }
         tokenReply = { _ in (200, self.tokens("a2", "r2")) }
         let failed = await thrown { try await s.customerQuery("Customer") }
-        XCTAssertTrue(failed is StorefrontException)
+        guard case let .http(status)? = failed as? ArgonAPIError else { return XCTFail("expected an HTTP error") }
+        XCTAssertEqual(status, 401)
         XCTAssertFalse(s.signedIn)
     }
 

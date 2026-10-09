@@ -65,7 +65,7 @@ final class ListingTests: XCTestCase {
     func testFailureShowsTheMessageAndReloadRecovers() async {
         var fail = true
         let l = Listing(sorts: collectionSorts) { _, _, _ in
-            if fail { throw StorefrontException(messages: ["boom"], status: 200) }
+            if fail { throw ArgonAPIError.graphql(messages: ["boom"]) }
             return self.page(["a"], nil)
         }
         await l.reload().value
@@ -150,22 +150,6 @@ final class ListingTests: XCTestCase {
         }
         await l.reload().value
         XCTAssertFalse(l.hasNext)
-    }
-
-    func testVariablesCarrySortFiltersAndCursor() throws {
-        let vars = listingVars(nil, collectionSorts[3], [#"{"available":true}"#], ["handle": "men"])
-        XCTAssertEqual(vars["handle"] as? String, "men")
-        XCTAssertEqual(vars["first"] as? Int, 24)
-        XCTAssertTrue(vars["after"] is NSNull)
-        XCTAssertEqual(vars["sortKey"] as? String, "PRICE")
-        XCTAssertEqual(vars["reverse"] as? Bool, true)
-        let filters = try XCTUnwrap(vars["filters"] as? [[String: Any]])
-        XCTAssertEqual(filters.first?["available"] as? Bool, true)
-
-        let next = listingVars("c1", searchSorts[0], [])
-        XCTAssertEqual(next["after"] as? String, "c1")
-        XCTAssertEqual(next["sortKey"] as? String, "RELEVANCE")
-        XCTAssertNil(next["filters"], "no filters key when none are applied")
     }
 
     private func price(_ filter: String?) throws -> [String: Double] {

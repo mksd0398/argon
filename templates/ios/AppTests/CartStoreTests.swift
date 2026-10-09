@@ -4,7 +4,7 @@ import XCTest
 final class CartStoreTests: XCTestCase {
     private let suite = UUID().uuidString
     private var cartJson: [String: Any] = [:]
-    private let lineId = "gid://shopify/CartLine/34639"
+    private let lineId = "gid://shopify/CartLine/49959"
 
     /// What the store asked Shopify, in order: operation name and variables.
     private var calls: [(name: String, variables: [String: Any])] = []
@@ -12,7 +12,7 @@ final class CartStoreTests: XCTestCase {
     private var cartId: String { cartJson["id"] as? String ?? "" }
 
     override func setUpWithError() throws {
-        cartJson = try XCTUnwrap(try fixture("cart").obj("cart"))
+        cartJson = try XCTUnwrap(try fixture("Cart")["cart"] as? [String: Any])
     }
 
     override func tearDown() {
@@ -20,12 +20,13 @@ final class CartStoreTests: XCTestCase {
         super.tearDown()
     }
 
-    /// A mutation answer: `{<name>: {cart, userErrors}}`; the `Cart` query answers `{cart}`.
-    private func answer(_ name: String, cart: [String: Any]?, _ errors: String...) -> [String: Any] {
+    /// A mutation's answer: `{<name>: {cart, userErrors, warnings}}`; the `Cart` query answers `{cart}`.
+    private func answer(_ name: String, cart: [String: Any]?, _ errors: String...) throws -> String {
         let value: Any = cart ?? NSNull()
-        if name == "Cart" { return ["cart": value] }
-        let payload: [String: Any] = ["cart": value, "userErrors": errors.map { ["message": $0] }]
-        return [name.prefix(1).lowercased() + String(name.dropFirst()): payload]
+        if name == "Cart" { return try responseBody(["cart": value]) }
+        let userErrors: [[String: Any]] = errors.map { ["message": $0] }
+        let payload: [String: Any] = ["cart": value, "userErrors": userErrors, "warnings": [Any]()]
+        return try responseBody([payloadField(name): payload])
     }
 
     /// A store on this test's defaults: a new one over the same defaults is the app after a restart.
@@ -33,22 +34,27 @@ final class CartStoreTests: XCTestCase {
     private func store(
         token: String? = nil,
         accessToken: (() async throws -> String?)? = nil,
-        reply: ((String) async throws -> [String: Any])? = nil
+        reply: ((String) async throws -> String)? = nil
     ) -> CartStore {
         let cart = cartJson
-        let respond: (String) async throws -> [String: Any] = reply ?? { name in self.answer(name, cart: cart) }
+        let respond: (String) async throws -> String = reply ?? { name in try self.answer(name, cart: cart) }
         let tokenSource: () async throws -> String? = accessToken ?? { token }
-        return CartStore(
-            query: { name, variables in
-                self.calls.append((name: name, variables: variables))
-                return try await respond(name)
-            },
-            defaults: UserDefaults(suiteName: suite)!,
-            accessToken: tokenSource
-        )
+        let api = StorefrontAPI(transport: { name, variables in
+            self.calls.append((name: name, variables: variables))
+            return Data(try await respond(name).utf8)
+        })
+        return CartStore(api: api, defaults: UserDefaults(suiteName: suite)!, accessToken: tokenSource)
     }
 
     private func lines(_ value: Any?) -> [[String: Any]] { value as? [[String: Any]] ?? [] }
+
+    /// The user errors `body` throws; nil when it throws something else, or nothing.
+    @MainActor
+    private func refusal(_ body: () async throws -> Void) async -> [UserError]? {
+        let error = await thrownError(body)
+        guard case let .userErrors(errors)? = error as? ArgonAPIError else { return nil }
+        return errors
+    }
 
     @MainActor
     func testAddWithNoStoredCartCreatesOneAndRemembersIt() async throws {
@@ -84,7 +90,7 @@ final class CartStoreTests: XCTestCase {
         try await store().add("v1", quantity: 1)
         calls.removeAll()
 
-        let s = store(reply: { name in name == "Cart" ? self.answer(name, cart: nil) : self.answer(name, cart: self.cartJson) })
+        let s = store(reply: { name in try name == "Cart" ? self.answer(name, cart: nil) : self.answer(name, cart: self.cartJson) })
         try await s.load()
         XCTAssertNil(s.cart)
         XCTAssertEqual(names, ["Cart"])
@@ -106,7 +112,7 @@ final class CartStoreTests: XCTestCase {
         signedIn["checkoutUrl"] = "https://shop.test/checkout?buyer=1"
         let identityCart = signedIn
         let s = store(token: "tok", reply: { name in
-            self.answer(name, cart: name == "CartBuyerIdentityUpdate" ? identityCart : self.cartJson)
+            try self.answer(name, cart: name == "CartBuyerIdentityUpdate" ? identityCart : self.cartJson)
         })
         try await s.add("v1", quantity: 1)
         let url = await s.checkoutUrl()
@@ -131,8 +137,8 @@ final class CartStoreTests: XCTestCase {
     @MainActor
     func testCheckoutFallsBackToTheGuestUrlWhenTheBuyerCantBeAttached() async throws {
         var tokenFailure: Error? = URLError(.cannotConnectToHost)
-        var identityReply: () throws -> [String: Any] = {
-            self.answer("CartBuyerIdentityUpdate", cart: self.cartJson, "Customer access token is invalid")
+        var identityReply: () throws -> String = {
+            try self.answer("CartBuyerIdentityUpdate", cart: self.cartJson, "Customer access token is invalid")
         }
         let s = store(
             accessToken: {
@@ -141,7 +147,7 @@ final class CartStoreTests: XCTestCase {
             },
             reply: { name in
                 if name == "CartBuyerIdentityUpdate" { return try identityReply() }
-                return self.answer(name, cart: self.cartJson)
+                return try self.answer(name, cart: self.cartJson)
             }
         )
         try await s.add("v1", quantity: 1)
@@ -152,46 +158,45 @@ final class CartStoreTests: XCTestCase {
         XCTAssertEqual(url, guest)
         XCTAssertEqual(names, ["CartCreate"])
 
-        // Shopify refuses the token (a userError), then the request itself fails
+        // Shopify refuses the token (a userError: the cart is looked up and kept), then the request itself fails
         tokenFailure = nil
         url = await s.checkoutUrl()
         XCTAssertEqual(url, guest)
-        identityReply = { throw StorefrontException(messages: ["Throttled"], status: 200, isGraphQL: true) }
+        identityReply = { #"{"errors":[{"message":"Throttled"}]}"# }
         url = await s.checkoutUrl()
         XCTAssertEqual(url, guest)
-        XCTAssertEqual(names, ["CartCreate", "CartBuyerIdentityUpdate", "CartBuyerIdentityUpdate"])
+        XCTAssertEqual(names, ["CartCreate", "CartBuyerIdentityUpdate", "Cart", "CartBuyerIdentityUpdate"])
         XCTAssertEqual(s.cart?.id, cartId, "the cart is kept")
     }
 
     @MainActor
-    func testUserErrorsBecomeACartException() async throws {
+    func testARefusedCreateThrowsShopifysMessage() async throws {
         let s = store(reply: { name in
-            self.answer(name, cart: name == "CartCreate" ? nil : self.cartJson, "Not enough stock")
+            try self.answer(name, cart: name == "CartCreate" ? nil : self.cartJson, "Not enough stock")
         })
-        do {
-            try await s.add("v1", quantity: 99)
-            XCTFail("expected a CartException")
-        } catch let e as CartException {
-            XCTAssertEqual(e.message, "Not enough stock")
-        }
+        let errors = await refusal { try await s.add("v1", quantity: 99) }
+        XCTAssertEqual(errors?.map { $0.message }, ["Not enough stock"])
         XCTAssertNil(s.cart)
+        XCTAssertEqual(names, ["CartCreate"])
     }
 
     @MainActor
-    func testUserErrorsOnAnUpdateKeepTheReturnedCart() async throws {
+    func testARefusedUpdateKeepsTheCartAsShopifyHasIt() async throws {
+        var current = cartJson
+        current["totalQuantity"] = 7
+        let latest = current
         let s = store(reply: { name in
-            name == "CartLinesUpdate"
-                ? self.answer(name, cart: self.cartJson, "Not enough stock")
-                : self.answer(name, cart: self.cartJson)
+            switch name {
+            case "CartLinesUpdate": return try self.answer(name, cart: self.cartJson, "Not enough stock")
+            case "Cart": return try self.answer(name, cart: latest)
+            default: return try self.answer(name, cart: self.cartJson)
+            }
         })
         try await s.add("v1", quantity: 1)
-        do {
-            try await s.update(lineId, quantity: 50)
-            XCTFail("expected a CartException")
-        } catch let e as CartException {
-            XCTAssertEqual(e.message, "Not enough stock")
-        }
-        XCTAssertNotNil(s.cart)
+        let errors = await refusal { try await s.update(self.lineId, quantity: 50) }
+        XCTAssertEqual(errors?.first?.message, "Not enough stock")
+        XCTAssertEqual(s.cart?.totalQuantity, 7, "the cart is the one Shopify has now")
+        XCTAssertEqual(names, ["CartCreate", "CartLinesUpdate", "Cart"])
     }
 
     @MainActor
@@ -202,9 +207,9 @@ final class CartStoreTests: XCTestCase {
         // a cold start whose load() never ran (offline): the id is stored, but Shopify no longer has the cart
         let s = store(reply: { name in
             switch name {
-            case "CartLinesAdd": return self.answer(name, cart: nil, "The specified cart does not exist")
-            case "Cart": return self.answer(name, cart: nil)
-            default: return self.answer(name, cart: self.cartJson)
+            case "CartLinesAdd": return try self.answer(name, cart: nil, "The specified cart does not exist")
+            case "Cart": return try self.answer(name, cart: nil)
+            default: return try self.answer(name, cart: self.cartJson)
             }
         })
         try await s.add("gid://shopify/ProductVariant/9", quantity: 2)
@@ -219,17 +224,13 @@ final class CartStoreTests: XCTestCase {
     @MainActor
     func testARefusedAddOnALiveCartKeepsTheCart() async throws {
         let s = store(reply: { name in
-            name == "CartLinesAdd"
+            try name == "CartLinesAdd"
                 ? self.answer(name, cart: nil, "The merchandise does not exist")
                 : self.answer(name, cart: self.cartJson)
         })
         try await s.add("v1", quantity: 1)
-        do {
-            try await s.add("bad", quantity: 1)
-            XCTFail("expected a CartException")
-        } catch let e as CartException {
-            XCTAssertEqual(e.message, "The merchandise does not exist")
-        }
+        let errors = await refusal { try await s.add("bad", quantity: 1) }
+        XCTAssertEqual(errors?.first?.message, "The merchandise does not exist")
         // the lookup found the cart, so it was not replaced
         XCTAssertEqual(names, ["CartCreate", "CartLinesAdd", "Cart"])
         XCTAssertEqual(s.cart?.id, cartId)
@@ -239,18 +240,14 @@ final class CartStoreTests: XCTestCase {
     func testAnUpdateOnAGoneCartForgetsItAndSaysSo() async throws {
         let s = store(reply: { name in
             switch name {
-            case "CartLinesUpdate": return self.answer(name, cart: nil, "The specified cart does not exist")
-            case "Cart": return self.answer(name, cart: nil)
-            default: return self.answer(name, cart: self.cartJson)
+            case "CartLinesUpdate": return try self.answer(name, cart: nil, "The specified cart does not exist")
+            case "Cart": return try self.answer(name, cart: nil)
+            default: return try self.answer(name, cart: self.cartJson)
             }
         })
         try await s.add("v1", quantity: 1)
-        do {
-            try await s.update(lineId, quantity: 2)
-            XCTFail("expected a CartException")
-        } catch let e as CartException {
-            XCTAssertEqual(e.message, "The specified cart does not exist")
-        }
+        let errors = await refusal { try await s.update(self.lineId, quantity: 2) }
+        XCTAssertEqual(errors?.first?.message, "The specified cart does not exist")
         XCTAssertNil(s.cart)
         XCTAssertEqual(names, ["CartCreate", "CartLinesUpdate", "Cart"])
     }
@@ -274,7 +271,7 @@ final class CartStoreTests: XCTestCase {
     func testRapidAddsShareOneCart() async throws {
         let s = store(reply: { name in
             if name == "CartCreate" { try await Task.sleep(nanoseconds: 100_000_000) }
-            return self.answer(name, cart: self.cartJson)
+            return try self.answer(name, cart: self.cartJson)
         })
         async let first: Void = s.add("v1", quantity: 1)
         async let second: Void = s.add("v1", quantity: 1)
