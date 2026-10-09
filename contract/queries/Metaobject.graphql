@@ -1,0 +1,22 @@
+query Metaobject(
+  $type: String!
+  $handle: String!
+  $country: CountryCode
+  $language: LanguageCode
+) @inContext(country: $country, language: $language) {
+  metaobject(handle: { type: $type, handle: $handle }) {
+    id
+    type
+    handle
+    updatedAt
+    fields {
+      key
+      type
+      value
+      reference {
+        __typename
+        ... on MediaImage { image { ...Image } }
+      }
+    }
+  }
+}

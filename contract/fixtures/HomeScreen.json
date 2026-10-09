@@ -1,0 +1,239 @@
+{
+  "metaobject": {
+    "field": {
+      "references": {
+        "nodes": [
+          {
+            "__typename": "Metaobject",
+            "id": "gid://shopify/Metaobject/101",
+            "type": "mobile_banner",
+            "fields": [
+              {
+                "key": "image",
+                "value": "gid://shopify/MediaImage/201",
+                "reference": {
+                  "__typename": "MediaImage",
+                  "image": {
+                    "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/1685d5abe3e11df2a5ae2017646441bafb1f815893bbcc953296c3040175eb4f.png",
+                    "altText": null,
+                    "width": 1024,
+                    "height": 1024
+                  }
+                },
+                "references": null
+              },
+              {
+                "key": "heading",
+                "value": "New season",
+                "reference": null,
+                "references": null
+              },
+              {
+                "key": "text",
+                "value": "Fresh styles for everyone.",
+                "reference": null,
+                "references": null
+              },
+              {
+                "key": "button_label",
+                "value": "Shop men",
+                "reference": null,
+                "references": null
+              },
+              {
+                "key": "link",
+                "value": "/collections/men",
+                "reference": null,
+                "references": null
+              },
+              {
+                "key": "style",
+                "value": "hero",
+                "reference": null,
+                "references": null
+              }
+            ]
+          },
+          {
+            "__typename": "Metaobject",
+            "id": "gid://shopify/Metaobject/102",
+            "type": "mobile_products",
+            "fields": [
+              {
+                "key": "heading",
+                "value": "Featured",
+                "reference": null,
+                "references": null
+              },
+              {
+                "key": "collection",
+                "value": "gid://shopify/Collection/1",
+                "reference": {
+                  "__typename": "Collection",
+                  "id": "gid://shopify/Collection/429493780502",
+                  "handle": "men",
+                  "title": "Men",
+                  "image": {
+                    "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/1685d5abe3e11df2a5ae2017646441bafb1f815893bbcc953296c3040175eb4f.png",
+                    "altText": null,
+                    "width": 1024,
+                    "height": 1024
+                  },
+                  "products": {
+                    "nodes": [
+                      {
+                        "id": "gid://shopify/Product/7982904639510",
+                        "handle": "hoodie-old",
+                        "title": "Hoodie",
+                        "availableForSale": true,
+                        "featuredImage": {
+                          "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/3d4d46da1bdbda2bf52f92987e6d4108770eb0a8f233f63a279849fce731f5af.jpg",
+                          "altText": null,
+                          "width": 4096,
+                          "height": 4096
+                        },
+                        "priceRange": {
+                          "minVariantPrice": {
+                            "amount": "90.0",
+                            "currencyCode": "CAD"
+                          }
+                        },
+                        "compareAtPriceRange": {
+                          "minVariantPrice": {
+                            "amount": "0.0",
+                            "currencyCode": "CAD"
+                          }
+                        }
+                      },
+                      {
+                        "id": "gid://shopify/Product/7982902771734",
+                        "handle": "men-t-shirt",
+                        "title": "Men's T-shirt",
+                        "availableForSale": true,
+                        "featuredImage": {
+                          "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/c99af4de567f8baafab47fa2d5267d83a997f9082892f01d7145c0eaa5403832.jpg",
+                          "altText": null,
+                          "width": 4096,
+                          "height": 4096
+                        },
+                        "priceRange": {
+                          "minVariantPrice": {
+                            "amount": "40.0",
+                            "currencyCode": "CAD"
+                          }
+                        },
+                        "compareAtPriceRange": {
+                          "minVariantPrice": {
+                            "amount": "0.0",
+                            "currencyCode": "CAD"
+                          }
+                        }
+                      },
+                      {
+                        "id": "gid://shopify/Product/7982905098262",
+                        "handle": "men-crewneck",
+                        "title": "Men's Crewneck",
+                        "availableForSale": true,
+                        "featuredImage": {
+                          "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/4ecbbab490d5a90c04074428b4b0e09358c6895050db590ffbb84e1f8e05fbbc.jpg",
+                          "altText": null,
+                          "width": 4096,
+                          "height": 4096
+                        },
+                        "priceRange": {
+                          "minVariantPrice": {
+                            "amount": "120.0",
+                            "currencyCode": "CAD"
+                          }
+                        },
+                        "compareAtPriceRange": {
+                          "minVariantPrice": {
+                            "amount": "0.0",
+                            "currencyCode": "CAD"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                "references": null
+              },
+              {
+                "key": "products",
+                "value": "[]",
+                "reference": null,
+                "references": {
+                  "nodes": []
+                }
+              },
+              {
+                "key": "limit",
+                "value": "4",
+                "reference": null,
+                "references": null
+              }
+            ]
+          },
+          {
+            "__typename": "Metaobject",
+            "id": "gid://shopify/Metaobject/103",
+            "type": "mobile_collections",
+            "fields": [
+              {
+                "key": "heading",
+                "value": "Shop by collection",
+                "reference": null,
+                "references": null
+              },
+              {
+                "key": "collections",
+                "value": "[\"gid://shopify/Collection/429493780502\",\"gid://shopify/Collection/429493813270\",\"gid://shopify/Collection/429493846038\"]",
+                "reference": null,
+                "references": {
+                  "nodes": [
+                    {
+                      "__typename": "Collection",
+                      "id": "gid://shopify/Collection/429493780502",
+                      "handle": "men",
+                      "title": "Men",
+                      "image": {
+                        "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/1685d5abe3e11df2a5ae2017646441bafb1f815893bbcc953296c3040175eb4f.png",
+                        "altText": null,
+                        "width": 1024,
+                        "height": 1024
+                      }
+                    },
+                    {
+                      "__typename": "Collection",
+                      "id": "gid://shopify/Collection/429493813270",
+                      "handle": "women",
+                      "title": "Women",
+                      "image": {
+                        "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/2df0f75738a7a6e959e1e11f6227ee470802bf466ba7c52fb41819fbaac53e21.png",
+                        "altText": null,
+                        "width": 1024,
+                        "height": 1024
+                      }
+                    },
+                    {
+                      "__typename": "Collection",
+                      "id": "gid://shopify/Collection/429493846038",
+                      "handle": "unisex",
+                      "title": "Unisex",
+                      "image": {
+                        "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/146052825418e1d78fd3b1be7f209ff0081de5a8694df87f65561cf601190e46.png",
+                        "altText": null,
+                        "width": 1024,
+                        "height": 1024
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

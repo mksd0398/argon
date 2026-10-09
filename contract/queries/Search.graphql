@@ -5,7 +5,11 @@ query Search(
   $sortKey: SearchSortKeys
   $reverse: Boolean
   $filters: [ProductFilter!]
-) {
+  $types: [SearchType!] = [PRODUCT]
+  $unavailableProducts: SearchUnavailableProductsType
+  $country: CountryCode
+  $language: LanguageCode
+) @inContext(country: $country, language: $language) {
   search(
     query: $query
     first: $first
@@ -13,11 +17,17 @@ query Search(
     sortKey: $sortKey
     reverse: $reverse
     productFilters: $filters
-    types: [PRODUCT]
+    types: $types
+    unavailableProducts: $unavailableProducts
   ) {
     totalCount
     productFilters { ...Filter }
     pageInfo { hasNextPage endCursor }
-    nodes { ... on Product { ...ProductCard } }
+    nodes {
+      __typename
+      ... on Product { ...ProductCard }
+      ... on Page { id handle title }
+      ... on Article { ...ArticleCard }
+    }
   }
 }

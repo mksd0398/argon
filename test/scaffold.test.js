@@ -95,11 +95,18 @@ test("--demo --yes scaffolds both apps against mock.shop", async () => {
 
     const android = queryFiles(join(dir, "android/app/src/main/assets/queries"));
     const ios = queryFiles(join(dir, "ios/App/Resources/queries"));
-    assert.equal(android.length, 18);
+    assert.equal(android.length, 52);
     assert.deepEqual(ios, android);
     for (const folder of ["android/app/src/main/assets/queries", "ios/App/Resources/queries"]) {
       for (const [name, document] of contract) {
         assert.equal(readFileSync(join(dir, folder, `${name}.graphql`), "utf8"), document, `${folder}/${name}`);
+      }
+    }
+    // every operation's fixture, for the apps' decoding tests
+    for (const folder of ["android/app/src/test/resources/fixtures", "ios/AppTests/Fixtures"]) {
+      for (const name of contract.keys()) {
+        const fixture = readFileSync(new URL(`../contract/fixtures/${name}.json`, import.meta.url), "utf8");
+        assert.equal(readFileSync(join(dir, folder, `${name}.json`), "utf8"), fixture, `${folder}/${name}.json`);
       }
     }
 

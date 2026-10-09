@@ -1,0 +1,31 @@
+{
+  "product": {
+    "variantBySelectedOptions": {
+      "id": "gid://shopify/ProductVariant/43695848128534",
+      "title": "Small / Olive",
+      "availableForSale": true,
+      "sku": null,
+      "selectedOptions": [
+        {
+          "name": "Size",
+          "value": "Small"
+        },
+        {
+          "name": "Color",
+          "value": "Olive"
+        }
+      ],
+      "price": {
+        "amount": "120.0",
+        "currencyCode": "CAD"
+      },
+      "compareAtPrice": null,
+      "image": {
+        "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/abfd7d077c7abc327f813be0bc0dd94a2ebd72e29bda800b4d05bf4de11c758b.jpg",
+        "altText": null,
+        "width": 4096,
+        "height": 4096
+      }
+    }
+  }
+}

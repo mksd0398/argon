@@ -1,23 +1,48 @@
-query Product($handle: String!, $metafields: [HasMetafieldsIdentifier!]!) {
+query Product(
+  $handle: String!
+  $metafields: [HasMetafieldsIdentifier!]!
+  $selectedOptions: [SelectedOptionInput!]
+  $country: CountryCode
+  $language: LanguageCode
+) @inContext(country: $country, language: $language) {
   product(handle: $handle) {
     id
     handle
     title
     vendor
+    productType
     descriptionHtml
-    media(first: 20) { nodes { ... on MediaImage { image { ...Image } } } }
-    options { name optionValues { name } }
-    variants(first: 250) {
-      nodes {
+    availableForSale
+    isGiftCard
+    requiresSellingPlan
+    encodedVariantExistence
+    encodedVariantAvailability
+    seo { title description }
+    priceRange { minVariantPrice { ...Money } maxVariantPrice { ...Money } }
+    media(first: 20) { nodes { ...Media } }
+    options {
+      id
+      name
+      optionValues {
         id
-        title
-        availableForSale
-        selectedOptions { name value }
-        price { ...Money }
-        compareAtPrice { ...Money }
-        image { ...Image }
+        name
+        swatch { color image { __typename previewImage { ...Image } } }
+        firstSelectableVariant { ...Variant }
       }
     }
-    metafields(identifiers: $metafields) { namespace key value }
+    selectedOrFirstAvailableVariant(selectedOptions: $selectedOptions, ignoreUnknownOptions: true, caseInsensitiveMatch: true) {
+      ...Variant
+    }
+    adjacentVariants(selectedOptions: $selectedOptions, ignoreUnknownOptions: true, caseInsensitiveMatch: true) { ...Variant }
+    variants(first: 250) { nodes { ...Variant } }
+    sellingPlanGroups(first: 10) {
+      nodes {
+        name
+        appName
+        options { name values }
+        sellingPlans(first: 10) { nodes { id name description recurringDeliveries } }
+      }
+    }
+    metafields(identifiers: $metafields) { namespace key type value }
   }
 }

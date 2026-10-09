@@ -1,0 +1,9 @@
+{
+  "customerEmailMarketingUnsubscribe": {
+    "emailAddress": {
+      "emailAddress": "ada@example.com",
+      "marketingState": "UNSUBSCRIBED"
+    },
+    "userErrors": []
+  }
+}

@@ -1,0 +1,9 @@
+query ProductRecommendations(
+  $productId: ID
+  $productHandle: String
+  $intent: ProductRecommendationIntent
+  $country: CountryCode
+  $language: LanguageCode
+) @inContext(country: $country, language: $language) {
+  productRecommendations(productId: $productId, productHandle: $productHandle, intent: $intent) { ...ProductCard }
+}

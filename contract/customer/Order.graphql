@@ -1,0 +1,55 @@
+query Order($id: ID!) {
+  order(id: $id) {
+    id
+    name
+    number
+    confirmationNumber
+    processedAt
+    statusPageUrl
+    financialStatus
+    fulfillmentStatus
+    cancelledAt
+    cancelReason
+    shippingAddress { ...CustomerAddress }
+    billingAddress { ...CustomerAddress }
+    subtotal { ...Money }
+    totalShipping { ...Money }
+    totalTax { ...Money }
+    totalPrice { ...Money }
+    totalRefunded { ...Money }
+    discountApplications(first: 10) {
+      nodes {
+        __typename
+        value {
+          __typename
+          ... on MoneyV2 { ...Money }
+          ... on PricingPercentageValue { percentage }
+        }
+      }
+    }
+    lineItems(first: 50) {
+      nodes {
+        id
+        title
+        variantTitle
+        quantity
+        image { url altText }
+        productId
+        variantId
+        price { ...Money }
+        totalPrice { ...Money }
+      }
+    }
+    fulfillments(first: 10) {
+      nodes {
+        id
+        status
+        createdAt
+        estimatedDeliveryAt
+        latestShipmentStatus
+        trackingInformation { company number url }
+        fulfillmentLineItems(first: 50) { nodes { quantity lineItem { id } } }
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "orderRequestReturn": {
+    "return": {
+      "id": "gid://shopify/Return/3000001",
+      "name": "#1002-R1",
+      "status": "REQUESTED"
+    },
+    "userErrors": []
+  }
+}

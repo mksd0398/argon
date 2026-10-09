@@ -21,20 +21,101 @@ fragment MenuItem on MenuItem {
   title
   url
   type
-  resource { ... on Collection { handle } ... on Product { handle } }
+  resourceId
+  resource {
+    __typename
+    ... on Collection { handle }
+    ... on Product { handle }
+    ... on Page { handle }
+    ... on Blog { handle }
+    ... on Article { handle blog { handle } }
+    ... on ShopPolicy { handle }
+    ... on Metaobject { handle type }
+  }
+}
+
+fragment Variant on ProductVariant {
+  id
+  title
+  availableForSale
+  sku
+  selectedOptions { name value }
+  price { ...Money }
+  compareAtPrice { ...Money }
+  image { ...Image }
+}
+
+fragment Media on Media {
+  __typename
+  id
+  mediaContentType
+  alt
+  previewImage { ...Image }
+  ... on MediaImage { image { ...Image } }
+  ... on Video { sources { url mimeType format width height } }
+  ... on ExternalVideo { host embedUrl originUrl }
+  ... on Model3d { sources { url mimeType format filesize } }
+}
+
+fragment Policy on ShopPolicy { id handle title body url }
+
+fragment LocationAddress on LocationAddress {
+  address1
+  address2
+  city
+  province
+  provinceCode
+  zip
+  country
+  countryCode
+  phone
+  formatted
+  latitude
+  longitude
+}
+
+fragment ArticleCard on Article {
+  id
+  handle
+  title
+  excerpt
+  publishedAt
+  image { ...Image }
+  authorV2 { name }
+  blog { handle }
 }
 
 fragment Cart on Cart {
   id
   checkoutUrl
   totalQuantity
+  note
+  attributes { key value }
+  discountCodes { code applicable }
+  appliedGiftCards { id lastCharacters amountUsed { ...Money } balance { ...Money } }
+  buyerIdentity { email phone countryCode }
+  delivery {
+    addresses {
+      id
+      selected
+      oneTimeUse
+      address {
+        __typename
+        ... on CartDeliveryAddress { firstName lastName address1 address2 city provinceCode zip countryCode phone }
+      }
+    }
+  }
   cost { subtotalAmount { ...Money } totalAmount { ...Money } }
   lines(first: 100) {
     nodes {
+      __typename
       id
       quantity
+      attributes { key value }
       cost { totalAmount { ...Money } }
+      discountAllocations { __typename discountedAmount { ...Money } }
       merchandise {
+        __typename
         ... on ProductVariant {
           id
           title
@@ -46,3 +127,18 @@ fragment Cart on Cart {
     }
   }
 }
+
+fragment CartDeliveryGroups on Cart {
+  deliveryGroups(first: 10) {
+    nodes {
+      id
+      deliveryAddress { formatted }
+      selectedDeliveryOption { handle title estimatedCost { ...Money } }
+      deliveryOptions { handle title description deliveryMethodType estimatedCost { ...Money } }
+    }
+  }
+}
+
+fragment CartUserError on CartUserError { field message code }
+
+fragment CartWarning on CartWarning { code message target }

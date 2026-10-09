@@ -1,0 +1,11 @@
+query Blogs(
+  $first: Int!
+  $after: String
+  $country: CountryCode
+  $language: LanguageCode
+) @inContext(country: $country, language: $language) {
+  blogs(first: $first, after: $after) {
+    pageInfo { hasNextPage endCursor }
+    nodes { id handle title }
+  }
+}

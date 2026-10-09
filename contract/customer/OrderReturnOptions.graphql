@@ -1,0 +1,19 @@
+query OrderReturnOptions($id: ID!) {
+  order(id: $id) {
+    id
+    returnInformation {
+      returnableLineItems(first: 50) {
+        nodes {
+          quantity
+          lineItem {
+            id
+            title
+            image { url altText }
+            suggestedReturnReasonDefinitions(first: 20) { nodes { id handle name } }
+          }
+        }
+      }
+    }
+    returns(first: 10) { nodes { id name status createdAt } }
+  }
+}

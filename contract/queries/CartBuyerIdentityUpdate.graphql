@@ -1,6 +1,12 @@
-mutation CartBuyerIdentityUpdate($cartId: ID!, $buyerIdentity: CartBuyerIdentityInput!) {
+mutation CartBuyerIdentityUpdate(
+  $cartId: ID!
+  $buyerIdentity: CartBuyerIdentityInput!
+  $country: CountryCode
+  $language: LanguageCode
+) @inContext(country: $country, language: $language) {
   cartBuyerIdentityUpdate(cartId: $cartId, buyerIdentity: $buyerIdentity) {
     cart { ...Cart }
-    userErrors { field message }
+    userErrors { ...CartUserError }
+    warnings { ...CartWarning }
   }
 }

@@ -1,0 +1,12 @@
+mutation CartDiscountCodesUpdate(
+  $cartId: ID!
+  $discountCodes: [String!]!
+  $country: CountryCode
+  $language: LanguageCode
+) @inContext(country: $country, language: $language) {
+  cartDiscountCodesUpdate(cartId: $cartId, discountCodes: $discountCodes) {
+    cart { ...Cart }
+    userErrors { ...CartUserError }
+    warnings { ...CartWarning }
+  }
+}

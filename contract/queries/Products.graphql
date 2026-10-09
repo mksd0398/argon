@@ -1,3 +1,10 @@
-query Products($ids: [ID!]!) {
-  nodes(ids: $ids) { ... on Product { ...ProductCard } }
+query Products(
+  $ids: [ID!]!
+  $country: CountryCode
+  $language: LanguageCode
+) @inContext(country: $country, language: $language) {
+  nodes(ids: $ids) {
+    __typename
+    ... on Product { ...ProductCard }
+  }
 }

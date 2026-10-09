@@ -1,0 +1,6 @@
+mutation CustomerAddressCreate($address: CustomerAddressInput!, $defaultAddress: Boolean) {
+  customerAddressCreate(address: $address, defaultAddress: $defaultAddress) {
+    customerAddress { ...CustomerAddress }
+    userErrors { ...AddressError }
+  }
+}

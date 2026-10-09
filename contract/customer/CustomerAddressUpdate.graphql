@@ -1,0 +1,6 @@
+mutation CustomerAddressUpdate($addressId: ID!, $address: CustomerAddressInput, $defaultAddress: Boolean) {
+  customerAddressUpdate(addressId: $addressId, address: $address, defaultAddress: $defaultAddress) {
+    customerAddress { ...CustomerAddress }
+    userErrors { ...AddressError }
+  }
+}
