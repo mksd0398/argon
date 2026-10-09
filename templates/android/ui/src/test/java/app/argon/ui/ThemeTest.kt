@@ -29,10 +29,15 @@ class ThemeTest {
     }
 
     @Test
-    fun onAccentFollowsTheLuminanceRule() {
+    fun onAccentTakesTheHigherContrast() {
         assertEquals("yellow takes black", BLACK, onAccentFor(0xFFEB3B))
-        assertEquals("blue takes white", WHITE, onAccentFor(0x1E88E5))
-        assertEquals("mid grey is below 0.5 relative luminance", WHITE, onAccentFor(0x808080))
+        assertEquals("mid blue takes black (5.7:1 vs 3.7:1)", BLACK, onAccentFor(0x1E88E5))
+        assertEquals("mid grey takes black", BLACK, onAccentFor(0x808080))
+        assertEquals("navy takes white", WHITE, onAccentFor(0x1A237E))
+        for (rgb in 0..0xFFFFFF step 0x0F0F0F + 0x2) {
+            val ratio = contrastRatio(rgb, onAccentFor(rgb))
+            assertTrue("%06X: %.2f".format(rgb, ratio), ratio >= 4.5)
+        }
     }
 
     @Test

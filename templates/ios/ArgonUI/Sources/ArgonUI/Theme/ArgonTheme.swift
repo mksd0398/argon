@@ -98,13 +98,14 @@ extension ArgonTheme {
         return 0.2126 * linear(c.red) + 0.7152 * linear(c.green) + 0.0722 * linear(c.blue)
     }
 
-    /// Whether text on this colour should be black rather than white: luminance above 0.5 (Android's `onPrimary` rule).
-    /// False when the colour is unreadable.
+    /// Whether black text contrasts more with this colour than white does (so text on any accent gets at least 4.58:1).
+    /// False when the colour is unreadable. Same rule as Android's `onAccentFor`.
     public static func isLight(hex: String?) -> Bool {
-        (luminance(hex: hex) ?? 0) > 0.5
+        guard let l = luminance(hex: hex) else { return false }
+        return (l + 0.05) / 0.05 >= 1.05 / (l + 0.05)
     }
 
-    /// `#000000` or `#FFFFFF`, whichever the 0.5 luminance rule puts on `accentHex`.
+    /// `#000000` or `#FFFFFF`, whichever contrasts more with `accentHex`.
     public static func onAccentHex(_ accentHex: String) -> String {
         isLight(hex: accentHex) ? "#000000" : "#FFFFFF"
     }

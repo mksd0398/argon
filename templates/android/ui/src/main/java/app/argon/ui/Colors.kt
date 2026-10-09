@@ -58,12 +58,8 @@ fun contrastRatio(a: Int, b: Int): Double {
     return (maxOf(la, lb) + 0.05) / (minOf(la, lb) + 0.05)
 }
 
-/**
- * Black on colours with luminance above 0.5, else white: M3's `onPrimary` rule, and iOS's `onAccentHex`.
- * ponytail: mid-tones (#808080, #3B82F6) get white below 4.5:1; switch both platforms to whichever of black/white
- * contrasts more if brand colours like that turn up.
- */
-fun onAccentFor(rgb: Int): Int = if (relativeLuminance(rgb) > 0.5) BLACK else WHITE
+/** Black or white, whichever contrasts more with [rgb], so text on any accent gets at least 4.58:1. Same rule as iOS's `onAccentHex`. */
+fun onAccentFor(rgb: Int): Int = if (contrastRatio(rgb, BLACK) >= contrastRatio(rgb, WHITE)) BLACK else WHITE
 
 internal fun color(rgb: Int) = Color(0xFF000000 or rgb.toLong())
 

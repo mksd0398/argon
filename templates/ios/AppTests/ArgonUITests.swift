@@ -88,11 +88,17 @@ final class ArgonUITests: XCTestCase {
         XCTAssertNotNil(ArgonTheme.color(hex: "#B23A2E"))
     }
 
-    func testOnAccentFollowsTheLuminanceRule() {
+    func testOnAccentTakesTheHigherContrast() throws {
         XCTAssertEqual(ArgonTheme.onAccentHex("#FFEB3B"), "#000000", "yellow takes black")
-        XCTAssertEqual(ArgonTheme.onAccentHex("#1E88E5"), "#FFFFFF", "blue takes white")
-        XCTAssertEqual(ArgonTheme.onAccentHex("#808080"), "#FFFFFF", "mid grey is below 0.5 relative luminance")
+        XCTAssertEqual(ArgonTheme.onAccentHex("#1E88E5"), "#000000", "mid blue takes black (5.7:1 vs 3.7:1)")
+        XCTAssertEqual(ArgonTheme.onAccentHex("#808080"), "#000000", "mid grey takes black")
+        XCTAssertEqual(ArgonTheme.onAccentHex("#1A237E"), "#FFFFFF", "navy takes white")
         XCTAssertFalse(ArgonTheme.isLight(hex: "not a colour"))
+        for rgb in stride(from: 0, through: 0xFFFFFF, by: 0x0F0F0F + 0x2) {
+            let hex = String(format: "#%06X", rgb)
+            let ratio = try XCTUnwrap(ArgonTheme.contrastRatio(hex, ArgonTheme.onAccentHex(hex)))
+            XCTAssertGreaterThanOrEqual(ratio, 4.5, hex)
+        }
     }
 
     func testTextColoursMeetAA() throws {
