@@ -14,6 +14,13 @@ struct AuthException: LocalizedError {
 
 private let authLog = Logger(subsystem: "app.storefront", category: "AuthStore")
 
+// Lenient reads of the auth endpoints' JSON: a missing or mistyped field reads as nil.
+private extension Dictionary where Key == String, Value == Any {
+    func str(_ key: String) -> String? { self[key] as? String }
+
+    func int(_ key: String) -> Int? { self[key] as? Int }
+}
+
 /// The query of `components` as form fields: `+` is a space, as in application/x-www-form-urlencoded. Undecodable fields are
 /// left out.
 private func formFields(_ components: URLComponents) -> [String: String] {
@@ -226,15 +233,16 @@ final class AuthStore {
         }
     }
 
-    /// Runs Customer Account API operation `name` and returns its `data`. A 401 refreshes and retries once; a second signs out.
-    func customerQuery(_ name: String, _ variables: [String: Any] = [:]) async throws -> [String: Any] {
+    /// Runs Customer Account API operation `name` and returns the response body (CustomerAccountAPI decodes it). A 401
+    /// refreshes and retries once; a second signs out.
+    func customerQuery(_ name: String, _ variables: [String: Any] = [:]) async throws -> Data {
         let url = try await graphqlUrl()
         let body = try graphQLBody(document(name), variables)
         let first = try await validAccessToken()
         guard let token = first else { throw AuthException(message: "You're signed out") }
         do {
             return try await session.graphQL(customerRequest(url, body, token))
-        } catch let error as StorefrontException where error.status == 401 {
+        } catch ArgonAPIError.http(let status) where status == 401 {
             // revoked or expired early: refreshed and retried below
         }
         // a concurrent caller may already have refreshed it
@@ -246,9 +254,9 @@ final class AuthStore {
         guard let retry = second else { throw AuthException(message: "You're signed out") }
         do {
             return try await session.graphQL(customerRequest(url, body, retry))
-        } catch let error as StorefrontException where error.status == 401 {
+        } catch ArgonAPIError.http(let status) where status == 401 {
             await locked { await setTokens(nil) }
-            throw error
+            throw ArgonAPIError.http(status: status)
         }
     }
 

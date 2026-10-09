@@ -10,10 +10,8 @@ private func fulfillment(_ statuses: [String]) -> String {
 
 @MainActor
 private func loadOrder(_ id: String) async throws -> Order {
-    guard let order = try await AppGraph.auth.customerQuery("Order", ["id": id]).obj("order") else {
-        throw StorefrontException(messages: ["Order not found"], status: nil)
-    }
-    return try parseOrder(order)
+    guard let order = try await AppGraph.customerAccount.order(id) else { throw NotFound(what: "Order") }
+    return order
 }
 
 @MainActor
@@ -52,7 +50,7 @@ private struct OrderContent: View {
     private var detail: String {
         var parts = [displayDate(order.processedAt)]
         if let status = order.financialStatus { parts.append(displayStatus(status)) }
-        parts.append(fulfillment(order.fulfillments))
+        parts.append(fulfillment(order.fulfillments.compactMap { $0.status }))
         return parts.joined(separator: " · ")
     }
 }

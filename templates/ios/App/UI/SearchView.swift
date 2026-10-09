@@ -17,8 +17,8 @@ final class SearchModel {
         text = initial
         listing = Listing(sorts: searchSorts) { [weak self] after, sort, applied in
             let query = self?.submitted ?? ""
-            let data = try await AppGraph.storefront.query("Search", listingVars(after, sort, applied, ["query": query]))
-            return try parseProductPage(data.connection("search"), filtersKey: "productFilters")
+            let results = try await AppGraph.storefront.search(query, filters: applied, sortKey: sort.key, reverse: sort.reverse, after: after)
+            return ProductPage(items: results.products, filters: results.filters, endCursor: results.endCursor, hasNext: results.hasNextPage)
         }
     }
 
@@ -44,17 +44,13 @@ private struct Suggestions {
     let products: [ProductCard]
 }
 
+@MainActor
 private func loadSuggestions(_ query: String) async throws -> Suggestions {
-    let p = try await AppGraph.storefront.query("PredictiveSearch", ["query": query]).obj("predictiveSearch")
-    var collections: [(handle: String, title: String)] = []
-    for c in p?.objects("collections") ?? [] {
-        if let handle = c.str("handle") { collections.append((handle: handle, title: c.str("title") ?? handle)) }
-    }
-    let products = try cards(p?.objects("products") ?? [])
+    let found = try await AppGraph.storefront.predictiveSearch(query)
     return Suggestions(
-        queries: (p?.objects("queries") ?? []).compactMap { $0.str("text") },
-        collections: collections,
-        products: products
+        queries: found.queries.map { $0.text },
+        collections: found.collections.map { (handle: $0.handle, title: $0.title) },
+        products: found.products
     )
 }
 

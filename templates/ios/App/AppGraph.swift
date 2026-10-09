@@ -10,11 +10,19 @@ enum AppGraph {
     static let apiVersion = info("ApiVersion")
     static let pdpMetafields = info("PdpMetafields")
 
-    static let storefront = Storefront(domain: shopDomain, token: storefrontToken, apiVersion: apiVersion, loadDocument: AppGraph.document)
+    private static let client = Storefront(domain: shopDomain, token: storefrontToken, apiVersion: apiVersion, loadDocument: AppGraph.document)
+
+    /// Every Storefront API operation, typed.
+    @MainActor static let storefront = StorefrontAPI(transport: { name, variables in try await AppGraph.client.query(name, variables) })
+
+    /// The signed-in customer's Customer Account API operations, sent with `auth`'s token.
+    @MainActor static let customerAccount = CustomerAccountAPI(transport: { name, variables in
+        try await AppGraph.auth.customerQuery(name, variables)
+    })
 
     @MainActor static let wishlist = WishlistStore(defaults: .standard)
     @MainActor static let cart = CartStore(
-        query: { name, variables in try await AppGraph.storefront.query(name, variables) },
+        api: AppGraph.storefront,
         defaults: .standard,
         accessToken: { try await AppGraph.auth.validAccessToken() }
     )
@@ -33,26 +41,29 @@ enum AppGraph {
     @MainActor static let brand = BrandState()
     @MainActor private static let brandLock = AsyncLock()
 
-    /// Shop name, logo, accent and link hosts. Fetched once; a failed fetch is retried by the next caller.
+    /// Shop name, logo, accent and link hosts. Fetched once; a failed fetch is retried by the next caller. First, the
+    /// Storefront context follows the device's country and language where the shop has them (Home and Shop wait for the
+    /// brand, so their queries go out in it); without the shop's localization the shop's defaults stay.
     @MainActor
     static func loadBrand() async throws -> Brand {
         await brandLock.lock()
         defer { brandLock.unlock() }
         if let loaded = brand.value { return loaded }
-        guard let shop = try await storefront.query("Shop").obj("shop") else {
-            throw StorefrontException(messages: ["Shop not found"], status: nil)
+        if let localization = try? await storefront.localization() {
+            storefront.context = StorefrontContext.device(localization)
         }
-        let loaded = try parseBrand(shop, configDomain: shopDomain)
+        let shop = try await storefront.shop()
+        let loaded = Brand(shop: shop, configDomain: shopDomain)
         brand.value = loaded
         return loaded
     }
 
-    /// The GraphQL document `queries/<name>.graphql` (written by the CLI from contract/queries).
+    /// The GraphQL document `queries/<name>.graphql` (written by the CLI from contract/).
     static func document(_ name: String) throws -> String {
         // a synchronized folder may copy queries/ flat into the bundle
         guard let url = Bundle.main.url(forResource: name, withExtension: "graphql", subdirectory: "queries")
             ?? Bundle.main.url(forResource: name, withExtension: "graphql", subdirectory: nil) else {
-            throw StorefrontException(messages: ["Missing query \(name)"], status: nil)
+            throw NotFound(what: "Query \(name)")
         }
         return try String(contentsOf: url, encoding: .utf8)
     }

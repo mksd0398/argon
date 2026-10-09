@@ -3,21 +3,21 @@ import UIKit
 
 /// `PDP_METAFIELDS` ("custom.material, custom.care") as the Storefront `metafields` identifiers. Each entry splits on its
 /// first dot; blank entries and ones without a namespace and a key are skipped.
-func metafieldIdentifiers(_ config: String) -> [[String: String]] {
-    var identifiers: [[String: String]] = []
+func metafieldIdentifiers(_ config: String) -> [MetafieldIdentifier] {
+    var identifiers: [MetafieldIdentifier] = []
     for part in config.split(separator: ",") {
         let entry = part.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let dot = entry.firstIndex(of: ".") else { continue }
         let namespace = String(entry[..<dot])
         let key = String(entry[entry.index(after: dot)...])
-        if !namespace.isEmpty && !key.isEmpty { identifiers.append(["namespace": namespace, "key": key]) }
+        if !namespace.isEmpty && !key.isEmpty { identifiers.append(MetafieldIdentifier(namespace: namespace, key: key)) }
     }
     return identifiers
 }
 
 /// The options of the first available variant, else of the first variant (a sold-out product still shows its options).
-func initialSelection(_ product: Product) -> [String: String] {
-    (product.variants.first { $0.available } ?? product.variants.first)?.options ?? [:]
+func initialSelection(_ variants: [Variant]) -> [String: String] {
+    (variants.first { $0.available } ?? variants.first)?.options ?? [:]
 }
 
 /// The merchant's HTML description as text (paragraphs, lists, bold, links); nil when blank or unreadable.
@@ -44,13 +44,11 @@ func htmlText(_ html: String) -> AttributedString? {
 // ponytail: the Product query loads variants(first: 250), the Storefront API's page ceiling: a product with more
 // variants shows "Unavailable" for the combinations that didn't load. Upgrade: paginate the variants, or query
 // variantBySelectedOptions for each selection.
+@MainActor
 private func loadProduct(_ handle: String) async throws -> Product {
-    let data = try await AppGraph.storefront.query(
-        "Product",
-        ["handle": handle, "metafields": metafieldIdentifiers(AppGraph.pdpMetafields)]
-    )
-    guard let product = data.obj("product") else { throw StorefrontException(messages: ["Product not found"], status: nil) }
-    return try parseProduct(product)
+    let found = try await AppGraph.storefront.product(handle, metafields: metafieldIdentifiers(AppGraph.pdpMetafields))
+    guard let product = found else { throw NotFound(what: "Product") }
+    return product
 }
 
 @MainActor
@@ -75,7 +73,7 @@ private struct ProductContent: View {
 
     init(product: Product) {
         self.product = product
-        _selection = State(initialValue: initialSelection(product))
+        _selection = State(initialValue: initialSelection(product.variants))
     }
 
     var body: some View {
@@ -147,7 +145,9 @@ private struct ProductContent: View {
 
     /// The options to choose from: a product without options still has Shopify's one "Title: Default Title"; nothing there.
     private var choices: [(name: String, values: [String])] {
-        product.options.filter { !($0.name == "Title" && $0.values == ["Default Title"]) }
+        product.options
+            .map { (name: $0.name, values: $0.optionValues.map { $0.name }) }
+            .filter { !($0.name == "Title" && $0.values == ["Default Title"]) }
     }
 
     private func optionPicker(_ name: String, _ values: [String]) -> some View {
