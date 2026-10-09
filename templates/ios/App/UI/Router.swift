@@ -1,3 +1,4 @@
+import ArgonUI
 import Observation
 import os
 import SafariServices
@@ -11,6 +12,8 @@ enum Destination: Hashable {
     case collection(String)
     case search(String)
     case order(String)
+    /// The ArgonUI gallery (linked from Account in debug builds only).
+    case components
 }
 
 /// One tab's navigation: its stack, and the web page shown over it.
@@ -48,6 +51,7 @@ struct TabStack<Root: View>: View {
                 case let .collection(handle): CollectionView(handle: handle)
                 case let .search(query): SearchView(initial: query)
                 case let .order(id): OrderView(id: id)
+                case .components: ArgonGallery()
                 }
             }
         }

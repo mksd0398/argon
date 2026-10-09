@@ -1,3 +1,4 @@
+import ArgonUI
 import ShopifyCheckoutSheetKit
 import SwiftUI
 
@@ -32,6 +33,8 @@ struct AppRoot: View {
                 // tap), a sign-in or a sign-out makes it stale.
                 .onChange(of: AppGraph.cart.cart) { ShopifyCheckoutSheetKit.invalidate() }
                 .onChange(of: AppGraph.auth.signedIn) { ShopifyCheckoutSheetKit.invalidate() }
+                // Argon components read the theme; the tint above stays closer, so today's screens look as they did
+                .argonTheme(accentHex: AppGraph.brand.value?.accent)
         }
     }
 }
