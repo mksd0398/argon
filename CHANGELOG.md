@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- The Headless channel step is guided:
+  - Argon opens the channel in your browser and prints Shopify's exact admin path for each value, including setting the login client type to Public (mobile app).
+  - It checks the Storefront token as you paste it and asks again if Shopify rejects it.
+  - It confirms that the app can see your products and read the home screen.
+  - It warns when a client ID doesn't look like one.
+
+### Fixed
+
+- Checkout now shows the store's own checkout branding. Checkout Kit uses the `web` color scheme (Android `ColorScheme.Web()`, iOS `.web`) instead of its default generic light/dark theme.
+
 ## 0.1.0 — 2026-10-05
 
 First release.

@@ -266,6 +266,16 @@ test("verifyStorefront: 401/403 and GraphQL errors throw", async (t) => {
   await assert.rejects(shopify.verifyStorefront("nalli.myshopify.com", "t"), /Field 'shop' doesn't exist; Second/);
 });
 
+test("storefrontContent: a denied metaobject is false, a failed query is unknown (null)", async (t) => {
+  const answer = (body) => setup(t, undefined, { fetch: async () => Response.json(body) }).shopify;
+  const denied = { data: { products: { nodes: [{ id: "p" }] }, metaobject: null }, errors: [{ message: "denied", path: ["metaobject"], extensions: { code: "ACCESS_DENIED" } }] };
+  assert.deepEqual(await answer(denied).storefrontContent("nalli.myshopify.com", "t"), { products: true, home: false });
+  const empty = { data: { products: { nodes: [] }, metaobject: { id: "m" } } };
+  assert.deepEqual(await answer(empty).storefrontContent("nalli.myshopify.com", "t"), { products: false, home: true });
+  const failed = { data: null, errors: [{ message: "Internal error" }] };
+  assert.deepEqual(await answer(failed).storefrontContent("nalli.myshopify.com", "t"), { products: null, home: null });
+});
+
 test("defaultExec: runs through a shell and returns code, stdout and stderr; a path with spaces is one argument", async (t) => {
   const dir = mkdtempSync(join(tmpdir(), "argon test-"));
   t.after(() => rmSync(dir, { recursive: true, force: true }));

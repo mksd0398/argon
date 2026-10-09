@@ -15,7 +15,7 @@ One key list, two files with the same key names. Edit, then rebuild.
 |---|---|
 | `SHOP_DOMAIN` | The store's `*.myshopify.com` domain, no `https://` |
 | `STOREFRONT_TOKEN` | Public Storefront API token from the Headless channel |
-| `CUSTOMER_CLIENT_ID` | Customer Account API client ID (Mobile client). Empty hides login |
+| `CUSTOMER_CLIENT_ID` | Customer Account API client ID (client type Public (mobile app)). Empty hides login |
 | `SHOP_ID` | Numeric shop ID; the login callback is `shop.<SHOP_ID>.app://callback` |
 | `API_VERSION` | Storefront API version, `2026-10` |
 | `APP_NAME` | Display name under the app icon |
@@ -39,7 +39,7 @@ In Shopify admin go to **Content → Metaobjects → Mobile screen → Home**. T
 
 - **New customer accounts** are on (Settings → Customer accounts), or login won't work.
 - The **storefront password is off** (Online Store → Preferences), or Checkout Kit can't open checkout.
-- **Products and collections are available to the Headless channel**, and its storefront keeps the metaobject read permission, or the app shows an empty or fallback home.
+- **Products and collections are available to the Headless storefront's sales channel**, and its Storefront API keeps the metaobject read permission, or the app shows an empty or fallback home.
 - **Collection and search filters** appear only after the Search & Discovery app has filters configured.
 
 ## Publishing
