@@ -21,8 +21,9 @@ struct StorefrontContext: Equatable, Sendable {
 
 /// Every Storefront API operation in `queries/`, as typed calls. `transport` runs a named operation and returns the response
 /// body (`Storefront.query` in the app, canned answers in tests). Lists come back as `Page`s: pass `endCursor` as `after` for
-/// the next. `shop`, `localization`, `policies` and `menu` are kept for the session. Failures are `ArgonAPIError`s; a cart
-/// mutation that Shopify refuses throws its `userErrors`, and its warnings come back with the cart.
+/// the next (Storefront lists come 24 to a page). `shop`, `localization`, `policies` and `menu` are kept for the session.
+/// Failures are `ArgonAPIError`s; a cart mutation that Shopify refuses throws its `userErrors`, and its warnings come back on
+/// the cart (`Cart.warnings`).
 @MainActor
 final class StorefrontAPI {
     /// Sent with every operation. A different one forgets what was kept (it is translated, and priced, for the old one).
@@ -50,12 +51,12 @@ final class StorefrontAPI {
         return shop
     }
 
-    /// The countries the shop sells to and its languages; `StorefrontContext.device` picks from them.
+    /// The countries the shop sells to and its languages, `country` and `language` being the shop's defaults: it runs
+    /// without the context, which `StorefrontContext.device` picks from it.
     func localization() async throws -> Localization {
         if let kept = keptLocalization { return kept }
-        let asked = context
-        let localization: Localization = try await run("Localization", root: "localization")
-        if context == asked { keptLocalization = localization }
+        let localization: Localization = try await fetchField(transport, "Localization", [:], root: "localization")
+        keptLocalization = localization
         return localization
     }
 
@@ -104,7 +105,7 @@ final class StorefrontAPI {
     }
 
     /// The cards of products `ids` (Products), in no set order; ids that aren't products (any more) are left out. At most 250.
-    func products(ids: [String]) async throws -> [ProductCard] {
+    func productsByIds(_ ids: [String]) async throws -> [ProductCard] {
         let nodes: [Node?] = try await run("Products", ["ids": ids], root: "nodes")
         return nodes.compactMap { $0?.productCard }
     }
@@ -132,9 +133,10 @@ final class StorefrontAPI {
 
     // MARK: Search
 
-    /// Search results: products unless `types` (SearchType values: PRODUCT, PAGE, ARTICLE) asks for more. `filters` are
-    /// `FilterValue.input`s; `sortKey` is RELEVANCE or PRICE.
-    func search(_ query: String, filters: [String] = [], sortKey: String? = nil, reverse: Bool = false, types: [String] = [], after: String? = nil, first: Int = 24) async throws -> SearchResults {
+    /// A page of search results (`products` picks the products out), with the product filters they offer. Products only
+    /// unless `types` (SearchType values: PRODUCT, PAGE, ARTICLE) asks for more. `filters` are `FilterValue.input`s;
+    /// `sortKey` is RELEVANCE or PRICE.
+    func search(_ query: String, filters: [String] = [], sortKey: String? = nil, reverse: Bool = false, types: [String] = [], after: String? = nil, first: Int = 24) async throws -> Page<Node> {
         var variables = list(first, after, ["query": query, "sortKey": sortKey, "reverse": reverse])
         if !filters.isEmpty { variables["filters"] = productFilters(filters) }
         if !types.isEmpty { variables["types"] = types }
@@ -150,12 +152,12 @@ final class StorefrontAPI {
     // MARK: Stores
 
     /// Where variant `variantId` can be picked up.
-    func storeAvailability(variantId: String, first: Int = 20) async throws -> [StoreAvailability] {
+    func storeAvailability(variantId: String, first: Int = 24) async throws -> [StoreAvailability] {
         let variant: AvailabilityLookup? = try await run("StoreAvailability", ["variantId": variantId, "first": first], root: "node")
         return variant?.storeAvailability ?? []
     }
 
-    func locations(after: String? = nil, first: Int = 20) async throws -> Page<Location> {
+    func locations(after: String? = nil, first: Int = 24) async throws -> Page<Location> {
         try await run("Locations", list(first, after), root: "locations")
     }
 
@@ -165,16 +167,16 @@ final class StorefrontAPI {
         try await run("Page", ["handle": handle], root: "page")
     }
 
-    func pages(after: String? = nil, first: Int = 20) async throws -> Page<StorePage> {
+    func pages(after: String? = nil, first: Int = 24) async throws -> Page<StorePage> {
         try await run("Pages", list(first, after), root: "pages")
     }
 
-    func blogs(after: String? = nil, first: Int = 20) async throws -> Page<Blog> {
+    func blogs(after: String? = nil, first: Int = 24) async throws -> Page<Blog> {
         try await run("Blogs", list(first, after), root: "blogs")
     }
 
     /// Blog `handle` with a page of its articles; nil when there is none.
-    func blog(_ handle: String, after: String? = nil, first: Int = 20) async throws -> Blog? {
+    func blog(_ handle: String, after: String? = nil, first: Int = 24) async throws -> Blog? {
         try await run("Blog", list(first, after, ["handle": handle]), root: "blog")
     }
 
@@ -184,7 +186,7 @@ final class StorefrontAPI {
     }
 
     /// Articles across blogs, or those matching `query`.
-    func articles(query: String? = nil, after: String? = nil, first: Int = 20) async throws -> Page<Article> {
+    func articles(query: String? = nil, after: String? = nil, first: Int = 24) async throws -> Page<Article> {
         try await run("Articles", list(first, after, ["query": query]), root: "articles")
     }
 
@@ -192,14 +194,14 @@ final class StorefrontAPI {
         try await run("Metaobject", ["type": type, "handle": handle], root: "metaobject")
     }
 
-    func metaobjects(type: String, after: String? = nil, first: Int = 20) async throws -> Page<Metaobject> {
+    func metaobjects(type: String, after: String? = nil, first: Int = 24) async throws -> Page<Metaobject> {
         try await run("Metaobjects", list(first, after, ["type": type]), root: "metaobjects")
     }
 
     // MARK: Home
 
     /// The section metaobjects of `mobile_screen` `handle` (HomeScreen), in order; empty when there is no such screen.
-    func homeScreen(_ handle: String) async throws -> [Metaobject] {
+    func homeScreen(_ handle: String = "home") async throws -> [Metaobject] {
         let screen: Screen? = try await run("HomeScreen", ["handle": handle], root: "metaobject")
         return (screen?.field?.references ?? []).compactMap { node -> Metaobject? in
             if case let .metaobject(section) = node { return section }
@@ -220,62 +222,62 @@ final class StorefrontAPI {
         try await run("Cart", ["id": id], root: "cart")
     }
 
-    func cartCreate(_ input: CartInput = CartInput()) async throws -> CartResult {
+    func cartCreate(_ input: CartInput = CartInput()) async throws -> Cart {
         try await mutate("CartCreate", ["input": jsonValue(input)])
     }
 
-    func addLines(cartId: String, lines: [CartLineInput]) async throws -> CartResult {
+    func addLines(cartId: String, lines: [CartLineInput]) async throws -> Cart {
         try await mutate("CartLinesAdd", ["cartId": cartId, "lines": jsonValue(lines)])
     }
 
-    func updateLines(cartId: String, lines: [CartLineUpdateInput]) async throws -> CartResult {
+    func updateLines(cartId: String, lines: [CartLineUpdateInput]) async throws -> Cart {
         try await mutate("CartLinesUpdate", ["cartId": cartId, "lines": jsonValue(lines)])
     }
 
-    func removeLines(cartId: String, lineIds: [String]) async throws -> CartResult {
+    func removeLines(cartId: String, lineIds: [String]) async throws -> Cart {
         try await mutate("CartLinesRemove", ["cartId": cartId, "lineIds": lineIds])
     }
 
-    func updateBuyerIdentity(cartId: String, buyerIdentity: CartBuyerIdentityInput) async throws -> CartResult {
+    func updateBuyerIdentity(cartId: String, buyerIdentity: CartBuyerIdentityInput) async throws -> Cart {
         try await mutate("CartBuyerIdentityUpdate", ["cartId": cartId, "buyerIdentity": jsonValue(buyerIdentity)])
     }
 
     /// Replaces the cart's discount codes; `[]` clears them.
-    func updateDiscountCodes(cartId: String, codes: [String]) async throws -> CartResult {
+    func updateDiscountCodes(cartId: String, codes: [String]) async throws -> Cart {
         try await mutate("CartDiscountCodesUpdate", ["cartId": cartId, "discountCodes": codes])
     }
 
-    func addGiftCards(cartId: String, codes: [String]) async throws -> CartResult {
+    func addGiftCards(cartId: String, codes: [String]) async throws -> Cart {
         try await mutate("CartGiftCardCodesAdd", ["cartId": cartId, "giftCardCodes": codes])
     }
 
     /// `ids` are `AppliedGiftCard.id`s, not codes.
-    func removeGiftCards(cartId: String, ids: [String]) async throws -> CartResult {
+    func removeGiftCards(cartId: String, ids: [String]) async throws -> Cart {
         try await mutate("CartGiftCardCodesRemove", ["cartId": cartId, "appliedGiftCardIds": ids])
     }
 
-    func updateNote(cartId: String, note: String) async throws -> CartResult {
+    func updateNote(cartId: String, note: String) async throws -> Cart {
         try await mutate("CartNoteUpdate", ["cartId": cartId, "note": note])
     }
 
-    func updateAttributes(cartId: String, attributes: [CartAttribute]) async throws -> CartResult {
+    func updateAttributes(cartId: String, attributes: [CartAttribute]) async throws -> Cart {
         try await mutate("CartAttributesUpdate", ["cartId": cartId, "attributes": jsonValue(attributes)])
     }
 
-    func addDeliveryAddresses(cartId: String, addresses: [CartSelectableAddressInput]) async throws -> CartResult {
+    func addDeliveryAddresses(cartId: String, addresses: [CartSelectableAddressInput]) async throws -> Cart {
         try await mutate("CartDeliveryAddressesAdd", ["cartId": cartId, "addresses": jsonValue(addresses)])
     }
 
-    func updateDeliveryAddresses(cartId: String, addresses: [CartSelectableAddressUpdateInput]) async throws -> CartResult {
+    func updateDeliveryAddresses(cartId: String, addresses: [CartSelectableAddressUpdateInput]) async throws -> Cart {
         try await mutate("CartDeliveryAddressesUpdate", ["cartId": cartId, "addresses": jsonValue(addresses)])
     }
 
-    func removeDeliveryAddresses(cartId: String, addressIds: [String]) async throws -> CartResult {
+    func removeDeliveryAddresses(cartId: String, addressIds: [String]) async throws -> Cart {
         try await mutate("CartDeliveryAddressesRemove", ["cartId": cartId, "addressIds": addressIds])
     }
 
     /// One option per delivery group, from `Cart.deliveryGroups`.
-    func selectDeliveryOptions(cartId: String, options: [CartSelectedDeliveryOptionInput]) async throws -> CartResult {
+    func selectDeliveryOptions(cartId: String, options: [CartSelectedDeliveryOptionInput]) async throws -> Cart {
         try await mutate("CartSelectedDeliveryOptionsUpdate", ["cartId": cartId, "selectedDeliveryOptions": jsonValue(options)])
     }
 
@@ -289,12 +291,17 @@ final class StorefrontAPI {
         return try await fetchField(transport, name, variables, root: root)
     }
 
-    /// Runs cart mutation `name`: its user errors are thrown, its cart and warnings returned.
-    private func mutate(_ name: String, _ variables: [String: Any]) async throws -> CartResult {
+    /// Runs cart mutation `name` and returns its cart, with the warnings that came with it. User errors are thrown with the
+    /// cart that came back beside them; no cart and no errors is "The cart is unavailable".
+    private func mutate(_ name: String, _ variables: [String: Any]) async throws -> Cart {
         let payload: CartPayload = try await run(name, variables, root: payloadField(name))
-        if !payload.userErrors.isEmpty { throw ArgonAPIError.userErrors(payload.userErrors) }
-        guard let cart = payload.cart else { throw ArgonAPIError.decoding(operation: name, detail: "cart missing") }
-        return CartResult(cart: cart, warnings: payload.warnings)
+        var cart = payload.cart
+        cart?.warnings = payload.warnings
+        if !payload.userErrors.isEmpty { throw ArgonAPIError.userErrors(payload.userErrors, cart: cart) }
+        guard let changed = cart else {
+            throw ArgonAPIError.userErrors([UserError(message: "The cart is unavailable")], cart: nil)
+        }
+        return changed
     }
 
     /// A list operation's variables: `first`, `after` once paging, and `more` without its nil values.

@@ -18,12 +18,7 @@ final class SearchModel {
         listing = Listing(sorts: searchSorts) { [weak self] after, sort, applied in
             let query = self?.submitted ?? ""
             let results = try await AppGraph.storefront.search(query, filters: applied, sortKey: sort.key, reverse: sort.reverse, after: after)
-            return ProductPage(
-                items: results.products,
-                filters: results.filters,
-                endCursor: results.results.endCursor,
-                hasNext: results.results.hasNextPage
-            )
+            return ProductPage(items: results.products, filters: results.filters, endCursor: results.endCursor, hasNext: results.hasNextPage)
         }
     }
 

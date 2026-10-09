@@ -52,7 +52,7 @@ final class CartStoreTests: XCTestCase {
     @MainActor
     private func refusal(_ body: () async throws -> Void) async -> [UserError]? {
         let error = await thrownError(body)
-        guard case let .userErrors(errors)? = error as? ArgonAPIError else { return nil }
+        guard case let .userErrors(errors, _)? = error as? ArgonAPIError else { return nil }
         return errors
     }
 
@@ -158,14 +158,14 @@ final class CartStoreTests: XCTestCase {
         XCTAssertEqual(url, guest)
         XCTAssertEqual(names, ["CartCreate"])
 
-        // Shopify refuses the token (a userError: the cart is looked up and kept), then the request itself fails
+        // Shopify refuses the token (a userError beside the cart), then the request itself fails
         tokenFailure = nil
         url = await s.checkoutUrl()
         XCTAssertEqual(url, guest)
         identityReply = { #"{"errors":[{"message":"Throttled"}]}"# }
         url = await s.checkoutUrl()
         XCTAssertEqual(url, guest)
-        XCTAssertEqual(names, ["CartCreate", "CartBuyerIdentityUpdate", "Cart", "CartBuyerIdentityUpdate"])
+        XCTAssertEqual(names, ["CartCreate", "CartBuyerIdentityUpdate", "CartBuyerIdentityUpdate"])
         XCTAssertEqual(s.cart?.id, cartId, "the cart is kept")
     }
 
@@ -181,22 +181,30 @@ final class CartStoreTests: XCTestCase {
     }
 
     @MainActor
-    func testARefusedUpdateKeepsTheCartAsShopifyHasIt() async throws {
+    func testARefusedUpdateKeepsTheCartThatCameBackWithTheErrors() async throws {
         var current = cartJson
         current["totalQuantity"] = 7
-        let latest = current
+        let returned = current
         let s = store(reply: { name in
-            switch name {
-            case "CartLinesUpdate": return try self.answer(name, cart: self.cartJson, "Not enough stock")
-            case "Cart": return try self.answer(name, cart: latest)
-            default: return try self.answer(name, cart: self.cartJson)
-            }
+            try name == "CartLinesUpdate"
+                ? self.answer(name, cart: returned, "Not enough stock")
+                : self.answer(name, cart: self.cartJson)
         })
         try await s.add("v1", quantity: 1)
         let errors = await refusal { try await s.update(self.lineId, quantity: 50) }
         XCTAssertEqual(errors?.first?.message, "Not enough stock")
-        XCTAssertEqual(s.cart?.totalQuantity, 7, "the cart is the one Shopify has now")
-        XCTAssertEqual(names, ["CartCreate", "CartLinesUpdate", "Cart"])
+        XCTAssertEqual(s.cart?.totalQuantity, 7, "the cart as Shopify left it")
+        XCTAssertEqual(names, ["CartCreate", "CartLinesUpdate"], "a cart came back: no lookup")
+    }
+
+    @MainActor
+    func testAnAnswerWithoutCartOrErrorsLooksTheCartUp() async throws {
+        let s = store(reply: { name in try self.answer(name, cart: name == "CartLinesRemove" ? nil : self.cartJson) })
+        try await s.add("v1", quantity: 1)
+        let errors = await refusal { try await s.remove(self.lineId) }
+        XCTAssertEqual(errors?.first?.message, "The cart is unavailable")
+        XCTAssertEqual(names, ["CartCreate", "CartLinesRemove", "Cart"])
+        XCTAssertEqual(s.cart?.id, cartId, "the lookup found it")
     }
 
     @MainActor

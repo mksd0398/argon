@@ -39,8 +39,8 @@ struct ProductPage: Equatable {
 }
 
 extension ProductPage {
-    init(_ page: Page<ProductCard>, filters: [Filter]) {
-        self.init(items: page.items, filters: filters, endCursor: page.endCursor, hasNext: page.hasNextPage)
+    init(_ page: Page<ProductCard>) {
+        self.init(items: page.items, filters: page.filters, endCursor: page.endCursor, hasNext: page.hasNextPage)
     }
 }
 

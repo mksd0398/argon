@@ -121,8 +121,7 @@ final class CartStore {
     }
 
     private func create(_ lines: [CartLineInput]) async throws -> Cart {
-        let created = try await api.cartCreate(CartInput(lines: lines))
-        return keep(created.cart)
+        try await send { try await self.api.cartCreate(CartInput(lines: lines)) }
     }
 
     private func removeLine(_ lineId: String) async throws {
@@ -133,25 +132,32 @@ final class CartStore {
         cart?.id ?? defaults.string(forKey: Self.idKey)
     }
 
-    /// Runs `mutation` on the current cart's id and keeps the cart it returns; nil (nothing run) when there is no cart.
-    /// When Shopify refuses (userErrors), the cart is looked up: one Shopify no longer has is forgotten (then `ifGone` runs,
-    /// if given); one it still has is kept, current, and the refusal is thrown.
+    /// Runs `mutation` on the current cart; nil (nothing run) when there is no cart. When it is refused without a cart coming
+    /// back, the cart lookup tells a cart Shopify no longer has (forgotten, then `ifGone` runs if given) from a change it
+    /// refused (the error is thrown).
     private func change(
-        _ mutation: (String) async throws -> CartResult,
+        _ mutation: (String) async throws -> Cart,
         ifGone: (() async throws -> Cart)? = nil
     ) async throws -> Cart? {
         guard let id = currentId() else { return nil }
         do {
-            let changed = try await mutation(id)
-            return keep(changed.cart)
-        } catch ArgonAPIError.userErrors(let errors) {
-            if let current = try await api.cart(id) {
-                keep(current)
-                throw ArgonAPIError.userErrors(errors)
-            }
+            return try await send { try await mutation(id) }
+        } catch ArgonAPIError.userErrors(let errors, .none) {
+            if try await api.cart(id) != nil { throw ArgonAPIError.userErrors(errors, cart: nil) }
             forget()
-            guard let ifGone = ifGone else { throw ArgonAPIError.userErrors(errors) }
+            guard let ifGone = ifGone else { throw ArgonAPIError.userErrors(errors, cart: nil) }
             return try await ifGone()
+        }
+    }
+
+    /// Runs `mutation` and keeps the cart it returns, even one that comes back beside user errors (which are rethrown).
+    private func send(_ mutation: () async throws -> Cart) async throws -> Cart {
+        do {
+            let changed = try await mutation()
+            return keep(changed)
+        } catch ArgonAPIError.userErrors(let errors, let returned?) {
+            keep(returned)
+            throw ArgonAPIError.userErrors(errors, cart: returned)
         }
     }
 

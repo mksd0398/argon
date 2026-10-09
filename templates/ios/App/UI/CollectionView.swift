@@ -17,12 +17,12 @@ final class CollectionModel {
             let api = AppGraph.storefront
             if all {
                 let page = try await api.products(sortKey: sort.key, reverse: sort.reverse, after: after)
-                return ProductPage(page, filters: [])
+                return ProductPage(page)
             }
             let found = try await api.collection(handle, filters: applied, sortKey: sort.key, reverse: sort.reverse, after: after)
             guard let collection = found else { throw NotFound(what: "Collection") }
             self?.title = collection.title
-            return ProductPage(collection.products, filters: collection.filters)
+            return ProductPage(collection.products)
         }
     }
 }

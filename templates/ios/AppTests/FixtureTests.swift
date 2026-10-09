@@ -132,7 +132,7 @@ final class FixtureTests: XCTestCase {
     @MainActor
     func testProducts() async throws {
         let server = StubServer()
-        let cards = try await server.storefront().products(ids: ["gid://shopify/Product/1"])
+        let cards = try await server.storefront().productsByIds(["gid://shopify/Product/1"])
         XCTAssertEqual(cards, [])
         XCTAssertEqual(server.calls.first?.variables["ids"] as? [String], ["gid://shopify/Product/1"])
     }
@@ -150,7 +150,7 @@ final class FixtureTests: XCTestCase {
         XCTAssertEqual(collection.title, "Men")
         XCTAssertFalse(collection.description.isEmpty)
         XCTAssertNotNil(collection.image)
-        XCTAssertEqual(collection.filters, [])
+        XCTAssertEqual(collection.products.filters, [])
         XCTAssertEqual(collection.products.items.count, 3)
         XCTAssertTrue(collection.products.hasNextPage)
         XCTAssertEqual(collection.products.endCursor, "eyJjIjoicG9zaXRpb24iLCJ2Ijo0LCJpIjo4MjYwfQ")
@@ -169,10 +169,9 @@ final class FixtureTests: XCTestCase {
     @MainActor
     func testSearch() async throws {
         let results = try await StubServer().storefront().search("shirt")
-        XCTAssertEqual(results.totalCount, 4)
         XCTAssertEqual(results.products.map { $0.handle }, ["men-t-shirt", "women-t-shirt", "half-zip"])
         XCTAssertEqual(results.filters, [])
-        XCTAssertFalse(results.results.hasNextPage)
+        XCTAssertFalse(results.hasNextPage)
     }
 
     @MainActor
@@ -320,6 +319,7 @@ final class FixtureTests: XCTestCase {
         XCTAssertEqual(cart.discountCodes, [CartDiscountCode(code: "WELCOME10", applicable: false)])
         XCTAssertEqual(cart.buyerIdentity?.countryCode, "CA")
         XCTAssertEqual(cart.deliveryGroups, [])
+        XCTAssertEqual(cart.warnings, [], "warnings come with mutations only")
     }
 
     @MainActor
@@ -329,30 +329,30 @@ final class FixtureTests: XCTestCase {
         let input = server.calls.first?.variables["input"] as? [String: Any]
         let line = (input?["lines"] as? [[String: Any]])?.first
         XCTAssertEqual(line?["merchandiseId"] as? String, "v1")
-        XCTAssertEqual(result.cart.totalQuantity, 1)
-        XCTAssertEqual(result.cart.note, "")
+        XCTAssertEqual(result.totalQuantity, 1)
+        XCTAssertEqual(result.note, "")
         XCTAssertEqual(result.warnings, [])
     }
 
     @MainActor
     func testCartLinesAdd() async throws {
         let result = try await StubServer().storefront().addLines(cartId: Self.cartId, lines: [CartLineInput(merchandiseId: "v1")])
-        XCTAssertEqual(result.cart.totalQuantity, 2)
-        XCTAssertEqual(result.cart.lines.first?.quantity, 2)
+        XCTAssertEqual(result.totalQuantity, 2)
+        XCTAssertEqual(result.lines.first?.quantity, 2)
     }
 
     @MainActor
     func testCartLinesUpdate() async throws {
         let line = CartLineUpdateInput(id: "gid://shopify/CartLine/49959", quantity: 3)
         let result = try await StubServer().storefront().updateLines(cartId: Self.cartId, lines: [line])
-        XCTAssertEqual(result.cart.lines.first?.quantity, 3)
+        XCTAssertEqual(result.lines.first?.quantity, 3)
     }
 
     @MainActor
     func testCartLinesRemove() async throws {
         let result = try await StubServer().storefront().removeLines(cartId: Self.cartId, lineIds: ["gid://shopify/CartLine/49959"])
-        XCTAssertEqual(result.cart.lines, [])
-        XCTAssertEqual(result.cart.totalQuantity, 0)
+        XCTAssertEqual(result.lines, [])
+        XCTAssertEqual(result.totalQuantity, 0)
         XCTAssertEqual(result.warnings.map { $0.code }, ["DISCOUNT_NOT_FOUND"], "warnings come back with the cart")
     }
 
@@ -362,42 +362,42 @@ final class FixtureTests: XCTestCase {
             cartId: Self.cartId,
             buyerIdentity: CartBuyerIdentityInput(customerAccessToken: "tok")
         )
-        XCTAssertEqual(result.cart.buyerIdentity?.countryCode, "CA")
+        XCTAssertEqual(result.buyerIdentity?.countryCode, "CA")
         XCTAssertEqual(result.warnings.count, 1)
     }
 
     @MainActor
     func testCartDiscountCodesUpdate() async throws {
         let result = try await StubServer().storefront().updateDiscountCodes(cartId: Self.cartId, codes: ["WELCOME10"])
-        XCTAssertEqual(result.cart.discountCodes.map { $0.code }, ["WELCOME10"])
+        XCTAssertEqual(result.discountCodes.map { $0.code }, ["WELCOME10"])
         XCTAssertEqual(result.warnings.first?.message, "Enter a valid discount code")
     }
 
     @MainActor
     func testCartGiftCardCodesAdd() async throws {
         let result = try await StubServer().storefront().addGiftCards(cartId: Self.cartId, codes: ["GIFT"])
-        XCTAssertEqual(result.cart.giftCards, [])
+        XCTAssertEqual(result.giftCards, [])
         XCTAssertEqual(result.warnings.first?.target, Self.cartId)
     }
 
     @MainActor
     func testCartGiftCardCodesRemove() async throws {
         let result = try await StubServer().storefront().removeGiftCards(cartId: Self.cartId, ids: ["gid://shopify/AppliedGiftCard/1"])
-        XCTAssertEqual(result.cart.giftCards, [])
-        XCTAssertEqual(result.cart.id, Self.cartId)
+        XCTAssertEqual(result.giftCards, [])
+        XCTAssertEqual(result.id, Self.cartId)
     }
 
     @MainActor
     func testCartNoteUpdate() async throws {
         let result = try await StubServer().storefront().updateNote(cartId: Self.cartId, note: "Gift wrap, please")
-        XCTAssertEqual(result.cart.note, "Gift wrap, please")
+        XCTAssertEqual(result.note, "Gift wrap, please")
     }
 
     @MainActor
     func testCartAttributesUpdate() async throws {
         let server = StubServer()
         let result = try await server.storefront().updateAttributes(cartId: Self.cartId, attributes: [CartAttribute(key: "source", value: "app")])
-        XCTAssertEqual(result.cart.attributes, [CartAttribute(key: "source", value: "app")])
+        XCTAssertEqual(result.attributes, [CartAttribute(key: "source", value: "app")])
         let sent = server.calls.first?.variables["attributes"] as? [[String: String]]
         XCTAssertEqual(sent, [["key": "source", "value": "app"]])
     }
@@ -411,7 +411,7 @@ final class FixtureTests: XCTestCase {
         let deliveryAddress = (sent?["address"] as? [String: Any])?["deliveryAddress"] as? [String: Any]
         XCTAssertEqual(deliveryAddress?["city"] as? String, "Ottawa")
         XCTAssertEqual(sent?["selected"] as? Bool, true)
-        let added = try XCTUnwrap(result.cart.deliveryAddresses.first)
+        let added = try XCTUnwrap(result.deliveryAddresses.first)
         XCTAssertTrue(added.selected)
         XCTAssertEqual(added.address?.city, "Ottawa")
         XCTAssertNil(added.address?.address2)
@@ -421,7 +421,7 @@ final class FixtureTests: XCTestCase {
     func testCartDeliveryAddressesUpdate() async throws {
         let update = CartSelectableAddressUpdateInput(id: "gid://shopify/CartSelectableAddress/9876543210", address: CartDeliveryAddressInput(address2: "Suite 400"))
         let result = try await StubServer().storefront().updateDeliveryAddresses(cartId: Self.cartId, addresses: [update])
-        XCTAssertEqual(result.cart.deliveryAddresses.first?.address?.address2, "Suite 400")
+        XCTAssertEqual(result.deliveryAddresses.first?.address?.address2, "Suite 400")
     }
 
     @MainActor
@@ -430,14 +430,14 @@ final class FixtureTests: XCTestCase {
             cartId: Self.cartId,
             addressIds: ["gid://shopify/CartSelectableAddress/9876543210"]
         )
-        XCTAssertEqual(result.cart.deliveryAddresses, [])
+        XCTAssertEqual(result.deliveryAddresses, [])
     }
 
     @MainActor
     func testCartSelectedDeliveryOptionsUpdate() async throws {
         let option = CartSelectedDeliveryOptionInput(deliveryGroupId: "gid://shopify/CartDeliveryGroup/1", deliveryOptionHandle: "e5f6a7b8-express")
         let result = try await StubServer().storefront().selectDeliveryOptions(cartId: Self.cartId, options: [option])
-        let group = try XCTUnwrap(result.cart.deliveryGroups.first)
+        let group = try XCTUnwrap(result.deliveryGroups.first)
         XCTAssertEqual(group.selectedDeliveryOption?.handle, "a1b2c3d4-standard")
         XCTAssertEqual(group.deliveryOptions.map { $0.title }, ["Standard", "Express"])
         XCTAssertEqual(group.deliveryOptions.last?.estimatedCost, Money(amount: "25.0", currencyCode: "CAD"))
@@ -538,7 +538,7 @@ final class FixtureTests: XCTestCase {
     @MainActor
     func testCustomerAddressDeleteThrowsItsUserErrors() async throws {
         let failed = await thrownError { try await StubServer().customerAccount().deleteAddress("gid://shopify/CustomerAddress/8000001") }
-        guard case let .userErrors(errors)? = failed as? ArgonAPIError else { return XCTFail("expected userErrors, got \(String(describing: failed))") }
+        guard case let .userErrors(errors, cart)? = failed as? ArgonAPIError else { return XCTFail("expected userErrors, got \(String(describing: failed))") }
         XCTAssertEqual(errors, [
             UserError(
                 field: ["addressId"],
@@ -546,6 +546,7 @@ final class FixtureTests: XCTestCase {
                 message: "Customer's default address cannot be deleted."
             ),
         ])
+        XCTAssertNil(cart)
         XCTAssertEqual(failed?.localizedDescription, "Customer's default address cannot be deleted.")
     }
 

@@ -5,7 +5,7 @@ private let maxNodes = 250 // `nodes(ids:)` takes at most this many ids per requ
 
 @MainActor
 private func fetchCards(_ ids: [String]) async throws -> [ProductCard] {
-    try await AppGraph.storefront.products(ids: ids)
+    try await AppGraph.storefront.productsByIds(ids)
 }
 
 /// The product cards behind the wishlist ids. Cards are fetched once per id and kept, so hearting or un-hearting

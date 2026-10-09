@@ -49,6 +49,12 @@ final class StorefrontContextTests: XCTestCase {
             XCTAssertEqual(call.variables["country"] as? String, "CA", call.name)
             XCTAssertEqual(call.variables["language"] as? String, "FR", call.name)
         }
+
+        // the shop's countries and languages, to pick a context from, are asked for without one
+        _ = try await api.localization()
+        XCTAssertEqual(server.names.last, "Localization")
+        XCTAssertNil(server.calls.last?.variables["country"])
+        XCTAssertNil(server.calls.last?.variables["language"])
     }
 
     @MainActor
@@ -123,7 +129,8 @@ final class APIErrorTests: XCTestCase {
         let payload: [String: Any] = ["cart": NSNull(), "userErrors": userErrors, "warnings": [Any]()]
         let body = try responseBody(["cartLinesAdd": payload])
         let error = await failure(body) { try await $0.addLines(cartId: "c", lines: [CartLineInput(merchandiseId: "bad")]) }
-        guard case let .userErrors(errors)? = error else { return XCTFail("\(String(describing: error))") }
+        guard case let .userErrors(errors, cart)? = error else { return XCTFail("\(String(describing: error))") }
+        XCTAssertNil(cart, "none came back")
         XCTAssertEqual(errors, [UserError(field: ["lines", "0", "merchandiseId"], code: "INVALID", message: "The merchandise does not exist")])
         XCTAssertEqual(error?.localizedDescription, "The merchandise does not exist")
     }
@@ -135,17 +142,29 @@ final class APIErrorTests: XCTestCase {
         payload["userErrors"] = userErrors
         let refused = try responseBody(["cartDiscountCodesUpdate": payload])
         let error = await failure(refused) { try await $0.updateDiscountCodes(cartId: "c", codes: []) }
-        guard case let .userErrors(errors)? = error else { return XCTFail("a user error is thrown even beside a cart") }
+        guard case let .userErrors(errors, cart)? = error else { return XCTFail("a user error is thrown even beside a cart") }
         XCTAssertNil(errors.first?.code, "the code may be null")
+        XCTAssertEqual(cart?.totalQuantity, 3, "the cart that came back beside the errors comes with them")
+        XCTAssertEqual(cart?.warnings.count, 1)
 
-        let result = try await StubServer().storefront().updateDiscountCodes(cartId: "c", codes: ["WELCOME10"])
-        XCTAssertEqual(result.warnings, [
+        let cart = try await StubServer().storefront().updateDiscountCodes(cartId: "c", codes: ["WELCOME10"])
+        XCTAssertEqual(cart.warnings, [
             CartWarning(
                 code: "DISCOUNT_NOT_FOUND",
                 message: "Enter a valid discount code",
                 target: "gid://shopify/Cart/c1-7469366f149b403dafd17bc5a9dab879?key=9c19aa7d7298298cf1b25c5af5542807"
             ),
         ])
+    }
+
+    @MainActor
+    func testAMutationAnsweredWithNeitherCartNorErrorsSaysTheCartIsUnavailable() async throws {
+        let payload: [String: Any] = ["cart": NSNull(), "userErrors": [Any](), "warnings": [Any]()]
+        let body = try responseBody(["cartNoteUpdate": payload])
+        let error = await failure(body) { try await $0.updateNote(cartId: "c", note: "") }
+        guard case let .userErrors(errors, cart)? = error else { return XCTFail("\(String(describing: error))") }
+        XCTAssertEqual(errors.map { $0.message }, ["The cart is unavailable"])
+        XCTAssertNil(cart)
     }
 }
 
@@ -191,6 +210,14 @@ final class PageTests: XCTestCase {
         XCTAssertEqual(page, Page(items: [StorePage(id: "1", handle: "a", title: "A")], endCursor: "c2", hasNextPage: true))
         let last = try decoded([String: Page<StorePage>].self, #"{"p":{"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[]}}"#)["p"]
         XCTAssertEqual(last, Page(items: [], endCursor: nil, hasNextPage: false))
+    }
+
+    func testCollectionAndSearchFacetsComeWithThePage() throws {
+        let filter = #"{"id":"f","label":"Color","type":"LIST","values":[{"id":"v","label":"Red","count":2,"input":"{\"available\":true}"}]}"#
+        let products = try decoded(Page<ProductCard>.self, #"{"filters":["# + filter + #"],"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[]}"#)
+        let search = try decoded(Page<Node>.self, #"{"productFilters":["# + filter + #"],"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[]}"#)
+        XCTAssertEqual(products.filters.first?.values.first?.input, #"{"available":true}"#)
+        XCTAssertEqual(search.filters, products.filters)
     }
 }
 
@@ -264,7 +291,7 @@ final class PolymorphicDecodingTests: XCTestCase {
           {"__typename":"Collection"}]}}}
         """
         let results = try await StubServer(reply: { _, _ in body }).storefront().search("a", types: ["PRODUCT", "PAGE", "ARTICLE"])
-        let kinds: [String] = results.results.items.map { node in
+        let kinds: [String] = results.items.map { node in
             switch node {
             case .product: return "product"
             case .page: return "page"
@@ -281,7 +308,7 @@ final class PolymorphicDecodingTests: XCTestCase {
     func testNodesKeepOnlyTheProductsThatCameBack() async throws {
         let body = #"{"data":{"nodes":[null,{"__typename":"Collection"},"# + card + "]}}"
         let server = StubServer(reply: { _, _ in body })
-        let cards = try await server.storefront().products(ids: ["gone", "c", "p1"])
+        let cards = try await server.storefront().productsByIds(["gone", "c", "p1"])
         XCTAssertEqual(cards.map { $0.id }, ["p1"])
     }
 

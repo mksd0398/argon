@@ -80,7 +80,7 @@ final class CustomerAccountAPI {
     /// Runs mutation `name`: its user errors are thrown, its one result field returned.
     private func mutate<Value: Decodable>(_ name: String, _ variables: [String: Any] = [:]) async throws -> Value {
         let payload: MutationPayload<Value> = try await fetchField(transport, name, variables, root: payloadField(name))
-        if !payload.userErrors.isEmpty { throw ArgonAPIError.userErrors(payload.userErrors) }
+        if !payload.userErrors.isEmpty { throw ArgonAPIError.userErrors(payload.userErrors, cart: nil) }
         guard let value = payload.value else { throw ArgonAPIError.decoding(operation: name, detail: "result missing") }
         return value
     }

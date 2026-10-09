@@ -24,20 +24,26 @@ struct Img: Decodable, Equatable, Sendable {
     }
 }
 
-/// One page of a list. Pass `endCursor` as `after` to get the next one while `hasNextPage`.
+/// One page of a list. Pass `endCursor` as `after` to get the next one while `hasNextPage`. `filters` are the facets a
+/// collection's products or search results offer (empty for other lists).
 struct Page<T> {
     let items: [T]
     let endCursor: String?
     let hasNextPage: Bool
+    var filters: [Filter] = []
 }
 
 extension Page: Equatable where T: Equatable {}
 
 extension Page: Sendable where T: Sendable {}
 
+extension Page where T == Node {
+    /// The products among the results.
+    var products: [ProductCard] { items.compactMap { $0.productCard } }
+}
+
 private enum PageKeys: String, CodingKey {
-    case pageInfo
-    case nodes
+    case pageInfo, nodes, filters, productFilters
 }
 
 private struct PageInfo: Decodable {
@@ -45,12 +51,19 @@ private struct PageInfo: Decodable {
     let endCursor: String?
 }
 
-/// A connection: `{ pageInfo { hasNextPage endCursor } nodes }`.
+/// A connection: `{ pageInfo { hasNextPage endCursor } nodes }`, with `filters` (collection products) or `productFilters`
+/// (search) when it has them.
 extension Page: Decodable where T: Decodable {
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: PageKeys.self)
         let info = try c.decode(PageInfo.self, forKey: .pageInfo)
-        try self.init(items: c.decode([T].self, forKey: .nodes), endCursor: info.endCursor, hasNextPage: info.hasNextPage)
+        let filters = try c.decodeIfPresent([Filter].self, forKey: .filters) ?? c.decodeIfPresent([Filter].self, forKey: .productFilters)
+        try self.init(
+            items: c.decode([T].self, forKey: .nodes),
+            endCursor: info.endCursor,
+            hasNextPage: info.hasNextPage,
+            filters: filters ?? []
+        )
     }
 }
 
@@ -420,40 +433,15 @@ struct Filter: Decodable, Equatable, Sendable {
     let values: [FilterValue]
 }
 
-/// The Collection query's collection, with one page of its products and the filters they offer.
-struct ProductCollection: Equatable, Sendable {
+/// The Collection query's collection, with one page of its products (and the filters they offer, `products.filters`).
+struct ProductCollection: Decodable, Equatable, Sendable {
     let id: String
     let handle: String
     let title: String
     let description: String
     let seo: SEO?
     let image: Img?
-    let filters: [Filter]
     let products: Page<ProductCard>
-}
-
-extension ProductCollection: Decodable {
-    private enum CodingKeys: String, CodingKey {
-        case id, handle, title, description, seo, image, products
-    }
-
-    private struct Filters: Decodable {
-        let filters: [Filter]
-    }
-
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        try self.init(
-            id: c.decode(String.self, forKey: .id),
-            handle: c.decode(String.self, forKey: .handle),
-            title: c.decode(String.self, forKey: .title),
-            description: c.decodeIfPresent(String.self, forKey: .description) ?? "",
-            seo: c.decodeIfPresent(SEO.self, forKey: .seo),
-            image: c.decodeIfPresent(Img.self, forKey: .image),
-            filters: c.decode(Filters.self, forKey: .products).filters,
-            products: c.decode(Page<ProductCard>.self, forKey: .products)
-        )
-    }
 }
 
 /// An online store page. `body`, `bodySummary`, `seo` and `updatedAt` are nil where the query doesn't select them.
@@ -608,30 +596,6 @@ extension Node: Decodable {
         case "Metaobject": self = try .metaobject(Metaobject(from: decoder))
         default: self = .other(typename)
         }
-    }
-}
-
-/// The Search query's results: one page of matches (products unless other `types` were asked for) and the product filters.
-struct SearchResults: Equatable, Sendable {
-    let totalCount: Int
-    let filters: [Filter]
-    let results: Page<Node>
-
-    var products: [ProductCard] { results.items.compactMap { $0.productCard } }
-}
-
-extension SearchResults: Decodable {
-    private enum CodingKeys: String, CodingKey {
-        case totalCount, productFilters
-    }
-
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        try self.init(
-            totalCount: c.decode(Int.self, forKey: .totalCount),
-            filters: c.decodeIfPresent([Filter].self, forKey: .productFilters) ?? [],
-            results: Page<Node>(from: decoder)
-        )
     }
 }
 

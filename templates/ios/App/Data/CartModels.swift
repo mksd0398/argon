@@ -95,6 +95,8 @@ struct Cart: Equatable, Sendable {
     var deliveryAddresses: [CartSelectableAddress] = []
     /// Shipping options per delivery group: the Cart query and CartSelectedDeliveryOptionsUpdate only.
     var deliveryGroups: [CartDeliveryGroup] = []
+    /// What Shopify changed or couldn't apply in the mutation that returned this cart (empty from the Cart query).
+    var warnings: [CartWarning] = []
 }
 
 extension Cart: Decodable {
@@ -227,12 +229,6 @@ struct CartWarning: Decodable, Equatable, Sendable {
     let code: String
     let message: String
     let target: String
-}
-
-/// A cart mutation's result: the cart, and the warnings that came with it.
-struct CartResult: Equatable, Sendable {
-    let cart: Cart
-    let warnings: [CartWarning]
 }
 
 // MARK: - Inputs

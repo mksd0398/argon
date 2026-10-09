@@ -5,13 +5,14 @@ private let apiLog = Logger(subsystem: "app.storefront", category: "API")
 
 /// Why an API call failed. `network`: no answer (offline, timed out, cancelled). `http`: the server answered with a non-2xx
 /// status. `graphql`: the server refused the operation (a 200 carrying an `errors` array). `userErrors`: a mutation refused
-/// the change, in Shopify's words, meant for the shopper. `decoding`: the response doesn't have the shape the operation's
-/// document asks for (`detail` says where; it is logged too).
+/// the change, in Shopify's words, meant for the shopper; a cart mutation also carries the cart that came back beside them
+/// (nil when none did: the cart is gone, or the change was refused outright). `decoding`: the response doesn't have the
+/// shape the operation's document asks for (`detail` says where; it is logged too).
 enum ArgonAPIError: LocalizedError {
     case network(URLError)
     case http(status: Int)
     case graphql(messages: [String])
-    case userErrors([UserError])
+    case userErrors([UserError], cart: Cart? = nil)
     case decoding(operation: String, detail: String)
 
     var errorDescription: String? {
@@ -19,7 +20,7 @@ enum ArgonAPIError: LocalizedError {
         case let .network(error): return error.localizedDescription
         case let .http(status): return "HTTP \(status)"
         case let .graphql(messages): return messages.joined(separator: "\n")
-        case let .userErrors(errors): return errors.map { $0.message }.joined(separator: "\n")
+        case let .userErrors(errors, _): return errors.map { $0.message }.joined(separator: "\n")
         case .decoding: return "Invalid response"
         }
     }

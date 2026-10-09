@@ -6,7 +6,7 @@ private func loadHome() async throws -> [Section] {
     let api = AppGraph.storefront
     return try await homeSections(
         brand,
-        home: { try await api.homeScreen("home") },
+        home: { try await api.homeScreen() },
         fallback: { try await api.fallbackHome() }
     )
 }
