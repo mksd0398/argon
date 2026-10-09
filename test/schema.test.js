@@ -31,10 +31,10 @@ test("every document validates against its API's 2026-10 schema and selects no d
 
 test("every Storefront operation takes $country and $language and runs @inContext with them", () => {
   for (const { name, op } of docs.filter((d) => !d.customer)) {
-    const vars = Object.fromEntries(op.variableDefinitions.map((v) => [v.variable.name.value, print(v.type)]));
+    const vars = Object.fromEntries((op.variableDefinitions ?? []).map((v) => [v.variable.name.value, print(v.type)]));
     assert.equal(vars.country, "CountryCode", name);
     assert.equal(vars.language, "LanguageCode", name);
-    assert.deepEqual(op.directives.map(print), ["@inContext(country: $country, language: $language)"], name);
+    assert.deepEqual((op.directives ?? []).map(print), ["@inContext(country: $country, language: $language)"], name);
   }
 });
 
