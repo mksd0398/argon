@@ -147,8 +147,8 @@ final class APIErrorTests: XCTestCase {
         XCTAssertEqual(cart?.totalQuantity, 3, "the cart that came back beside the errors comes with them")
         XCTAssertEqual(cart?.warnings.count, 1)
 
-        let cart = try await StubServer().storefront().updateDiscountCodes(cartId: "c", codes: ["WELCOME10"])
-        XCTAssertEqual(cart.warnings, [
+        let updated = try await StubServer().storefront().updateDiscountCodes(cartId: "c", codes: ["WELCOME10"])
+        XCTAssertEqual(updated.warnings, [
             CartWarning(
                 code: "DISCOUNT_NOT_FOUND",
                 message: "Enter a valid discount code",
