@@ -1,8 +1,9 @@
 package app.storefront.ui
 
+import app.storefront.data.ArgonApiError
 import app.storefront.data.Money
+import app.storefront.data.PriceRange
 import app.storefront.data.ProductCard
-import app.storefront.data.StorefrontException
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -11,7 +12,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class WishlistModelTest {
-    private fun card(id: String) = ProductCard(id, "h-$id", "T-$id", true, null, Money("1.00", "USD"), null)
+    private fun card(id: String) = ProductCard(id, "h-$id", "T-$id", true, null, PriceRange(Money("1.00", "USD")))
 
     @Test
     fun cardsFollowTheWishlistOrderNotTheOrderTheStoreAnswers() = runBlocking {
@@ -36,7 +37,7 @@ class WishlistModelTest {
     @Test
     fun aFailureShowsItsMessageUntilARetrySucceeds() = runBlocking {
         var fail = true
-        val m = WishlistModel { ids -> if (fail) throw StorefrontException(listOf("HTTP 503"), 503) else ids.map(::card) }
+        val m = WishlistModel { ids -> if (fail) throw ArgonApiError.Http(503) else ids.map(::card) }
         m.sync(listOf("a"))
         assertEquals("HTTP 503", m.error)
         assertTrue(m.pending(listOf("a")))

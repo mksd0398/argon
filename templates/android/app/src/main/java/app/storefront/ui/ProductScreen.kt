@@ -43,29 +43,23 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.text.HtmlCompat
 import androidx.navigation.NavController
 import app.storefront.AppGraph
+import app.storefront.data.MetafieldIdentifier
 import app.storefront.data.Product
-import app.storefront.data.StorefrontException
 import app.storefront.data.Variants
-import app.storefront.data.obj
-import app.storefront.data.parseProduct
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 
 /**
  * `PDP_METAFIELDS` ("custom.material, custom.care") as the Storefront `metafields` identifiers. Each entry splits on its
  * first dot; blank entries and ones without a namespace and a key are skipped.
  */
-internal fun metafieldIdentifiers(config: String): JsonArray = JsonArray(
+internal fun metafieldIdentifiers(config: String): List<MetafieldIdentifier> =
     config.split(",").map { it.trim() }.mapNotNull { entry ->
         val namespace = entry.substringBefore(".", "")
         val key = entry.substringAfter(".", "")
-        if (namespace.isEmpty() || key.isEmpty()) null else buildJsonObject { put("namespace", namespace); put("key", key) }
-    },
-)
+        if (namespace.isEmpty() || key.isEmpty()) null else MetafieldIdentifier(namespace, key)
+    }
 
 /** The options of the first available variant, else of the first variant (a sold-out product still shows its options). */
 internal fun initialSelection(product: Product): Map<String, String> =
@@ -75,11 +69,7 @@ private suspend fun loadProduct(handle: String): Product {
     // ponytail: the Product query loads variants(first: 250), the Storefront API's page ceiling: a product with more
     // variants shows "Unavailable" for the combinations that didn't load. Upgrade: paginate the variants, or query
     // variantBySelectedOptions for each selection.
-    val data = AppGraph.storefront.query(
-        "Product",
-        buildJsonObject { put("handle", handle); put("metafields", metafieldIdentifiers(AppGraph.pdpMetafields)) },
-    )
-    return parseProduct(data.obj("product") ?: throw StorefrontException(listOf("Product not found"), null))
+    return AppGraph.storefront.product(handle, metafields = metafieldIdentifiers(AppGraph.pdpMetafields)) ?: error("Product not found")
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -134,11 +124,12 @@ private fun ProductContent(product: Product, snackbar: SnackbarHostState) {
             }
 
             // a product without options still has Shopify's one "Title: Default Title" option; nothing to choose there
-            for ((name, values) in product.options.filterNot { it.first == "Title" && it.second == listOf("Default Title") }) {
+            for (option in product.options.filterNot { it.name == "Title" && it.values == listOf("Default Title") }) {
+                val name = option.name
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(name, style = MaterialTheme.typography.labelLarge)
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        for (value in values) {
+                        for (value in option.values) {
                             FilterChip(selected = selection[name] == value, onClick = { selection = selection + (name to value) }, label = { Text(value) })
                         }
                     }
@@ -184,14 +175,14 @@ private fun ProductContent(product: Product, snackbar: SnackbarHostState) {
                 HorizontalDivider()
                 Text("Details", style = MaterialTheme.typography.titleMedium)
                 // ponytail: values are shown as the store sends them (a rich-text or JSON metafield shows its raw text)
-                for ((_, key, value) in product.metafields) {
+                for (metafield in product.metafields) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         Text(
-                            key.replace('_', ' ').replaceFirstChar { it.uppercase() },
+                            metafield.key.replace('_', ' ').replaceFirstChar { it.uppercase() },
                             Modifier.weight(1f),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        Text(value, Modifier.weight(2f))
+                        Text(metafield.value, Modifier.weight(2f))
                     }
                 }
             }

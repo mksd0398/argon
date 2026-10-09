@@ -3,7 +3,7 @@ package app.storefront.auth
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
-import app.storefront.data.StorefrontException
+import app.storefront.data.ArgonApiError
 import java.io.File
 import java.io.IOException
 import java.util.Base64
@@ -330,7 +330,7 @@ class AuthStoreTest {
         val s = store().signedInStore()
         graphqlReply = { 401 to "" }
         tokenReply = { 200 to tokens("a2", "r2") }
-        assertThrows(StorefrontException::class.java) { runBlocking { s.customerQuery("Customer", JsonObject(emptyMap())) } }
+        assertEquals(401, assertThrows(ArgonApiError.Http::class.java) { runBlocking { s.customerQuery("Customer", JsonObject(emptyMap())) } }.status)
         assertFalse(s.signedIn.value)
     }
 

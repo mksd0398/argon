@@ -26,18 +26,11 @@ import androidx.navigation.NavController
 import app.storefront.AppGraph
 import app.storefront.data.ProductCard
 import app.storefront.data.Route
-import app.storefront.data.cards
-import app.storefront.data.objects
 import kotlinx.coroutines.CancellationException
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 
 private const val MAX_NODES = 250 // `nodes(ids:)` takes at most this many ids per request
 
-private suspend fun fetchCards(ids: List<String>): List<ProductCard> =
-    AppGraph.storefront.query("Products", buildJsonObject { put("ids", JsonArray(ids.map(::JsonPrimitive))) }).objects("nodes").cards()
+private suspend fun fetchCards(ids: List<String>): List<ProductCard> = AppGraph.storefront.productsByIds(ids)
 
 /**
  * The product cards behind the wishlist ids. Cards are fetched once per id and kept, so hearting or un-hearting

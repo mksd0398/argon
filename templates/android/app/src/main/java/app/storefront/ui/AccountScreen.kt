@@ -41,16 +41,16 @@ import app.argon.ui.components.ArgonListTrailing
 import app.storefront.AppGraph
 import app.storefront.BuildConfig
 import app.storefront.data.Customer
+import app.storefront.data.OrderSummary
 import app.storefront.data.Route
-import app.storefront.data.obj
-import app.storefront.data.parseCustomer
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.JsonObject
 
 /** "Oct 1, 2026" in the device's zone and locale. */
 internal fun displayDate(iso: String): String = runCatching {
@@ -92,8 +92,13 @@ fun AccountScreen(nav: NavController) {
     }
 }
 
-private suspend fun loadCustomer() =
-    parseCustomer(AppGraph.auth.customerQuery("Customer", JsonObject(emptyMap())).obj("customer") ?: error("Account not found"))
+private class Account(val customer: Customer, val orders: List<OrderSummary>)
+
+/** The profile and the newest orders, fetched side by side. */
+private suspend fun loadCustomer() = coroutineScope {
+    val orders = async { AppGraph.customerAccount.orders().items }
+    Account(AppGraph.customerAccount.customer(), orders.await())
+}
 
 @Composable
 private fun Centered(content: @Composable () -> Unit) = Column(
@@ -139,7 +144,8 @@ private fun SignedOut() {
 }
 
 @Composable
-private fun CustomerContent(customer: Customer, nav: NavController) {
+private fun CustomerContent(account: Account, nav: NavController) {
+    val customer = account.customer
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 16.dp)) {
         item {
             Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
@@ -147,9 +153,9 @@ private fun CustomerContent(customer: Customer, nav: NavController) {
                 customer.email?.let { Text(it, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
             Text("Orders", Modifier.padding(16.dp, 8.dp), style = MaterialTheme.typography.titleMedium)
-            if (customer.orders.isEmpty()) Text("No orders yet", Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (account.orders.isEmpty()) Text("No orders yet", Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        items(customer.orders, key = { it.id }) { order ->
+        items(account.orders, key = { it.id }) { order ->
             Row(
                 Modifier.fillMaxWidth().clickable { nav.navigate("order/${Uri.encode(order.id)}") }.padding(16.dp, 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,

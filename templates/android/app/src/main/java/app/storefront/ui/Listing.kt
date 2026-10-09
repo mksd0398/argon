@@ -14,20 +14,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.storefront.data.Filter
+import app.storefront.data.Page
 import app.storefront.data.ProductCard
-import app.storefront.data.ProductPage
 import app.storefront.data.Route
-import app.storefront.data.StorefrontException
-import app.storefront.data.obj
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 
 /** A sort menu entry: [key] is the Storefront sort-key enum value, [reverse] flips it. */
 data class Sort(val label: String, val key: String, val reverse: Boolean = false)
@@ -53,30 +46,15 @@ val SEARCH_SORTS = listOf(
     Sort("Price: high to low", "PRICE", reverse = true),
 )
 
-private const val PAGE_SIZE = 24
-
-/** The object under [key], or a StorefrontException when the response doesn't have it. */
-internal fun JsonObject.connection(key: String) = obj(key) ?: throw StorefrontException(listOf("Invalid response"), null)
-
-/** Variables shared by the Collection, Catalog and Search queries; [applied] are filter `input` JSON strings. */
-internal fun listingVars(after: String?, sort: Sort, applied: List<String>, extra: Map<String, String> = emptyMap()): JsonObject =
-    buildJsonObject {
-        for ((name, value) in extra) put(name, value)
-        put("first", PAGE_SIZE)
-        put("after", after)
-        put("sortKey", sort.key)
-        put("reverse", sort.reverse)
-        if (applied.isNotEmpty()) put("filters", JsonArray(applied.map { Json.parseToJsonElement(it) }))
-    }
-
 /**
  * A cursor-paged product list with a sort and filter selection (collection or search results). Plain observable state,
- * so the owning ViewModel keeps it across navigation. [fetch] loads the page after a cursor (null for the first page).
+ * so the owning ViewModel keeps it across navigation. [fetch] loads the page after a cursor (null for the first page);
+ * [applied] are the selected filter values' `input` JSON.
  */
 class Listing(
     private val scope: CoroutineScope,
     val sorts: List<Sort>,
-    private val fetch: suspend (after: String?, sort: Sort, applied: List<String>) -> ProductPage,
+    private val fetch: suspend (after: String?, sort: Sort, applied: List<String>) -> Page<ProductCard>,
 ) {
     var sort by mutableStateOf(sorts.first()); private set
     var applied by mutableStateOf(emptyList<String>()); private set
@@ -121,7 +99,7 @@ class Listing(
                 val page = fetch(cursor, sort, applied)
                 items = (items + page.items).distinctBy { it.id } // a catalog that changes between pages can repeat a product
                 cursor = page.endCursor
-                hasNext = page.hasNext && page.endCursor != null // without a cursor "more" can only repeat the first page
+                hasNext = page.hasNextPage && page.endCursor != null // without a cursor "more" can only repeat the first page
                 pagesLoaded++
                 // a filtered first page that comes back without filters keeps the old ones, so the user can still clear them
                 if (first && page.filters.isNotEmpty()) filters = page.filters

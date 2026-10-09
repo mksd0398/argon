@@ -30,11 +30,7 @@ import app.storefront.AppGraph
 import app.storefront.data.Money
 import app.storefront.data.Order
 import app.storefront.data.OrderLine
-import app.storefront.data.obj
-import app.storefront.data.parseOrder
 import coil3.compose.AsyncImage
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 
 /** "Fulfilled", "Unfulfilled", or each fulfillment's status. */
 private fun fulfillment(statuses: List<String>) =
@@ -45,9 +41,7 @@ private fun fulfillment(statuses: List<String>) =
 fun OrderScreen(id: String, nav: NavController) {
     Scaffold(topBar = { TopAppBar(title = { Text("Order") }, navigationIcon = { BackButton(nav) }) }) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
-            Loader({
-                parseOrder(AppGraph.auth.customerQuery("Order", buildJsonObject { put("id", id) }).obj("order") ?: error("Order not found"))
-            }) { OrderContent(it) }
+            Loader({ AppGraph.customerAccount.order(id) ?: error("Order not found") }) { OrderContent(it) }
         }
     }
 }
@@ -58,7 +52,11 @@ private fun OrderContent(order: Order) {
         item {
             Text(order.name, style = MaterialTheme.typography.headlineSmall)
             Text(
-                listOfNotNull(displayDate(order.processedAt), order.financialStatus?.let(::displayStatus), fulfillment(order.fulfillments))
+                listOfNotNull(
+                    displayDate(order.processedAt),
+                    order.financialStatus?.let(::displayStatus),
+                    fulfillment(order.fulfillments.mapNotNull { it.status }),
+                )
                     .joinToString(" · "),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

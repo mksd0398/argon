@@ -26,16 +26,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import app.storefront.AppGraph
+import app.storefront.data.ArgonApiError
 import app.storefront.data.Brand
+import app.storefront.data.CollectionCard
+import app.storefront.data.Metaobject
 import app.storefront.data.Route
 import app.storefront.data.Section
 import app.storefront.data.Sections
-import app.storefront.data.StorefrontException
 import coil3.compose.AsyncImage
 import java.util.logging.Logger
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 
 /**
  * The sections of the `mobile_screen` "home" ([home] runs the HomeScreen query); the fallback home ([fallback] runs
@@ -43,11 +42,14 @@ import kotlinx.serialization.json.put
  * without metaobject access). HTTP and response-shape failures are rethrown: the screen shows an error with Retry
  * instead of caching a degraded home.
  */
-internal suspend fun homeSections(brand: Brand, home: suspend () -> JsonObject, fallback: suspend () -> JsonObject): List<Section> {
+internal suspend fun homeSections(
+    brand: Brand,
+    home: suspend () -> List<Metaobject>,
+    fallback: suspend () -> List<CollectionCard>,
+): List<Section> {
     val sections = try {
         Sections.fromHome(home(), brand.hosts)
-    } catch (e: StorefrontException) {
-        if (!e.isGraphQL) throw e
+    } catch (e: ArgonApiError.GraphQL) {
         // GraphQL messages name fields and permissions, never a token: logged so a merchant can see why the home fell back
         Logger.getLogger("HomeScreen").warning("home screen query refused, showing the fallback home: ${e.messages.joinToString("; ")}")
         emptyList()
@@ -57,11 +59,7 @@ internal suspend fun homeSections(brand: Brand, home: suspend () -> JsonObject, 
 
 private suspend fun loadHome(): List<Section> {
     val api = AppGraph.storefront
-    return homeSections(
-        AppGraph.loadBrand(),
-        home = { api.query("HomeScreen", buildJsonObject { put("handle", "home") }) },
-        fallback = { api.query("FallbackHome") },
-    )
+    return homeSections(AppGraph.loadBrand(), home = { api.homeScreen("home") }, fallback = { api.fallbackHome() })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
