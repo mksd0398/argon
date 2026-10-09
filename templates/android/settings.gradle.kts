@@ -15,4 +15,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "storefront"
-include(":app")
+include(":app", ":ui")

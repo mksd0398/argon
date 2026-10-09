@@ -36,7 +36,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import app.argon.ui.components.ArgonListItem
+import app.argon.ui.components.ArgonListTrailing
 import app.storefront.AppGraph
+import app.storefront.BuildConfig
 import app.storefront.data.Customer
 import app.storefront.data.Route
 import app.storefront.data.obj
@@ -61,22 +64,29 @@ internal fun displayStatus(status: String) = status.lowercase().replace('_', ' '
 @Composable
 fun AccountScreen(nav: NavController) {
     Scaffold(topBar = { TopAppBar(title = { Text("Account") }) }) { padding ->
-        Box(Modifier.padding(padding).fillMaxSize()) {
-            val signedIn by AppGraph.auth.signedIn.collectAsState()
-            when {
-                // the CLI lets a store skip the Customer Account client: no client id, no sign-in
-                AppGraph.customerClientId.isBlank() -> Centered {
-                    Text("Sign-in isn't configured for this store", style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
-                    Text(
-                        "Set CUSTOMER_CLIENT_ID in android/shopify.properties",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                    )
+        Column(Modifier.padding(padding).fillMaxSize()) {
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                val signedIn by AppGraph.auth.signedIn.collectAsState()
+                when {
+                    // the CLI lets a store skip the Customer Account client: no client id, no sign-in
+                    AppGraph.customerClientId.isBlank() -> Centered {
+                        Text("Sign-in isn't configured for this store", style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+                        Text(
+                            "Set CUSTOMER_CLIENT_ID in android/shopify.properties",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                    // not kept: a new order shows on the next visit, and nothing of this customer outlives a sign-out
+                    signedIn -> Loader(::loadCustomer, keep = false) { CustomerContent(it, nav) }
+                    else -> SignedOut()
                 }
-                // not kept: a new order shows on the next visit, and nothing of this customer outlives a sign-out
-                signedIn -> Loader(::loadCustomer, keep = false) { CustomerContent(it, nav) }
-                else -> SignedOut()
+            }
+            // debug builds only: the Argon UI gallery, to review every component on a device
+            if (BuildConfig.DEBUG) {
+                HorizontalDivider()
+                ArgonListItem("Components", trailing = ArgonListTrailing.Chevron, onClick = { nav.navigate("components") })
             }
         }
     }
