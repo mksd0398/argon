@@ -2,7 +2,24 @@
 
 ## Unreleased
 
+### Added
+
+- **A native component library in every app:** 29 components (Accordion to Top bar) with a store-themed palette, Instrument Serif and Hanken Grotesk, and a debug-only gallery at Account → Components.
+  - Android: a Compose `ui` module.
+  - iOS: a local `ArgonUI` Swift package.
+  - Each component uses the platform's own control where one exists and is custom only where none does.
+- **The complete Storefront and Customer Account API, prebuilt and typed** (2026-10).
+  - 52 operations: catalogue, search, menus, pages, blogs, metaobjects, store locations, every cart mutation, and the customer's profile, orders, addresses, email marketing and returns.
+  - Typed facades on both platforms: `StorefrontApi`/`StorefrontAPI` and `CustomerAccountApi`/`CustomerAccountAPI`.
+  - Every operation runs with the buyer's country and language.
+- **Contract checks:**
+  - Every document is validated offline against the 2026-10 schemas.
+  - Every operation has a recorded or schema-correct fixture, and both apps' tests decode every fixture.
+
 ### Changed
+
+- Text on the brand colour is black or white, whichever contrasts more (at least 4.58:1 for any colour).
+- The apps decode responses into typed models; the hand-written parsers are gone.
 
 - The Headless channel step is guided:
   - Argon opens the channel in your browser and prints Shopify's exact admin path for each value, including setting the login client type to Public (mobile app).

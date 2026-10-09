@@ -32,6 +32,8 @@ The apps work the way a Liquid theme does. They render whatever the store contai
 - **Login** with the Customer Account API (OAuth 2.0 + PKCE), orders, and the *Delete account* entry both app stores require
 - **A home screen the merchant edits**: an ordered list of metaobject sections ([Content model](#content-model))
 - **Branding** from the store's own colours and logo
+- **A native component library**: 29 themed components on each platform (Compose `ui` module, `ArgonUI` Swift package), with a debug gallery at Account → Components
+- **The full Storefront and Customer Account API, prebuilt**: 52 typed operations behind `StorefrontApi` and `CustomerAccountApi` (same names on iOS), checked against Shopify's 2026-10 schemas
 - **One Shopify SDK**: Checkout Kit. A hand-written GraphQL client, no Mobile Buy SDK, no Apollo, no DI framework
 - **`AGENTS.md`, `CLAUDE.md` and a README** in every generated project, so an AI coding agent follows the same rules with nothing installed
 

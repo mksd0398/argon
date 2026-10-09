@@ -7,9 +7,6 @@ query Customer {
     imageUrl
     emailAddress { emailAddress marketingState }
     phoneNumber { phoneNumber }
-    defaultAddress { ...CustomerAddress }
-    orders(first: 20, reverse: true) {
-      nodes { id name processedAt financialStatus totalPrice { ...Money } }
-    }
+    defaultAddress { ...CustomerAddress }
   }
 }

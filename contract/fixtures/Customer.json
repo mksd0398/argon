@@ -33,30 +33,6 @@
         "Ottawa ON K2P 1L4",
         "Canada"
       ]
-    },
-    "orders": {
-      "nodes": [
-        {
-          "id": "gid://shopify/Order/6000002",
-          "name": "#1002",
-          "processedAt": "2026-10-03T14:20:00Z",
-          "financialStatus": "PAID",
-          "totalPrice": {
-            "amount": "130.0",
-            "currencyCode": "CAD"
-          }
-        },
-        {
-          "id": "gid://shopify/Order/6000001",
-          "name": "#1001",
-          "processedAt": "2026-09-12T09:05:00Z",
-          "financialStatus": "REFUNDED",
-          "totalPrice": {
-            "amount": "70.0",
-            "currencyCode": "CAD"
-          }
-        }
-      ]
     }
   }
 }
