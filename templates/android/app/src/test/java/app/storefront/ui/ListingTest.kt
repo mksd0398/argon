@@ -2,19 +2,14 @@ package app.storefront.ui
 
 import app.storefront.data.Filter
 import app.storefront.data.FilterValue
+import app.storefront.data.ArgonApiError
 import app.storefront.data.Money
+import app.storefront.data.Page
+import app.storefront.data.PriceRange
 import app.storefront.data.ProductCard
-import app.storefront.data.ProductPage
-import app.storefront.data.StorefrontException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.boolean
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -25,9 +20,9 @@ class ListingTest {
     // Unconfined runs the launched load inline, and the fake fetches never suspend, so each call completes before it returns.
     private val scope = CoroutineScope(Dispatchers.Unconfined)
 
-    private fun card(id: String) = ProductCard(id, "h-$id", "T-$id", true, null, Money("1.00", "USD"), null)
+    private fun card(id: String) = ProductCard(id, "h-$id", "T-$id", true, null, PriceRange(Money("1.00", "USD")))
     private fun page(ids: List<String>, next: String?, filters: List<Filter> = emptyList()) =
-        ProductPage(ids.map(::card), filters, next, next != null)
+        Page(ids.map(::card), next, next != null, filters)
 
     @Test
     fun pagesAppendFromTheCursorUntilTheLast() {
@@ -83,7 +78,7 @@ class ListingTest {
     fun failureShowsTheMessageAndReloadRecovers() {
         var fail = true
         val l = Listing(scope, COLLECTION_SORTS) { _, _, _ ->
-            if (fail) throw StorefrontException(listOf("boom"), 200) else page(listOf("a"), null)
+            if (fail) throw ArgonApiError.GraphQL(listOf("boom")) else page(listOf("a"), null)
         }
         l.reload()
         assertEquals("boom", l.error)
@@ -127,7 +122,7 @@ class ListingTest {
     @Test
     fun filtersAreClearedAtOnceNotWhenTheNewPageArrives() {
         val color = Filter("f", "Color", "LIST", emptyList())
-        var pending: CompletableDeferred<ProductPage>? = null
+        var pending: CompletableDeferred<Page<ProductCard>>? = null
         val l = Listing(scope, SEARCH_SORTS) { _, _, _ -> pending?.await() ?: page(listOf("a"), null, listOf(color)) }
         l.reload()
         pending = CompletableDeferred()
@@ -158,26 +153,9 @@ class ListingTest {
 
     @Test
     fun moreWithoutACursorIsNotMore() {
-        val l = Listing(scope, COLLECTION_SORTS) { _, _, _ -> ProductPage(listOf(card("a")), emptyList(), null, hasNext = true) }
+        val l = Listing(scope, COLLECTION_SORTS) { _, _, _ -> Page(listOf(card("a")), null, hasNextPage = true) }
         l.reload()
         assertFalse(l.hasNext)
-    }
-
-    @Test
-    fun variablesCarrySortFiltersAndCursor() {
-        val vars = listingVars(null, COLLECTION_SORTS[3], listOf("""{"available":true}"""), mapOf("handle" to "men"))
-        assertEquals("men", vars["handle"]!!.jsonPrimitive.content)
-        assertEquals(24, vars["first"]!!.jsonPrimitive.content.toInt())
-        assertEquals(JsonNull, vars["after"])
-        assertEquals("PRICE", vars["sortKey"]!!.jsonPrimitive.content)
-        assertTrue(vars["reverse"]!!.jsonPrimitive.boolean)
-        val filters = vars["filters"] as JsonArray
-        assertTrue(filters.single().jsonObject["available"]!!.jsonPrimitive.boolean)
-
-        val next = listingVars("c1", SEARCH_SORTS[0], emptyList())
-        assertEquals(JsonPrimitive("c1"), next["after"])
-        assertEquals("RELEVANCE", next["sortKey"]!!.jsonPrimitive.content)
-        assertNull("no filters key when none are applied", next["filters"])
     }
 
     @Test

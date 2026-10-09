@@ -3,6 +3,7 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 // Per-store config written by the Argon CLI: ASCII with \uXXXX escapes, so java.util.Properties reads it as-is.

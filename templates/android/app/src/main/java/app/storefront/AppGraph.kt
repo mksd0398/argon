@@ -12,11 +12,11 @@ import app.storefront.auth.AuthStore
 import app.storefront.auth.TokenCrypto
 import app.storefront.data.Brand
 import app.storefront.data.CartStore
+import app.storefront.data.CustomerAccountApi
 import app.storefront.data.Storefront
-import app.storefront.data.StorefrontException
+import app.storefront.data.StorefrontApi
 import app.storefront.data.WishlistStore
-import app.storefront.data.obj
-import app.storefront.data.parseBrand
+import app.storefront.data.toBrand
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
@@ -24,6 +24,7 @@ import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import com.shopify.checkoutsheetkit.ColorScheme
 import com.shopify.checkoutsheetkit.Preloading
 import com.shopify.checkoutsheetkit.ShopifyCheckoutSheetKit
+import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
@@ -32,8 +33,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import okhttp3.OkHttpClient
 
 /** Runs before any activity (in a fresh process too), so [AppGraph] is ready everywhere. */
@@ -53,7 +52,7 @@ class StorefrontApp : Application(), SingletonImageLoader.Factory {
             loadDocument = AppGraph::document,
         )
         AppGraph.cart = CartStore(
-            { name, variables -> AppGraph.storefront.query(name, variables) },
+            AppGraph.storefront,
             prefs("cart"),
             accessToken = { AppGraph.auth.validAccessToken() },
         )
@@ -118,21 +117,20 @@ object AppGraph {
     /** The GraphQL document `assets/queries/<name>.graphql` (written by the CLI from contract/queries). */
     fun document(name: String): String = assets.open("queries/$name.graphql").bufferedReader().use { it.readText() }
 
-    val storefront: Storefront by lazy {
-        Storefront(domain = shopDomain, token = storefrontToken, apiVersion = apiVersion, loadDocument = ::document, http = http)
+    /** Every Storefront API call, typed; in the device's country and language where the shop sells in them. */
+    val storefront: StorefrontApi by lazy {
+        val client = Storefront(domain = shopDomain, token = storefrontToken, apiVersion = apiVersion, loadDocument = ::document, http = http)
+        StorefrontApi(client::query, Locale.getDefault())
     }
 
+    /** Every Customer Account API call, typed, as the signed-in customer (the session's token, see [AuthStore]). */
+    val customerAccount: CustomerAccountApi by lazy { CustomerAccountApi(auth::customerQuery) }
+
     private val brandState = MutableStateFlow<Brand?>(null)
-    private val brandLock = Mutex()
 
     /** The loaded brand (null until [loadBrand] succeeds); the theme follows it. */
     val brand: StateFlow<Brand?> = brandState
 
-    /** Shop name, logo, accent and link hosts. Fetched once; a failed fetch is retried by the next caller. */
-    suspend fun loadBrand(): Brand = brandLock.withLock {
-        brandState.value ?: parseBrand(
-            storefront.query("Shop").obj("shop") ?: throw StorefrontException(listOf("Shop not found"), null),
-            shopDomain,
-        ).also { brandState.value = it }
-    }
+    /** Shop name, logo, accent and link hosts. The shop is fetched once; a failed fetch is retried by the next caller. */
+    suspend fun loadBrand(): Brand = brandState.value ?: storefront.shop().toBrand(shopDomain).also { brandState.value = it }
 }

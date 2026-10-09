@@ -39,8 +39,9 @@ class CartStoreTest {
 
     @After fun stop() = scope.cancel()
 
-    private val cartJson = fixture("cart").obj("cart")!!
-    private val cartId = cartJson.string("id")
+    private val cartJson = fixture("Cart").getValue("cart").jsonObject
+    private val cartId = cartJson.getValue("id").jsonPrimitive.content
+    private val guestUrl = cartJson.getValue("checkoutUrl").jsonPrimitive.content
     private val lineId = "gid://shopify/CartLine/34639"
 
     /** What the store asked Shopify, in order: operation name and variables. */
@@ -74,7 +75,7 @@ class CartStoreTest {
         token: String? = null,
         accessToken: suspend () -> String? = { token },
         reply: suspend (String) -> JsonObject = { answer(it) },
-    ) = CartStore({ name, vars -> calls += name to vars; reply(name) }, prefs, accessToken)
+    ) = CartStore(StorefrontApi({ name, vars -> calls += name to vars; reply(name) }), prefs, accessToken)
 
     private val JsonObject.lines get() = getValue("lines").jsonArray.map { it.jsonObject }
 
@@ -144,7 +145,7 @@ class CartStoreTest {
         val s = store(token = null)
         assertNull("no cart, no url", s.checkoutUrl())
         s.add("v1", 1)
-        assertEquals(cartJson.string("checkoutUrl"), s.checkoutUrl())
+        assertEquals(guestUrl, s.checkoutUrl())
         assertEquals(listOf("CartCreate"), names)
     }
 
@@ -156,7 +157,7 @@ class CartStoreTest {
             if (it == "CartBuyerIdentityUpdate") identityReply() else answer(it)
         }
         s.add("v1", 1)
-        val guest = cartJson.string("checkoutUrl")
+        val guest = guestUrl
 
         // the token provider throws: no identity update is tried
         assertEquals(guest, s.checkoutUrl())
@@ -165,16 +166,16 @@ class CartStoreTest {
         // Shopify refuses the token (a userError), then the request itself fails
         tokenFailure = null
         assertEquals(guest, s.checkoutUrl())
-        identityReply = { throw StorefrontException(listOf("Throttled"), 200, isGraphQL = true) }
+        identityReply = { throw ArgonApiError.GraphQL(listOf("Throttled")) }
         assertEquals(guest, s.checkoutUrl())
         assertEquals(listOf("CartCreate", "CartBuyerIdentityUpdate", "CartBuyerIdentityUpdate"), names)
         assertEquals("the cart is kept", cartId, s.cart.value?.id)
     }
 
     @Test
-    fun userErrorsBecomeACartException() = runBlocking {
+    fun userErrorsAreThrown() = runBlocking {
         val s = store { answer(it, cart = if (it == "CartCreate") null else cartJson, "Not enough stock") }
-        val e = assertThrows(CartException::class.java) { runBlocking { s.add("v1", 99) } }
+        val e = assertThrows(ArgonApiError.UserErrors::class.java) { runBlocking { s.add("v1", 99) } }
         assertEquals("Not enough stock", e.message)
         assertNull(s.cart.value)
     }
@@ -183,7 +184,7 @@ class CartStoreTest {
     fun userErrorsOnAnUpdateKeepTheReturnedCart() = runBlocking {
         val s = store { if (it == "CartLinesUpdate") answer(it, cartJson, "Not enough stock") else answer(it) }
         s.add("v1", 1)
-        val e = assertThrows(CartException::class.java) { runBlocking { s.update(lineId, 50) } }
+        val e = assertThrows(ArgonApiError.UserErrors::class.java) { runBlocking { s.update(lineId, 50) } }
         assertEquals("Not enough stock", e.message)
         assertNotNull(s.cart.value)
     }
@@ -213,7 +214,7 @@ class CartStoreTest {
     fun aRefusedAddOnALiveCartKeepsTheCart() = runBlocking {
         val s = store { if (it == "CartLinesAdd") answer(it, cart = null, "The merchandise does not exist") else answer(it) }
         s.add("v1", 1)
-        val e = assertThrows(CartException::class.java) { runBlocking { s.add("bad", 1) } }
+        val e = assertThrows(ArgonApiError.UserErrors::class.java) { runBlocking { s.add("bad", 1) } }
         assertEquals("The merchandise does not exist", e.message)
         // the lookup found the cart, so it was not replaced
         assertEquals(listOf("CartCreate", "CartLinesAdd", "Cart"), names)
@@ -230,7 +231,7 @@ class CartStoreTest {
             }
         }
         s.add("v1", 1)
-        val e = assertThrows(CartException::class.java) { runBlocking { s.update(lineId, 2) } }
+        val e = assertThrows(ArgonApiError.UserErrors::class.java) { runBlocking { s.update(lineId, 2) } }
         assertEquals("The specified cart does not exist", e.message)
         assertNull(s.cart.value)
         assertEquals(listOf("CartCreate", "CartLinesUpdate", "Cart"), names)
