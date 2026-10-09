@@ -44,6 +44,22 @@ struct AccountView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        #if DEBUG
+        // the ArgonUI gallery, to review the components on a phone, signed in or not (debug builds only)
+        .safeAreaInset(edge: .bottom) {
+            NavigationLink(value: Destination.components) {
+                HStack {
+                    Text("Components")
+                    Spacer()
+                    Image(systemName: "chevron.right").foregroundStyle(.secondary)
+                }
+                .padding(16)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .background(.bar)
+        }
+        #endif
         .navigationTitle("Account")
         .onDisappear { visit += 1 }
     }

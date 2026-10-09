@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		A7C0DE000000000000000001 /* ShopifyCheckoutSheetKit in Frameworks */ = {isa = PBXBuildFile; productRef = A7C0DE000000000000000002 /* ShopifyCheckoutSheetKit */; };
+		A7C0DE000000000000000020 /* ArgonUI in Frameworks */ = {isa = PBXBuildFile; productRef = A7C0DE000000000000000021 /* ArgonUI */; };
+		A7C0DE000000000000000023 /* ArgonUI in Frameworks */ = {isa = PBXBuildFile; productRef = A7C0DE000000000000000024 /* ArgonUI */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -46,6 +48,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A7C0DE000000000000000001 /* ShopifyCheckoutSheetKit in Frameworks */,
+				A7C0DE000000000000000020 /* ArgonUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -53,6 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A7C0DE000000000000000023 /* ArgonUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -100,6 +104,7 @@
 			name = App;
 			packageProductDependencies = (
 				A7C0DE000000000000000002 /* ShopifyCheckoutSheetKit */,
+				A7C0DE000000000000000021 /* ArgonUI */,
 			);
 			productName = App;
 			productReference = A7C0DE000000000000000006 /* App.app */;
@@ -123,6 +128,7 @@
 			);
 			name = AppTests;
 			packageProductDependencies = (
+				A7C0DE000000000000000024 /* ArgonUI */,
 			);
 			productName = AppTests;
 			productReference = A7C0DE000000000000000009 /* AppTests.xctest */;
@@ -158,6 +164,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				A7C0DE000000000000000019 /* XCRemoteSwiftPackageReference "checkout-sheet-kit-swift" */,
+				A7C0DE000000000000000022 /* XCLocalSwiftPackageReference "ArgonUI" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = A7C0DE00000000000000000F /* Products */;
@@ -452,6 +459,13 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		A7C0DE000000000000000022 /* XCLocalSwiftPackageReference "ArgonUI" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ArgonUI;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		A7C0DE000000000000000019 /* XCRemoteSwiftPackageReference "checkout-sheet-kit-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -468,6 +482,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A7C0DE000000000000000019 /* XCRemoteSwiftPackageReference "checkout-sheet-kit-swift" */;
 			productName = ShopifyCheckoutSheetKit;
+		};
+		A7C0DE000000000000000021 /* ArgonUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A7C0DE000000000000000022 /* XCLocalSwiftPackageReference "ArgonUI" */;
+			productName = ArgonUI;
+		};
+		A7C0DE000000000000000024 /* ArgonUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A7C0DE000000000000000022 /* XCLocalSwiftPackageReference "ArgonUI" */;
+			productName = ArgonUI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
