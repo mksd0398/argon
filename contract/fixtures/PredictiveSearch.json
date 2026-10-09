@@ -1,0 +1,87 @@
+{
+  "predictiveSearch": {
+    "queries": [],
+    "products": [
+      {
+        "id": "gid://shopify/Product/7982902771734",
+        "handle": "men-t-shirt",
+        "title": "Men's T-shirt",
+        "availableForSale": true,
+        "featuredImage": {
+          "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/c99af4de567f8baafab47fa2d5267d83a997f9082892f01d7145c0eaa5403832.jpg",
+          "altText": null,
+          "width": 4096,
+          "height": 4096
+        },
+        "priceRange": {
+          "minVariantPrice": {
+            "amount": "40.0",
+            "currencyCode": "CAD"
+          }
+        },
+        "compareAtPriceRange": {
+          "minVariantPrice": {
+            "amount": "0.0",
+            "currencyCode": "CAD"
+          }
+        }
+      },
+      {
+        "id": "gid://shopify/Product/7983592374294",
+        "handle": "women-t-shirt",
+        "title": "Women's T-shirt",
+        "availableForSale": true,
+        "featuredImage": {
+          "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/313a2bf49d67db5a50828cfac7f1466cba32f48bbb0223148ecaeb8fe5e157d6.jpg",
+          "altText": null,
+          "width": 4096,
+          "height": 4096
+        },
+        "priceRange": {
+          "minVariantPrice": {
+            "amount": "40.0",
+            "currencyCode": "CAD"
+          }
+        },
+        "compareAtPriceRange": {
+          "minVariantPrice": {
+            "amount": "0.0",
+            "currencyCode": "CAD"
+          }
+        }
+      },
+      {
+        "id": "gid://shopify/Product/7983593390102",
+        "handle": "half-zip",
+        "title": "Half Zip",
+        "availableForSale": true,
+        "featuredImage": {
+          "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/9e803ec74aad4ea090069ff99a4b82b78a023a76b84e53b457632b624166e67d.jpg",
+          "altText": null,
+          "width": 4096,
+          "height": 4096
+        },
+        "priceRange": {
+          "minVariantPrice": {
+            "amount": "100.0",
+            "currencyCode": "CAD"
+          }
+        },
+        "compareAtPriceRange": {
+          "minVariantPrice": {
+            "amount": "0.0",
+            "currencyCode": "CAD"
+          }
+        }
+      }
+    ],
+    "collections": [
+      {
+        "handle": "tops",
+        "title": "Tops"
+      }
+    ],
+    "pages": [],
+    "articles": []
+  }
+}

@@ -1,6 +1,11 @@
-mutation CartCreate($input: CartInput) {
+mutation CartCreate(
+  $input: CartInput
+  $country: CountryCode
+  $language: LanguageCode
+) @inContext(country: $country, language: $language) {
   cartCreate(input: $input) {
     cart { ...Cart }
-    userErrors { field message }
+    userErrors { ...CartUserError }
+    warnings { ...CartWarning }
   }
 }

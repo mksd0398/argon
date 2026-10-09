@@ -1,0 +1,82 @@
+{
+  "products": {
+    "pageInfo": {
+      "hasNextPage": true,
+      "endCursor": "eyJjIjoicHJpY2UiLCJ2IjoiMTIwLjAiLCJpIjoxMX0"
+    },
+    "nodes": [
+      {
+        "id": "gid://shopify/Product/7983595356182",
+        "handle": "gray-leather-sneakers",
+        "title": "Gray Leather Sneakers",
+        "availableForSale": true,
+        "featuredImage": {
+          "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/a70ad4a5100e25be731159d1c6ec53517c407cf93a48ed3ca0184a879276d9c2.jpg",
+          "altText": null,
+          "width": 4096,
+          "height": 4096
+        },
+        "priceRange": {
+          "minVariantPrice": {
+            "amount": "1000.0",
+            "currencyCode": "CAD"
+          }
+        },
+        "compareAtPriceRange": {
+          "minVariantPrice": {
+            "amount": "0.0",
+            "currencyCode": "CAD"
+          }
+        }
+      },
+      {
+        "id": "gid://shopify/Product/7983593357334",
+        "handle": "frontpack",
+        "title": "Frontpack",
+        "availableForSale": true,
+        "featuredImage": {
+          "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/9a91ba812237969c5b8c51d586ac4206548f27d88756ac96619790c461eb988c.jpg",
+          "altText": null,
+          "width": 4096,
+          "height": 4096
+        },
+        "priceRange": {
+          "minVariantPrice": {
+            "amount": "200.0",
+            "currencyCode": "CAD"
+          }
+        },
+        "compareAtPriceRange": {
+          "minVariantPrice": {
+            "amount": "0.0",
+            "currencyCode": "CAD"
+          }
+        }
+      },
+      {
+        "id": "gid://shopify/Product/7983595487254",
+        "handle": "high-top-sneakers",
+        "title": "High Top Sneakers",
+        "availableForSale": true,
+        "featuredImage": {
+          "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/bb74594d8c235ffbf67f512fa1a7583df84595d7320e5145b35f169b7a7f2f6c.jpg",
+          "altText": null,
+          "width": 4096,
+          "height": 4096
+        },
+        "priceRange": {
+          "minVariantPrice": {
+            "amount": "180.0",
+            "currencyCode": "CAD"
+          }
+        },
+        "compareAtPriceRange": {
+          "minVariantPrice": {
+            "amount": "0.0",
+            "currencyCode": "CAD"
+          }
+        }
+      }
+    ]
+  }
+}

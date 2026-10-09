@@ -1,0 +1,61 @@
+{
+  "blog": {
+    "id": "gid://shopify/Blog/91450966038",
+    "handle": "news",
+    "title": "News",
+    "seo": {
+      "title": null,
+      "description": null
+    },
+    "articles": {
+      "pageInfo": {
+        "hasNextPage": false,
+        "endCursor": "eyJjIjoiaWQiLCJ2IjozLCJpIjozfQ"
+      },
+      "nodes": [
+        {
+          "id": "gid://shopify/Article/557942734870",
+          "handle": "making-liquid",
+          "title": "Making Liquid",
+          "excerpt": "High-quality streetwear that is both stylish and sustainable",
+          "publishedAt": "2023-02-07T15:45:04Z",
+          "image": null,
+          "authorV2": {
+            "name": "Teddy Hwang"
+          },
+          "blog": {
+            "handle": "news"
+          }
+        },
+        {
+          "id": "gid://shopify/Article/557942800406",
+          "handle": "new-line-of-tennis-products",
+          "title": "New Line of Tennis Products",
+          "excerpt": "Our latest line of products specifically designed for tennis players.",
+          "publishedAt": "2023-02-07T16:22:46Z",
+          "image": null,
+          "authorV2": {
+            "name": "Teddy Hwang"
+          },
+          "blog": {
+            "handle": "news"
+          }
+        },
+        {
+          "id": "gid://shopify/Article/557942833174",
+          "handle": "liquidpeak-450",
+          "title": "Liquidpeak 450",
+          "excerpt": "A cutting-edge fabric that is unlike anything else on the market.",
+          "publishedAt": "2023-02-07T16:28:25Z",
+          "image": null,
+          "authorV2": {
+            "name": "Teddy Hwang"
+          },
+          "blog": {
+            "handle": "news"
+          }
+        }
+      ]
+    }
+  }
+}

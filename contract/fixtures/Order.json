@@ -1,0 +1,141 @@
+{
+  "order": {
+    "id": "gid://shopify/Order/6000002",
+    "name": "#1002",
+    "number": 1002,
+    "confirmationNumber": "X7K2P9QZ1",
+    "processedAt": "2026-10-03T14:20:00Z",
+    "statusPageUrl": "https://shopify.com/68817551382/account/orders/6000002",
+    "financialStatus": "PAID",
+    "fulfillmentStatus": "FULFILLED",
+    "cancelledAt": null,
+    "cancelReason": null,
+    "shippingAddress": {
+      "id": "gid://shopify/CustomerAddress/8000001",
+      "firstName": "Ada",
+      "lastName": "Lovelace",
+      "company": null,
+      "address1": "150 Elgin St",
+      "address2": "Suite 400",
+      "city": "Ottawa",
+      "province": "Ontario",
+      "zoneCode": "ON",
+      "zip": "K2P 1L4",
+      "country": "Canada",
+      "countryCode": "CA",
+      "phoneNumber": "+16135550123",
+      "formatted": [
+        "Ada Lovelace",
+        "150 Elgin St",
+        "Suite 400",
+        "Ottawa ON K2P 1L4",
+        "Canada"
+      ]
+    },
+    "billingAddress": {
+      "id": "gid://shopify/CustomerAddress/8000001",
+      "firstName": "Ada",
+      "lastName": "Lovelace",
+      "company": null,
+      "address1": "150 Elgin St",
+      "address2": "Suite 400",
+      "city": "Ottawa",
+      "province": "Ontario",
+      "zoneCode": "ON",
+      "zip": "K2P 1L4",
+      "country": "Canada",
+      "countryCode": "CA",
+      "phoneNumber": "+16135550123",
+      "formatted": [
+        "Ada Lovelace",
+        "150 Elgin St",
+        "Suite 400",
+        "Ottawa ON K2P 1L4",
+        "Canada"
+      ]
+    },
+    "subtotal": {
+      "amount": "108.0",
+      "currencyCode": "CAD"
+    },
+    "totalShipping": {
+      "amount": "10.0",
+      "currencyCode": "CAD"
+    },
+    "totalTax": {
+      "amount": "12.0",
+      "currencyCode": "CAD"
+    },
+    "totalPrice": {
+      "amount": "130.0",
+      "currencyCode": "CAD"
+    },
+    "totalRefunded": {
+      "amount": "0.0",
+      "currencyCode": "CAD"
+    },
+    "discountApplications": {
+      "nodes": [
+        {
+          "__typename": "DiscountCodeApplication",
+          "value": {
+            "__typename": "PricingPercentageValue",
+            "percentage": 10
+          }
+        }
+      ]
+    },
+    "lineItems": {
+      "nodes": [
+        {
+          "id": "gid://shopify/LineItem/5000001",
+          "title": "Men's Crewneck",
+          "variantTitle": "Small / Green",
+          "quantity": 1,
+          "image": {
+            "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/4ecbbab490d5a90c04074428b4b0e09358c6895050db590ffbb84e1f8e05fbbc.jpg",
+            "altText": "Men's Crewneck"
+          },
+          "productId": "gid://shopify/Product/7982905098262",
+          "variantId": "gid://shopify/ProductVariant/43696905224214",
+          "price": {
+            "amount": "120.0",
+            "currencyCode": "CAD"
+          },
+          "totalPrice": {
+            "amount": "108.0",
+            "currencyCode": "CAD"
+          }
+        }
+      ]
+    },
+    "fulfillments": {
+      "nodes": [
+        {
+          "id": "gid://shopify/Fulfillment/4000001",
+          "status": "SUCCESS",
+          "createdAt": "2026-10-04T10:00:00Z",
+          "estimatedDeliveryAt": "2026-10-07T21:00:00Z",
+          "latestShipmentStatus": "DELIVERED",
+          "trackingInformation": [
+            {
+              "company": "Canada Post",
+              "number": "7023210039414604",
+              "url": "https://www.canadapost-postescanada.ca/track-reperage/en#/search?searchFor=7023210039414604"
+            }
+          ],
+          "fulfillmentLineItems": {
+            "nodes": [
+              {
+                "quantity": 1,
+                "lineItem": {
+                  "id": "gid://shopify/LineItem/5000001"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

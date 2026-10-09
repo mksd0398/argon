@@ -1,0 +1,9 @@
+{
+  "customerEmailMarketingSubscribe": {
+    "emailAddress": {
+      "emailAddress": "ada@example.com",
+      "marketingState": "SUBSCRIBED"
+    },
+    "userErrors": []
+  }
+}

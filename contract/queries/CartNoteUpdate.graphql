@@ -1,0 +1,12 @@
+mutation CartNoteUpdate(
+  $cartId: ID!
+  $note: String!
+  $country: CountryCode
+  $language: LanguageCode
+) @inContext(country: $country, language: $language) {
+  cartNoteUpdate(cartId: $cartId, note: $note) {
+    cart { ...Cart }
+    userErrors { ...CartUserError }
+    warnings { ...CartWarning }
+  }
+}

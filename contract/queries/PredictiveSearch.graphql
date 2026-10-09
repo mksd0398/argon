@@ -1,7 +1,15 @@
-query PredictiveSearch($query: String!) {
-  predictiveSearch(query: $query, limit: 8, types: [PRODUCT, COLLECTION, QUERY]) {
-    queries { text }
+query PredictiveSearch(
+  $query: String!
+  $limit: Int = 8
+  $types: [PredictiveSearchType!] = [PRODUCT, COLLECTION, QUERY]
+  $country: CountryCode
+  $language: LanguageCode
+) @inContext(country: $country, language: $language) {
+  predictiveSearch(query: $query, limit: $limit, limitScope: EACH, types: $types) {
+    queries { text styledText }
     products { ...ProductCard }
     collections { handle title }
+    pages { handle title }
+    articles { handle title blog { handle } }
   }
 }

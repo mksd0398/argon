@@ -1,0 +1,14 @@
+query Collections(
+  $first: Int!
+  $after: String
+  $query: String
+  $sortKey: CollectionSortKeys
+  $reverse: Boolean
+  $country: CountryCode
+  $language: LanguageCode
+) @inContext(country: $country, language: $language) {
+  collections(first: $first, after: $after, query: $query, sortKey: $sortKey, reverse: $reverse) {
+    pageInfo { hasNextPage endCursor }
+    nodes { ...CollectionCard description }
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "cartLinesRemove": {
+    "cart": {
+      "id": "gid://shopify/Cart/c1-7469366f149b403dafd17bc5a9dab879?key=9c19aa7d7298298cf1b25c5af5542807",
+      "checkoutUrl": "https://demostore.hydrogen.mock.shop/checkout",
+      "totalQuantity": 0,
+      "note": "Gift wrap, please",
+      "attributes": [
+        {
+          "key": "source",
+          "value": "app"
+        }
+      ],
+      "discountCodes": [
+        {
+          "code": "WELCOME10",
+          "applicable": false
+        }
+      ],
+      "appliedGiftCards": [],
+      "buyerIdentity": {
+        "email": null,
+        "phone": null,
+        "countryCode": "CA"
+      },
+      "delivery": {
+        "addresses": []
+      },
+      "cost": {
+        "subtotalAmount": {
+          "amount": "0.0",
+          "currencyCode": "CAD"
+        },
+        "totalAmount": {
+          "amount": "0.0",
+          "currencyCode": "CAD"
+        }
+      },
+      "lines": {
+        "nodes": []
+      }
+    },
+    "userErrors": [],
+    "warnings": [
+      {
+        "code": "DISCOUNT_NOT_FOUND",
+        "message": "Enter a valid discount code",
+        "target": "gid://shopify/Cart/c1-7469366f149b403dafd17bc5a9dab879?key=9c19aa7d7298298cf1b25c5af5542807"
+      }
+    ]
+  }
+}

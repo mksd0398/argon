@@ -1,0 +1,15 @@
+{
+  "blogs": {
+    "pageInfo": {
+      "hasNextPage": false,
+      "endCursor": "eyJjIjoiaWQiLCJ2IjoxLCJpIjoxfQ"
+    },
+    "nodes": [
+      {
+        "id": "gid://shopify/Blog/91450966038",
+        "handle": "news",
+        "title": "News"
+      }
+    ]
+  }
+}

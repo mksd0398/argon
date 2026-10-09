@@ -1,0 +1,14 @@
+query Metaobjects(
+  $type: String!
+  $first: Int!
+  $after: String
+  $sortKey: String
+  $reverse: Boolean
+  $country: CountryCode
+  $language: LanguageCode
+) @inContext(country: $country, language: $language) {
+  metaobjects(type: $type, first: $first, after: $after, sortKey: $sortKey, reverse: $reverse) {
+    pageInfo { hasNextPage endCursor }
+    nodes { id handle type fields { key type value } }
+  }
+}

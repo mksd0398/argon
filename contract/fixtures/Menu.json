@@ -1,0 +1,36 @@
+{
+  "menu": {
+    "id": "gid://shopify/Menu/212407386134",
+    "handle": "main-menu",
+    "title": "Main menu",
+    "items": [
+      {
+        "id": "gid://shopify/MenuItem/494783037462",
+        "title": "Men",
+        "url": "https://demostore.hydrogen.mock.shop/collections/men",
+        "type": "COLLECTION",
+        "resourceId": "gid://shopify/Collection/429493780502",
+        "resource": null,
+        "items": []
+      },
+      {
+        "id": "gid://shopify/MenuItem/494783070230",
+        "title": "Women",
+        "url": "https://demostore.hydrogen.mock.shop/collections/women",
+        "type": "COLLECTION",
+        "resourceId": "gid://shopify/Collection/429493813270",
+        "resource": null,
+        "items": []
+      },
+      {
+        "id": "gid://shopify/MenuItem/494879670294",
+        "title": "Unisex",
+        "url": "https://demostore.hydrogen.mock.shop/collections/unisex",
+        "type": "COLLECTION",
+        "resourceId": "gid://shopify/Collection/429493846038",
+        "resource": null,
+        "items": []
+      }
+    ]
+  }
+}

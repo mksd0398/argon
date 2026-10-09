@@ -1,0 +1,9 @@
+query CustomerAddresses($first: Int!, $after: String) {
+  customer {
+    defaultAddress { id }
+    addresses(first: $first, after: $after) {
+      pageInfo { hasNextPage endCursor }
+      nodes { ...CustomerAddress }
+    }
+  }
+}

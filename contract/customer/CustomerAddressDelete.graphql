@@ -1,0 +1,6 @@
+mutation CustomerAddressDelete($addressId: ID!) {
+  customerAddressDelete(addressId: $addressId) {
+    deletedAddressId
+    userErrors { ...AddressError }
+  }
+}

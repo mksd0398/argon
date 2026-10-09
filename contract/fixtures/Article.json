@@ -1,0 +1,24 @@
+{
+  "blog": {
+    "articleByHandle": {
+      "id": "gid://shopify/Article/557942734870",
+      "handle": "making-liquid",
+      "title": "Making Liquid",
+      "excerpt": "High-quality streetwear that is both stylish and sustainable",
+      "publishedAt": "2023-02-07T15:45:04Z",
+      "image": null,
+      "authorV2": {
+        "name": "Teddy Hwang"
+      },
+      "blog": {
+        "handle": "news"
+      },
+      "contentHtml": "<p>At Liquid, we are committed to providing our customers with high-quality streetwear that is both stylish and sustainable. Our mission is to produce clothing that is not only comfortable and stylish but also environmentally conscious. This is why we choose to use organic cotton for all of our prod…",
+      "tags": [],
+      "seo": {
+        "title": null,
+        "description": null
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+mutation CartGiftCardCodesAdd(
+  $cartId: ID!
+  $giftCardCodes: [String!]!
+  $country: CountryCode
+  $language: LanguageCode
+) @inContext(country: $country, language: $language) {
+  cartGiftCardCodesAdd(cartId: $cartId, giftCardCodes: $giftCardCodes) {
+    cart { ...Cart }
+    userErrors { ...CartUserError }
+    warnings { ...CartWarning }
+  }
+}

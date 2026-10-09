@@ -1,0 +1,44 @@
+{
+  "metaobjects": {
+    "pageInfo": {
+      "hasNextPage": false,
+      "endCursor": "eyJsYXN0X2lkIjoxMDIsImxhc3RfdmFsdWUiOjEwMn0="
+    },
+    "nodes": [
+      {
+        "id": "gid://shopify/Metaobject/101",
+        "handle": "new-season",
+        "type": "mobile_banner",
+        "fields": [
+          {
+            "key": "heading",
+            "type": "single_line_text_field",
+            "value": "New season"
+          },
+          {
+            "key": "style",
+            "type": "single_line_text_field",
+            "value": "hero"
+          }
+        ]
+      },
+      {
+        "id": "gid://shopify/Metaobject/102",
+        "handle": "free-shipping",
+        "type": "mobile_banner",
+        "fields": [
+          {
+            "key": "heading",
+            "type": "single_line_text_field",
+            "value": "Free shipping over $100"
+          },
+          {
+            "key": "style",
+            "type": "single_line_text_field",
+            "value": "card"
+          }
+        ]
+      }
+    ]
+  }
+}

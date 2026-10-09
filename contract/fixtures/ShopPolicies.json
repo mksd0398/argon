@@ -1,0 +1,42 @@
+{
+  "shop": {
+    "privacyPolicy": {
+      "id": "gid://shopify/ShopPolicy/23751589910",
+      "handle": "privacy-policy",
+      "title": "Privacy Policy",
+      "body": "<p>This Privacy Policy is an automatically generated template provided by Shopify. It’s only here for illustrative purposes to show how you can implement your own with Mock.shop. We do not collect any personal information here unless provided through our dummy gateway checkout flow, and will frequen…",
+      "url": "https://demostore.hydrogen.mock.shop/policies/privacy-policy"
+    },
+    "refundPolicy": {
+      "id": "gid://shopify/ShopPolicy/23751557142",
+      "handle": "refund-policy",
+      "title": "Refund Policy",
+      "body": "<p>We have a 30-day return policy, which means you have 30 days after receiving your item to request a return. <br><br>To be eligible for a return, your item must be in the same condition that you received it, unworn or unused, with tags, and in its original packaging. You’ll also need the receipt o…",
+      "url": "https://demostore.hydrogen.mock.shop/policies/refund-policy"
+    },
+    "shippingPolicy": {
+      "id": "gid://shopify/ShopPolicy/23751655446",
+      "handle": "shipping-policy",
+      "title": "Shipping Policy",
+      "body": "<p>Free carbon-neutral shipping, anywhere around the world, on all orders.</p>\n<h3 data-mce-fragment=\"1\">Shipping policy</h3>\n<p data-mce-fragment=\"1\"><strong data-mce-fragment=\"1\"><em data-mce-fragment=\"1\">It's important to start by clarifying to customers that your order processing times are separ…",
+      "url": "https://demostore.hydrogen.mock.shop/policies/shipping-policy"
+    },
+    "termsOfService": {
+      "id": "gid://shopify/ShopPolicy/23751622678",
+      "handle": "terms-of-service",
+      "title": "Terms of Service",
+      "body": "<p><strong>OVERVIEW</strong> <br></p>\n<p>Please note that this is an auto-generated template created in the Shopify Admin — it is only here to provide an illustrative example of how it works in Mock.shop.</p>\n<p>This website is operated by Snowdevil. Throughout the site, the terms “we”, “us” and “ou…",
+      "url": "https://demostore.hydrogen.mock.shop/policies/terms-of-service"
+    },
+    "termsOfSale": null,
+    "legalNotice": null,
+    "contactInformation": null,
+    "subscriptionPolicy": {
+      "id": null,
+      "handle": "subscription-policy",
+      "title": "Purchase Options Cancellation Policy",
+      "body": "<strong>Cancellation Policy</strong> <br /> Some items in our store may be offered to you as a subscription, a pre-order or try before you buy. This cancellation policy lays out how you can change or cancel these kinds of purchases. <br /> <strong>Subscriptions</strong> <br /> When you purchase a su…",
+      "url": "https://demostore.hydrogen.mock.shop/policies/subscription-policy"
+    }
+  }
+}

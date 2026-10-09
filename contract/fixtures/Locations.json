@@ -1,0 +1,55 @@
+{
+  "locations": {
+    "pageInfo": {
+      "hasNextPage": false,
+      "endCursor": "eyJsYXN0X2lkIjo3MTIzNDU2OH0="
+    },
+    "nodes": [
+      {
+        "id": "gid://shopify/Location/71234567",
+        "name": "Ottawa Store",
+        "address": {
+          "address1": "150 Elgin St",
+          "address2": null,
+          "city": "Ottawa",
+          "province": "Ontario",
+          "provinceCode": "ON",
+          "zip": "K2P 1L4",
+          "country": "Canada",
+          "countryCode": "CA",
+          "phone": "+16135550100",
+          "formatted": [
+            "150 Elgin St",
+            "Ottawa ON K2P 1L4",
+            "Canada"
+          ],
+          "latitude": 45.4215,
+          "longitude": -75.6972
+        }
+      },
+      {
+        "id": "gid://shopify/Location/71234568",
+        "name": "Toronto Warehouse",
+        "address": {
+          "address1": "1 Front St W",
+          "address2": "Unit 2",
+          "city": "Toronto",
+          "province": "Ontario",
+          "provinceCode": "ON",
+          "zip": "M5J 2X5",
+          "country": "Canada",
+          "countryCode": "CA",
+          "phone": null,
+          "formatted": [
+            "1 Front St W",
+            "Unit 2",
+            "Toronto ON M5J 2X5",
+            "Canada"
+          ],
+          "latitude": 43.6453,
+          "longitude": -79.3806
+        }
+      }
+    ]
+  }
+}

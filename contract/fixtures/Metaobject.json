@@ -1,0 +1,44 @@
+{
+  "metaobject": {
+    "id": "gid://shopify/Metaobject/101",
+    "type": "mobile_banner",
+    "handle": "new-season",
+    "updatedAt": "2026-10-01T12:00:00Z",
+    "fields": [
+      {
+        "key": "heading",
+        "type": "single_line_text_field",
+        "value": "New season",
+        "reference": null
+      },
+      {
+        "key": "image",
+        "type": "file_reference",
+        "value": "gid://shopify/MediaImage/201",
+        "reference": {
+          "__typename": "MediaImage",
+          "image": {
+            "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/1685d5abe3e11df2a5ae2017646441bafb1f815893bbcc953296c3040175eb4f.png",
+            "altText": "New season",
+            "width": 1024,
+            "height": 1024
+          }
+        }
+      },
+      {
+        "key": "link",
+        "type": "single_line_text_field",
+        "value": "/collections/men",
+        "reference": null
+      },
+      {
+        "key": "collection",
+        "type": "collection_reference",
+        "value": "gid://shopify/Collection/429493780502",
+        "reference": {
+          "__typename": "Collection"
+        }
+      }
+    ]
+  }
+}

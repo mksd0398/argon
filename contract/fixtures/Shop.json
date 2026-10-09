@@ -1,0 +1,40 @@
+{
+  "shop": {
+    "id": "gid://shopify/Shop/68817551382",
+    "name": "Mock.shop",
+    "description": "High quality commerce data for your storefront.",
+    "moneyFormat": "${{amount}}",
+    "shipsToCountries": [],
+    "primaryDomain": {
+      "host": "demostore.hydrogen.mock.shop",
+      "url": "https://demostore.hydrogen.mock.shop"
+    },
+    "brand": {
+      "slogan": null,
+      "shortDescription": null,
+      "logo": {
+        "image": {
+          "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/9fdb5c70aefed10890ecb9ad4d15895c00c1281d9de1ab7acf7200c8f1e838df.png",
+          "altText": null,
+          "width": null,
+          "height": null
+        }
+      },
+      "squareLogo": null,
+      "coverImage": null,
+      "colors": {
+        "primary": [],
+        "secondary": []
+      }
+    },
+    "paymentSettings": {
+      "currencyCode": "CAD",
+      "countryCode": "CA",
+      "acceptedCardBrands": [],
+      "supportedDigitalWallets": [],
+      "enabledPresentmentCurrencies": [
+        "CAD"
+      ]
+    }
+  }
+}

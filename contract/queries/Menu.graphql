@@ -1,5 +1,12 @@
-query Menu($handle: String!) {
+query Menu(
+  $handle: String!
+  $country: CountryCode
+  $language: LanguageCode
+) @inContext(country: $country, language: $language) {
   menu(handle: $handle) {
+    id
+    handle
+    title
     items {
       ...MenuItem
       items {

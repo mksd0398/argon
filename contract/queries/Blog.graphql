@@ -1,0 +1,20 @@
+query Blog(
+  $handle: String!
+  $first: Int!
+  $after: String
+  $sortKey: ArticleSortKeys
+  $reverse: Boolean
+  $country: CountryCode
+  $language: LanguageCode
+) @inContext(country: $country, language: $language) {
+  blog(handle: $handle) {
+    id
+    handle
+    title
+    seo { title description }
+    articles(first: $first, after: $after, sortKey: $sortKey, reverse: $reverse) {
+      pageInfo { hasNextPage endCursor }
+      nodes { ...ArticleCard }
+    }
+  }
+}

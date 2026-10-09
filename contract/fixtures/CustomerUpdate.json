@@ -1,0 +1,11 @@
+{
+  "customerUpdate": {
+    "customer": {
+      "id": "gid://shopify/Customer/7000001",
+      "firstName": "Ada",
+      "lastName": "King",
+      "displayName": "Ada King"
+    },
+    "userErrors": []
+  }
+}

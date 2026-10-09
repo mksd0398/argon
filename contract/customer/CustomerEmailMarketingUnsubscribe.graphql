@@ -1,0 +1,6 @@
+mutation CustomerEmailMarketingUnsubscribe {
+  customerEmailMarketingUnsubscribe {
+    emailAddress { emailAddress marketingState }
+    userErrors { field message code }
+  }
+}

@@ -1,0 +1,12 @@
+mutation CartGiftCardCodesRemove(
+  $cartId: ID!
+  $appliedGiftCardIds: [ID!]!
+  $country: CountryCode
+  $language: LanguageCode
+) @inContext(country: $country, language: $language) {
+  cartGiftCardCodesRemove(cartId: $cartId, appliedGiftCardIds: $appliedGiftCardIds) {
+    cart { ...Cart }
+    userErrors { ...CartUserError }
+    warnings { ...CartWarning }
+  }
+}
