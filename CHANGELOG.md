@@ -2,8 +2,26 @@
 
 ## Unreleased
 
+### Added
+
+- **A native component library in every app:** 29 components (Accordion to Top bar) with a store-themed palette, Instrument Serif and Hanken Grotesk, and a debug-only gallery at Account → Components.
+  - Android: a Compose `ui` module.
+  - iOS: a local `ArgonUI` Swift package.
+  - Each component uses the platform's own control where one exists and is custom only where none does.
+  - The carousel runs edge to edge: neighbouring pages peek in by 4% of the width, with a gap between pages.
+  - The gallery renders lazily, so off-screen components don't draw or animate.
+- **The complete Storefront and Customer Account API, prebuilt and typed** (2026-10).
+  - 52 operations: catalogue, search, menus, pages, blogs, metaobjects, store locations, every cart mutation, and the customer's profile, orders, addresses, email marketing and returns.
+  - Typed facades on both platforms: `StorefrontApi`/`StorefrontAPI` and `CustomerAccountApi`/`CustomerAccountAPI`.
+  - Every operation runs with the buyer's country and language.
+- **Contract checks:**
+  - Every document is validated offline against the 2026-10 schemas.
+  - Every operation has a recorded or schema-correct fixture, and both apps' tests decode every fixture.
+
 ### Changed
 
+- Text on the brand colour is black or white, whichever contrasts more (at least 4.58:1 for any colour).
+- The apps decode responses into typed models; the hand-written parsers are gone.
 - The Headless channel step is guided:
   - Argon opens the channel in your browser and prints Shopify's exact admin path for each value, including setting the login client type to Public (mobile app).
   - It checks the Storefront token as you paste it and asks again if Shopify rejects it.
@@ -12,6 +30,7 @@
 
 ### Fixed
 
+- A screen that failed to load (offline at launch, or started behind the lock screen) now reloads by itself when the app returns to the foreground. On Android the error reads "Can't reach the store. Check your internet connection." instead of a raw hostname error.
 - Checkout now shows the store's own checkout branding. Checkout Kit uses the `web` color scheme (Android `ColorScheme.Web()`, iOS `.web`) instead of its default generic light/dark theme.
 
 ## 0.1.0 — 2026-10-05

@@ -14,12 +14,18 @@ func displayStatus(_ status: String) -> String {
     return words.prefix(1).uppercased() + String(words.dropFirst())
 }
 
+/// The customer and their latest orders.
+private struct Account {
+    let customer: Customer
+    let orders: [OrderSummary]
+}
+
 @MainActor
-private func loadCustomer() async throws -> Customer {
-    guard let customer = try await AppGraph.auth.customerQuery("Customer").obj("customer") else {
-        throw StorefrontException(messages: ["Account not found"], status: nil)
-    }
-    return try parseCustomer(customer)
+private func loadAccount() async throws -> Account {
+    let api = AppGraph.customerAccount
+    async let customer = api.customer()
+    async let orders = api.orders()
+    return try await Account(customer: customer, orders: orders.items)
 }
 
 @MainActor
@@ -38,12 +44,28 @@ struct AccountView: View {
                 .multilineTextAlignment(.center)
                 .padding(32)
             } else if AppGraph.auth.signedIn {
-                Loader(load: loadCustomer) { CustomerContent(customer: $0) }.id(visit)
+                Loader(load: loadAccount) { CustomerContent(customer: $0.customer, orders: $0.orders) }.id(visit)
             } else {
                 SignedOut()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        #if DEBUG
+        // the ArgonUI gallery, to review the components on a phone, signed in or not (debug builds only)
+        .safeAreaInset(edge: .bottom) {
+            NavigationLink(value: Destination.components) {
+                HStack {
+                    Text("Components")
+                    Spacer()
+                    Image(systemName: "chevron.right").foregroundStyle(.secondary)
+                }
+                .padding(16)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .background(.bar)
+        }
+        #endif
         .navigationTitle("Account")
         .onDisappear { visit += 1 }
     }
@@ -89,6 +111,7 @@ private struct SignedOut: View {
 @MainActor
 private struct CustomerContent: View {
     let customer: Customer
+    let orders: [OrderSummary]
     @Environment(Router.self) private var router
 
     var body: some View {
@@ -100,10 +123,10 @@ private struct CustomerContent: View {
                 }
             }
             SwiftUI.Section("Orders") {
-                if customer.orders.isEmpty {
+                if orders.isEmpty {
                     Text("No orders yet").foregroundStyle(.secondary)
                 }
-                ForEach(customer.orders, id: \.id) { order in
+                ForEach(orders, id: \.id) { order in
                     NavigationLink(value: Destination.order(order.id)) { OrderRow(order: order) }
                 }
             }

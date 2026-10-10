@@ -1,5 +1,6 @@
 package app.storefront.data
 
+import java.io.IOException
 import kotlinx.coroutines.runBlocking
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -7,15 +8,15 @@ import okhttp3.Protocol
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertThrows
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class StorefrontTest {
     // An interceptor answers every request, so nothing touches the network.
-    private fun query(body: String, code: Int = 200) = runBlocking {
+    private fun query(body: String, code: Int = 200, failure: IOException? = null) = runBlocking {
         val http = OkHttpClient.Builder().addInterceptor { chain ->
+            failure?.let { throw it }
             Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1).code(code).message("test")
                 .body(body.toResponseBody("application/json".toMediaType())).build()
         }.build()
@@ -28,31 +29,41 @@ class StorefrontTest {
     }
 
     @Test
-    fun unparseableBodyIsAStorefrontException() {
-        val e = assertThrows(StorefrontException::class.java) { query("<html>") }
-        assertEquals(listOf("Invalid response"), e.messages)
-        assertEquals(200, e.status)
-        assertFalse(e.isGraphQL)
+    fun anUnparseableBodyIsADecodingError() {
+        val e = assertThrows(ArgonApiError.Decoding::class.java) { query("<html>") }
+        assertEquals("Q", e.operation)
+        assertEquals("Invalid response", e.message)
     }
 
     @Test
-    fun nonObjectBodyIsAStorefrontException() {
-        val e = assertThrows(StorefrontException::class.java) { query("[1,2]") }
-        assertEquals(listOf("Invalid response"), e.messages)
+    fun aNonObjectBodyIsADecodingError() {
+        assertThrows(ArgonApiError.Decoding::class.java) { query("[1,2]") }
     }
 
     @Test
-    fun graphqlErrorsAreAStorefrontException() {
-        val e = assertThrows(StorefrontException::class.java) { query("""{"errors":[{"message":"boom"}]}""") }
-        assertEquals(listOf("boom"), e.messages)
-        assertTrue("a 200 carrying errors is a GraphQL failure", e.isGraphQL)
+    fun aResponseWithoutDataIsADecodingError() {
+        assertEquals("no data", assertThrows(ArgonApiError.Decoding::class.java) { query("{}") }.detail)
     }
 
     @Test
-    fun httpFailureIsNotGraphql() {
-        val e = assertThrows(StorefrontException::class.java) { query("service unavailable", code = 503) }
-        assertEquals(listOf("HTTP 503"), e.messages)
+    fun graphqlErrorsAreAGraphQLError() {
+        val e = assertThrows(ArgonApiError.GraphQL::class.java) { query("""{"errors":[{"message":"boom"},{"message":"bang"}]}""") }
+        assertEquals(listOf("boom", "bang"), e.messages)
+        assertEquals("boom\nbang", e.message)
+    }
+
+    @Test
+    fun anHttpFailureIsAnHttpError() {
+        val e = assertThrows(ArgonApiError.Http::class.java) { query("service unavailable", code = 503) }
         assertEquals(503, e.status)
-        assertFalse(e.isGraphQL)
+        assertEquals("HTTP 503", e.message)
+    }
+
+    @Test
+    fun noAnswerIsANetworkError() {
+        val offline = IOException("Unable to resolve host")
+        val e = assertThrows(ArgonApiError.Network::class.java) { query("", failure = offline) }
+        assertSame(offline, e.cause)
+        assertEquals("Can't reach the store. Check your internet connection.", e.message)
     }
 }

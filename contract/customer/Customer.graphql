@@ -1,0 +1,12 @@
+query Customer {
+  customer {
+    id
+    firstName
+    lastName
+    displayName
+    imageUrl
+    emailAddress { emailAddress marketingState }
+    phoneNumber { phoneNumber }
+    defaultAddress { ...CustomerAddress }
+  }
+}

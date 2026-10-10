@@ -32,6 +32,8 @@ The apps work the way a Liquid theme does. They render whatever the store contai
 - **Login** with the Customer Account API (OAuth 2.0 + PKCE), orders, and the *Delete account* entry both app stores require
 - **A home screen the merchant edits**: an ordered list of metaobject sections ([Content model](#content-model))
 - **Branding** from the store's own colours and logo
+- **A native component library**: 29 themed components on each platform (Compose `ui` module, `ArgonUI` Swift package), with a debug gallery at Account → Components
+- **The full Storefront and Customer Account API, prebuilt**: 52 typed operations behind `StorefrontApi` and `CustomerAccountApi` (same names on iOS), checked against Shopify's 2026-10 schemas
 - **One Shopify SDK**: Checkout Kit. A hand-written GraphQL client, no Mobile Buy SDK, no Apollo, no DI framework
 - **`AGENTS.md`, `CLAUDE.md` and a README** in every generated project, so an AI coding agent follows the same rules with nothing installed
 
@@ -190,11 +192,13 @@ Markets (`@inContext` and currency switching), Shop Pay / Apple Pay buttons, dis
 
 ```bash
 npm ci
-npm test            # CLI, scaffolding, provisioning (stubbed), link parser
-npm run test:live   # also runs every contract query against mock.shop
+npm test            # CLI, scaffolding, provisioning (stubbed), link parser, contract vs the 2026-10 schemas
+npm run test:live   # also runs every Storefront contract document against mock.shop
 ```
 
 The tests need Node 22+ (the CLI itself runs on Node 18+).
+
+The GraphQL contract is in `contract/`: Storefront API documents in `queries/` (fragments in `fragments.graphql`), Customer Account API documents in `customer/` (its own `fragments.graphql`), one operation per file, and `fixtures/<Operation>.json`, one response `data` per operation, which the CLI copies into both apps for their decoding tests. `npm test` validates every document against the schemas in `test/schema/` (from `@shopify/hydrogen@2026.10.0`) and every fixture against its document. With `ARGON_RECORD=1`, `npm run test:live` re-records the fixtures mock.shop can answer; the rest are hand-written.
 
 CI (`.github/workflows/ci.yml`) has three jobs. `cli` runs the two commands above on Node 22. `android` and `ios` each generate a `--demo` project and build and test it: Gradle `testDebugUnitTest assembleDebug` on Linux, `xcodebuild build test` on macOS. The `ios` job runs twice: with Xcode 16, which must pass, and with the latest stable Xcode (26), which App Store uploads require and which may fail without failing CI. Each run picks an iPhone simulator on the newest iOS runtime (17 or later) that its Xcode supports. Swift can't be built on Windows or Linux, so the iOS job is what verifies the iOS app.
 

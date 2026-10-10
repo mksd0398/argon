@@ -1,0 +1,55 @@
+{
+  "customer": {
+    "orders": {
+      "pageInfo": {
+        "hasNextPage": true,
+        "endCursor": "eyJsYXN0X2lkIjo2MDAwMDAxfQ=="
+      },
+      "nodes": [
+        {
+          "id": "gid://shopify/Order/6000002",
+          "name": "#1002",
+          "number": 1002,
+          "processedAt": "2026-10-03T14:20:00Z",
+          "financialStatus": "PAID",
+          "fulfillmentStatus": "FULFILLED",
+          "cancelledAt": null,
+          "totalPrice": {
+            "amount": "130.0",
+            "currencyCode": "CAD"
+          },
+          "lineItems": {
+            "nodes": [
+              {
+                "image": {
+                  "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/4ecbbab490d5a90c04074428b4b0e09358c6895050db590ffbb84e1f8e05fbbc.jpg",
+                  "altText": "Men's Crewneck"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "gid://shopify/Order/6000001",
+          "name": "#1001",
+          "number": 1001,
+          "processedAt": "2026-09-12T09:05:00Z",
+          "financialStatus": "REFUNDED",
+          "fulfillmentStatus": "UNFULFILLED",
+          "cancelledAt": "2026-09-12T11:30:00Z",
+          "totalPrice": {
+            "amount": "70.0",
+            "currencyCode": "CAD"
+          },
+          "lineItems": {
+            "nodes": [
+              {
+                "image": null
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

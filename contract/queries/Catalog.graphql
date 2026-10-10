@@ -1,5 +1,13 @@
-query Catalog($first: Int!, $after: String, $sortKey: ProductSortKeys, $reverse: Boolean) {
-  products(first: $first, after: $after, sortKey: $sortKey, reverse: $reverse) {
+query Catalog(
+  $first: Int!
+  $after: String
+  $query: String
+  $sortKey: ProductSortKeys
+  $reverse: Boolean
+  $country: CountryCode
+  $language: LanguageCode
+) @inContext(country: $country, language: $language) {
+  products(first: $first, after: $after, query: $query, sortKey: $sortKey, reverse: $reverse) {
     pageInfo { hasNextPage endCursor }
     nodes { ...ProductCard }
   }

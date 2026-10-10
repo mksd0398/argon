@@ -1,0 +1,44 @@
+{
+  "localization": {
+    "country": {
+      "isoCode": "CA",
+      "name": "",
+      "currency": {
+        "isoCode": "CAD",
+        "name": "Canadian Dollar",
+        "symbol": "$"
+      },
+      "unitSystem": "IMPERIAL_SYSTEM"
+    },
+    "language": {
+      "isoCode": "EN",
+      "endonymName": "English"
+    },
+    "availableCountries": [
+      {
+        "isoCode": "CA",
+        "name": "",
+        "currency": {
+          "isoCode": "CAD",
+          "symbol": "$"
+        },
+        "defaultLanguage": {
+          "isoCode": "EN"
+        },
+        "availableLanguages": [
+          {
+            "isoCode": "EN",
+            "endonymName": "English"
+          }
+        ]
+      }
+    ],
+    "availableLanguages": [
+      {
+        "isoCode": "EN",
+        "endonymName": "English",
+        "name": "English"
+      }
+    ]
+  }
+}

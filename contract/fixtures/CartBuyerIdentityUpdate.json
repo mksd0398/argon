@@ -1,0 +1,85 @@
+{
+  "cartBuyerIdentityUpdate": {
+    "cart": {
+      "id": "gid://shopify/Cart/c1-7469366f149b403dafd17bc5a9dab879?key=9c19aa7d7298298cf1b25c5af5542807",
+      "checkoutUrl": "https://demostore.hydrogen.mock.shop/checkout",
+      "totalQuantity": 3,
+      "note": "Gift wrap, please",
+      "attributes": [
+        {
+          "key": "source",
+          "value": "app"
+        }
+      ],
+      "discountCodes": [
+        {
+          "code": "WELCOME10",
+          "applicable": false
+        }
+      ],
+      "appliedGiftCards": [],
+      "buyerIdentity": {
+        "email": null,
+        "phone": null,
+        "countryCode": "CA"
+      },
+      "delivery": {
+        "addresses": []
+      },
+      "cost": {
+        "subtotalAmount": {
+          "amount": "360.0",
+          "currencyCode": "CAD"
+        },
+        "totalAmount": {
+          "amount": "360.0",
+          "currencyCode": "CAD"
+        }
+      },
+      "lines": {
+        "nodes": [
+          {
+            "__typename": "CartLine",
+            "id": "gid://shopify/CartLine/49959",
+            "quantity": 3,
+            "attributes": [],
+            "cost": {
+              "totalAmount": {
+                "amount": "360.0",
+                "currencyCode": "CAD"
+              }
+            },
+            "discountAllocations": [],
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/43696905224214",
+              "title": "Small / Green",
+              "image": {
+                "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/4ecbbab490d5a90c04074428b4b0e09358c6895050db590ffbb84e1f8e05fbbc.jpg",
+                "altText": null,
+                "width": 4096,
+                "height": 4096
+              },
+              "price": {
+                "amount": "120.0",
+                "currencyCode": "CAD"
+              },
+              "product": {
+                "handle": "men-crewneck",
+                "title": "Men's Crewneck"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "userErrors": [],
+    "warnings": [
+      {
+        "code": "DISCOUNT_NOT_FOUND",
+        "message": "Enter a valid discount code",
+        "target": "gid://shopify/Cart/c1-7469366f149b403dafd17bc5a9dab879?key=9c19aa7d7298298cf1b25c5af5542807"
+      }
+    ]
+  }
+}

@@ -18,10 +18,6 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.navigation.NavController
 import app.storefront.AppGraph
-import app.storefront.data.StorefrontException
-import app.storefront.data.obj
-import app.storefront.data.parseProductPage
-import app.storefront.data.str
 
 /**
  * One collection's products. Handle "all" is the whole catalogue: Storefront has no `collection(handle: "all")`, so it
@@ -36,12 +32,11 @@ class CollectionModel(private val handle: String) : ViewModel() {
     val listing = Listing(viewModelScope, if (all) CATALOG_SORTS else COLLECTION_SORTS) { after, sort, applied ->
         val api = AppGraph.storefront
         if (all) {
-            parseProductPage(api.query("Catalog", listingVars(after, sort, emptyList())).connection("products"), "filters")
+            api.products(sortKey = sort.key, reverse = sort.reverse, after = after)
         } else {
-            val collection = api.query("Collection", listingVars(after, sort, applied, mapOf("handle" to handle))).obj("collection")
-                ?: throw StorefrontException(listOf("Collection not found"), null)
-            title = collection.str("title").orEmpty()
-            parseProductPage(collection.connection("products"), "filters")
+            val collection = api.collection(handle, applied, sort.key, sort.reverse, after) ?: error("Collection not found")
+            title = collection.title
+            collection.products
         }
     }
 

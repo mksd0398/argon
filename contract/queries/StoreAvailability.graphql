@@ -1,0 +1,22 @@
+query StoreAvailability(
+  $variantId: ID!
+  $first: Int!
+  $near: GeoCoordinateInput
+  $country: CountryCode
+  $language: LanguageCode
+) @inContext(country: $country, language: $language) {
+  node(id: $variantId) {
+    __typename
+    ... on ProductVariant {
+      id
+      storeAvailability(first: $first, near: $near) {
+        nodes {
+          available
+          pickUpTime
+          quantityAvailable
+          location { id name address { ...LocationAddress } }
+        }
+      }
+    }
+  }
+}

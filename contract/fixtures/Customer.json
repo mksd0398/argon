@@ -1,0 +1,38 @@
+{
+  "customer": {
+    "id": "gid://shopify/Customer/7000001",
+    "firstName": "Ada",
+    "lastName": "Lovelace",
+    "displayName": "Ada Lovelace",
+    "imageUrl": "https://cdn.shopify.com/shopifycloud/customer-account-web/production/assets/avatar.png",
+    "emailAddress": {
+      "emailAddress": "ada@example.com",
+      "marketingState": "SUBSCRIBED"
+    },
+    "phoneNumber": {
+      "phoneNumber": "+16135550123"
+    },
+    "defaultAddress": {
+      "id": "gid://shopify/CustomerAddress/8000001",
+      "firstName": "Ada",
+      "lastName": "Lovelace",
+      "company": null,
+      "address1": "150 Elgin St",
+      "address2": "Suite 400",
+      "city": "Ottawa",
+      "province": "Ontario",
+      "zoneCode": "ON",
+      "zip": "K2P 1L4",
+      "country": "Canada",
+      "countryCode": "CA",
+      "phoneNumber": "+16135550123",
+      "formatted": [
+        "Ada Lovelace",
+        "150 Elgin St",
+        "Suite 400",
+        "Ottawa ON K2P 1L4",
+        "Canada"
+      ]
+    }
+  }
+}

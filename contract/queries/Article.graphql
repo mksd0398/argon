@@ -1,0 +1,10 @@
+query Article(
+  $blogHandle: String!
+  $articleHandle: String!
+  $country: CountryCode
+  $language: LanguageCode
+) @inContext(country: $country, language: $language) {
+  blog(handle: $blogHandle) {
+    articleByHandle(handle: $articleHandle) { ...ArticleCard contentHtml tags seo { title description } }
+  }
+}

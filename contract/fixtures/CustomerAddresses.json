@@ -1,0 +1,59 @@
+{
+  "customer": {
+    "defaultAddress": {
+      "id": "gid://shopify/CustomerAddress/8000001"
+    },
+    "addresses": {
+      "pageInfo": {
+        "hasNextPage": false,
+        "endCursor": "eyJsYXN0X2lkIjo4MDAwMDAyfQ=="
+      },
+      "nodes": [
+        {
+          "id": "gid://shopify/CustomerAddress/8000001",
+          "firstName": "Ada",
+          "lastName": "Lovelace",
+          "company": null,
+          "address1": "150 Elgin St",
+          "address2": "Suite 400",
+          "city": "Ottawa",
+          "province": "Ontario",
+          "zoneCode": "ON",
+          "zip": "K2P 1L4",
+          "country": "Canada",
+          "countryCode": "CA",
+          "phoneNumber": "+16135550123",
+          "formatted": [
+            "Ada Lovelace",
+            "150 Elgin St",
+            "Suite 400",
+            "Ottawa ON K2P 1L4",
+            "Canada"
+          ]
+        },
+        {
+          "id": "gid://shopify/CustomerAddress/8000002",
+          "firstName": "Ada",
+          "lastName": "Lovelace",
+          "company": "Analytical Engines Ltd",
+          "address1": "1 Front St W",
+          "address2": null,
+          "city": "Toronto",
+          "province": "Ontario",
+          "zoneCode": "ON",
+          "zip": "M5J 2X5",
+          "country": "Canada",
+          "countryCode": "CA",
+          "phoneNumber": null,
+          "formatted": [
+            "Ada Lovelace",
+            "Analytical Engines Ltd",
+            "1 Front St W",
+            "Toronto ON M5J 2X5",
+            "Canada"
+          ]
+        }
+      ]
+    }
+  }
+}

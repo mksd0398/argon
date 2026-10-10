@@ -1,0 +1,12 @@
+mutation CartDeliveryAddressesUpdate(
+  $cartId: ID!
+  $addresses: [CartSelectableAddressUpdateInput!]!
+  $country: CountryCode
+  $language: LanguageCode
+) @inContext(country: $country, language: $language) {
+  cartDeliveryAddressesUpdate(cartId: $cartId, addresses: $addresses) {
+    cart { ...Cart }
+    userErrors { ...CartUserError }
+    warnings { ...CartWarning }
+  }
+}

@@ -41,10 +41,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import app.argon.ui.gallery.ArgonGallery
 import app.storefront.AppGraph
+import app.storefront.BuildConfig
 import app.storefront.data.Route
 
-// Tab routes: home, shop, wishlist, cart, account. Pushed screens: product/{handle}, collection/{handle}, search?q={q}, order/{id}.
+// Tab routes: home, shop, wishlist, cart, account. Pushed screens: product/{handle}, collection/{handle}, search?q={q}, order/{id},
+// and in debug builds components (the Argon UI gallery).
 private enum class Tab(val route: String, val icon: ImageVector) {
     Home("home", Icons.Filled.Home),
     Shop("shop", Icons.AutoMirrored.Filled.List),
@@ -125,6 +128,7 @@ private fun AppNav() {
                 SearchScreen(it.arguments?.getString("q").orEmpty(), nav)
             }
             composable("order/{id}") { OrderScreen(it.arguments?.getString("id").orEmpty(), nav) }
+            if (BuildConfig.DEBUG) composable("components") { ArgonGallery(AppGraph.brand.value?.accent, onBack = { nav.popBackStack() }) }
         }
     }
 }

@@ -1,0 +1,39 @@
+{
+  "order": {
+    "id": "gid://shopify/Order/6000002",
+    "returnInformation": {
+      "returnableLineItems": {
+        "nodes": [
+          {
+            "quantity": 1,
+            "lineItem": {
+              "id": "gid://shopify/LineItem/5000001",
+              "title": "Men's Crewneck",
+              "image": {
+                "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/4ecbbab490d5a90c04074428b4b0e09358c6895050db590ffbb84e1f8e05fbbc.jpg",
+                "altText": "Men's Crewneck"
+              },
+              "suggestedReturnReasonDefinitions": {
+                "nodes": [
+                  {
+                    "id": "gid://shopify/ReturnReasonDefinition/1",
+                    "handle": "size-too-small",
+                    "name": "Size was too small"
+                  },
+                  {
+                    "id": "gid://shopify/ReturnReasonDefinition/2",
+                    "handle": "not-as-described",
+                    "name": "Item not as described"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    "returns": {
+      "nodes": []
+    }
+  }
+}

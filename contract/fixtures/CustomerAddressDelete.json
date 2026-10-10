@@ -1,0 +1,14 @@
+{
+  "customerAddressDelete": {
+    "deletedAddressId": null,
+    "userErrors": [
+      {
+        "field": [
+          "addressId"
+        ],
+        "message": "Customer's default address cannot be deleted.",
+        "code": "DELETING_CUSTOMER_DEFAULT_ADDRESS_NOT_ALLOWED"
+      }
+    ]
+  }
+}

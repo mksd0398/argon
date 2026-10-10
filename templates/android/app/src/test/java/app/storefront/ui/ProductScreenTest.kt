@@ -1,7 +1,9 @@
 package app.storefront.ui
 
+import app.storefront.data.MetafieldIdentifier
 import app.storefront.data.Money
 import app.storefront.data.Product
+import app.storefront.data.SelectedOption
 import app.storefront.data.Variant
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -10,23 +12,22 @@ class ProductScreenTest {
     @Test
     fun metafieldIdentifiersSplitOnTheFirstDot() {
         assertEquals(
-            """[{"namespace":"custom","key":"material"},{"namespace":"custom","key":"care"}]""",
-            metafieldIdentifiers("custom.material, custom.care").toString(),
+            listOf(MetafieldIdentifier("custom", "material"), MetafieldIdentifier("custom", "care")),
+            metafieldIdentifiers("custom.material, custom.care"),
         )
-        assertEquals("""[{"namespace":"a","key":"b.c"}]""", metafieldIdentifiers("a.b.c").toString())
+        assertEquals(listOf(MetafieldIdentifier("a", "b.c")), metafieldIdentifiers("a.b.c"))
     }
 
     @Test
     fun blankAndMalformedEntriesAreSkipped() {
-        assertEquals("[]", metafieldIdentifiers("").toString())
-        assertEquals("""[{"namespace":"a","key":"b"}]""", metafieldIdentifiers("bad, ,.x,y.,a.b,").toString())
+        assertEquals(emptyList<MetafieldIdentifier>(), metafieldIdentifiers(""))
+        assertEquals(listOf(MetafieldIdentifier("a", "b")), metafieldIdentifiers("bad, ,.x,y.,a.b,"))
     }
 
     private fun variant(id: String, available: Boolean, size: String) =
-        Variant(id, size, available, mapOf("Size" to size), Money("10.00", "USD"), null, null)
+        Variant(id, size, available, selectedOptions = listOf(SelectedOption("Size", size)), price = Money("10.00", "USD"))
 
-    private fun product(vararg variants: Variant) =
-        Product("p", "h", "T", "V", "", emptyList(), listOf("Size" to variants.map { it.title }), variants.toList(), emptyList())
+    private fun product(vararg variants: Variant) = Product("p", "h", "T", variants = variants.toList())
 
     @Test
     fun selectionStartsAtTheFirstAvailableVariant() {

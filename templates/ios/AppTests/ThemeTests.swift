@@ -6,8 +6,9 @@ final class ThemeTests: XCTestCase {
         XCTAssertTrue(brandIsLight("#FFFFFF"))
         XCTAssertTrue(brandIsLight("#FFEB3B"), "yellow")
         XCTAssertFalse(brandIsLight("#000000"))
-        XCTAssertFalse(brandIsLight("#1E88E5"), "blue")
-        XCTAssertFalse(brandIsLight("#808080"), "mid grey is below 0.5 relative luminance")
+        XCTAssertTrue(brandIsLight("#1E88E5"), "mid blue: black contrasts more")
+        XCTAssertTrue(brandIsLight("#808080"), "mid grey: black contrasts more")
+        XCTAssertFalse(brandIsLight("#1A237E"), "navy")
     }
 
     func testNoReadableBrandColourKeepsWhiteLabels() {

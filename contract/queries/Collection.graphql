@@ -5,11 +5,16 @@ query Collection(
   $sortKey: ProductCollectionSortKeys
   $reverse: Boolean
   $filters: [ProductFilter!]
-) {
+  $country: CountryCode
+  $language: LanguageCode
+) @inContext(country: $country, language: $language) {
   collection(handle: $handle) {
     id
+    handle
     title
     description
+    seo { title description }
+    image { ...Image }
     products(first: $first, after: $after, sortKey: $sortKey, reverse: $reverse, filters: $filters) {
       filters { ...Filter }
       pageInfo { hasNextPage endCursor }

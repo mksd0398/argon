@@ -1,0 +1,27 @@
+{
+  "customerAddressCreate": {
+    "customerAddress": {
+      "id": "gid://shopify/CustomerAddress/8000002",
+      "firstName": "Ada",
+      "lastName": "Lovelace",
+      "company": "Analytical Engines Ltd",
+      "address1": "1 Front St W",
+      "address2": null,
+      "city": "Toronto",
+      "province": "Ontario",
+      "zoneCode": "ON",
+      "zip": "M5J 2X5",
+      "country": "Canada",
+      "countryCode": "CA",
+      "phoneNumber": null,
+      "formatted": [
+        "Ada Lovelace",
+        "Analytical Engines Ltd",
+        "1 Front St W",
+        "Toronto ON M5J 2X5",
+        "Canada"
+      ]
+    },
+    "userErrors": []
+  }
+}

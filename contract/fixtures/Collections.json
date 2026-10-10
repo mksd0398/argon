@@ -1,0 +1,46 @@
+{
+  "collections": {
+    "pageInfo": {
+      "hasNextPage": true,
+      "endCursor": "eyJjIjoiaWQiLCJ2IjozLCJpIjozfQ"
+    },
+    "nodes": [
+      {
+        "id": "gid://shopify/Collection/429493780502",
+        "handle": "men",
+        "title": "Men",
+        "image": {
+          "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/1685d5abe3e11df2a5ae2017646441bafb1f815893bbcc953296c3040175eb4f.png",
+          "altText": null,
+          "width": 1024,
+          "height": 1024
+        },
+        "description": "High-quality men's clothing, expertly designed to marry style with comfort. From elegantly tailored office wear to chic casual pieces perfect for a weekend getaway."
+      },
+      {
+        "id": "gid://shopify/Collection/429493813270",
+        "handle": "women",
+        "title": "Women",
+        "image": {
+          "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/2df0f75738a7a6e959e1e11f6227ee470802bf466ba7c52fb41819fbaac53e21.png",
+          "altText": null,
+          "width": 1024,
+          "height": 1024
+        },
+        "description": "High-quality women's clothing, expertly designed to marry style with comfort. From elegantly tailored office wear to chic casual pieces perfect for a weekend getaway."
+      },
+      {
+        "id": "gid://shopify/Collection/429493846038",
+        "handle": "unisex",
+        "title": "Unisex",
+        "image": {
+          "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/146052825418e1d78fd3b1be7f209ff0081de5a8694df87f65561cf601190e46.png",
+          "altText": null,
+          "width": 1024,
+          "height": 1024
+        },
+        "description": "High-quality unisex clothing, expertly designed to marry style with comfort. From elegantly tailored office wear to chic casual pieces perfect for a weekend getaway."
+      }
+    ]
+  }
+}

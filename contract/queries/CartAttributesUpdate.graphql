@@ -1,0 +1,12 @@
+mutation CartAttributesUpdate(
+  $cartId: ID!
+  $attributes: [AttributeInput!]!
+  $country: CountryCode
+  $language: LanguageCode
+) @inContext(country: $country, language: $language) {
+  cartAttributesUpdate(cartId: $cartId, attributes: $attributes) {
+    cart { ...Cart }
+    userErrors { ...CartUserError }
+    warnings { ...CartWarning }
+  }
+}

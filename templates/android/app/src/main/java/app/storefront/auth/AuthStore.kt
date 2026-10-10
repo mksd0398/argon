@@ -4,13 +4,10 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import app.storefront.data.StorefrontException
+import app.storefront.data.ArgonApiError
 import app.storefront.data.graphQL
 import app.storefront.data.graphQLBody
-import app.storefront.data.int
 import app.storefront.data.safeData
-import app.storefront.data.str
-import app.storefront.data.string
 import java.net.URI
 import java.net.URLDecoder
 import java.util.Base64
@@ -29,6 +26,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 import okhttp3.FormBody
@@ -165,7 +163,10 @@ class AuthStore(
         if (current.expiresAt - now() > 60_000) current.access else refresh(current)
     }
 
-    /** Runs Customer Account API operation [name] and returns its `data`. A 401 refreshes and retries once; a second signs out. */
+    /**
+     * Runs Customer Account API operation [name] and returns its `data` (the transport of [app.storefront.data.CustomerAccountApi]).
+     * A 401 refreshes and retries once; a second signs out.
+     */
     suspend fun customerQuery(name: String, variables: JsonObject): JsonObject {
         val url = graphqlUrl ?: get("https://$domain/.well-known/customer-account-api").endpoint("graphql_api").also { graphqlUrl = it }
         val body = graphQLBody(withContext(Dispatchers.IO) { documents.getOrPut(name) { loadDocument(name) } }, variables)
@@ -174,16 +175,16 @@ class AuthStore(
 
         val first = validAccessToken() ?: throw AuthException("You're signed out")
         try {
-            return http.graphQL(request(first))
-        } catch (e: StorefrontException) {
+            return http.graphQL(name, request(first))
+        } catch (e: ArgonApiError.Http) {
             if (e.status != 401) throw e
         }
         // revoked or expired early; a concurrent caller may already have refreshed it
         val second = lock.withLock { tokens?.let { if (it.access == first) refresh(it) else it.access } }
             ?: throw AuthException("You're signed out")
         try {
-            return http.graphQL(request(second))
-        } catch (e: StorefrontException) {
+            return http.graphQL(name, request(second))
+        } catch (e: ArgonApiError.Http) {
             if (e.status == 401) lock.withLock { setTokens(null) }
             throw e
         }
@@ -323,3 +324,8 @@ class AuthStore(
         runCatching { (Json.parseToJsonElement(String(Base64.getUrlDecoder().decode(payload))) as? JsonObject)?.str("nonce") }.getOrNull()
     }
 }
+
+// Lenient reads of the auth endpoints' JSON: a missing or null field reads as null. `string` is for fields that must be there.
+private fun JsonObject.str(key: String) = (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
+private fun JsonObject.string(key: String) = str(key) ?: throw IllegalStateException("Missing \"$key\" in response")
+private fun JsonObject.int(key: String) = (this[key] as? JsonPrimitive)?.intOrNull

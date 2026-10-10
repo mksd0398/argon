@@ -10,127 +10,134 @@ fileprivate func kind(_ section: Section) -> String {
     }
 }
 
-fileprivate func mockShopBrand() throws -> Brand {
-    try parseBrand(XCTUnwrap(try fixture("shop").obj("shop")), configDomain: "mock.shop")
+@MainActor
+fileprivate func mockShopBrand() async throws -> Brand {
+    Brand(shop: try await StubServer().storefront().shop(), configDomain: "mock.shop")
+}
+
+@MainActor
+fileprivate func homeFixture() async throws -> [Metaobject] {
+    try await StubServer().storefront().homeScreen("home")
+}
+
+@MainActor
+fileprivate func fallbackFixture() async throws -> [CollectionCard] {
+    try await StubServer().storefront().fallbackHome()
 }
 
 final class SectionsTests: XCTestCase {
-    func testHomeKeepsKnownSectionsAndSkipsUnknownAndEmpty() throws {
-        let sections = try Sections.fromHome(fixture("home_screen"))
+    @MainActor
+    func testHomeKeepsItsSectionsInOrder() async throws {
+        let sections = Sections.fromHome(try await homeFixture(), hosts: ["mock.shop"])
         XCTAssertEqual(sections.map { kind($0) }, ["banner", "products", "collections"])
         guard sections.count == 3 else { return }
-        guard case let .banner(style, _, _, _, _, link) = sections[0] else { return XCTFail("not a banner") }
+        guard case let .banner(style, image, heading, _, buttonLabel, link) = sections[0] else { return XCTFail("not a banner") }
         XCTAssertEqual(style, "hero")
+        XCTAssertNotNil(image)
+        XCTAssertEqual(heading, "New season")
+        XCTAssertEqual(buttonLabel, "Shop men")
         XCTAssertEqual(link, Route.collection("men"))
-        guard case let .products(_, productsStyle, items) = sections[1] else { return XCTFail("not products") }
-        XCTAssertEqual(items.count, 4, "collection products, cut to limit 4")
+        guard case let .products(productsHeading, productsStyle, items) = sections[1] else { return XCTFail("not products") }
+        XCTAssertEqual(productsHeading, "Featured")
+        XCTAssertEqual(items.count, 3, "the collection's products, under the limit of 4")
         XCTAssertEqual(productsStyle, "carousel", "style defaults to carousel")
+        guard case let .collections(_, collections) = sections[2] else { return XCTFail("not collections") }
+        XCTAssertEqual(collections.map { $0.handle }, ["men", "women", "unisex"])
     }
 
-    func testMissingScreenGivesNoSections() throws {
-        XCTAssertTrue(try Sections.fromHome(json(#"{"metaobject":null}"#)).isEmpty)
+    @MainActor
+    func testAProductsSectionIsCutToItsLimit() async throws {
+        var nodes = try await homeFixture()
+        let products = nodes[1]
+        let fields = products.fields.filter { $0.key != "limit" }
+            + [MetaobjectField(key: "limit", type: nil, value: "2", reference: nil, references: [])]
+        nodes[1] = Metaobject(id: products.id, type: products.type, fields: fields)
+        guard case let .products(_, _, items)? = Sections.fromHome(nodes).dropFirst().first else { return XCTFail("not products") }
+        XCTAssertEqual(items.count, 2)
     }
 
-    func testFallbackWithoutCoverStartsWithCollections() throws {
-        let sections = try Sections.fallback(mockShopBrand(), fixture("fallback_home"))
-        XCTAssertFalse(sections.isEmpty)
-        XCTAssertEqual(sections.first.map { kind($0) }, "collections")
-        XCTAssertTrue(sections.contains { section in
-            if case let .products(_, style, items) = section {
-                return style == "carousel" && !items.isEmpty
-            }
-            return false
-        })
+    func testNoScreenGivesNoSections() {
+        XCTAssertTrue(Sections.fromHome([]).isEmpty)
     }
 
-    func testEmptyObjectsAreSkippedNotCrashed() throws {
-        let card = try fixture("fallback_home").nodes("collections")[0].nodes("products")[0]
-        let cardData = try JSONSerialization.data(withJSONObject: card)
-        let cardText = String(decoding: cardData, as: UTF8.self)
-        let data = try json("""
-        {"metaobject":{"field":{"references":{"nodes":[
-            {},
-            {"type":"mobile_products","fields":[{"key":"products","references":{"nodes":[{}, \(cardText)]}}]}
-        ]}}}}
-        """)
-        let sections = try Sections.fromHome(data)
-        XCTAssertEqual(sections.count, 1)
-        guard let first = sections.first, case let .products(_, _, items) = first else { return XCTFail("not products") }
-        XCTAssertEqual(items.count, 1)
+    @MainActor
+    func testFallbackWithoutCoverStartsWithCollections() async throws {
+        let sections = Sections.fallback(try await mockShopBrand(), try await fallbackFixture())
+        XCTAssertEqual(sections.map { kind($0) }, ["collections", "products"])
+        guard case let .products(heading, style, items)? = sections.last else { return XCTFail("not products") }
+        XCTAssertEqual(heading, "Men")
+        XCTAssertEqual(style, "carousel")
+        XCTAssertEqual(items.count, 3)
     }
 }
 
 final class HomeSectionsTests: XCTestCase {
-    /// Which queries ran.
+    /// Which loads ran.
     private var calls: [String] = []
 
-    /// Runs `homeSections` with canned responses.
-    private func home(_ response: @escaping () throws -> [String: Any]) async throws -> [Section] {
-        let brand = try mockShopBrand()
+    /// Runs `homeSections` with canned screens.
+    @MainActor
+    private func home(_ screen: @escaping () throws -> [Metaobject]) async throws -> [Section] {
+        let brand = try await mockShopBrand()
+        let fallback = try await fallbackFixture()
         return try await homeSections(
             brand,
             home: {
                 self.calls.append("home")
-                return try response()
+                return try screen()
             },
             fallback: {
                 self.calls.append("fallback")
-                return try fixture("fallback_home")
+                return fallback
             }
         )
     }
 
+    @MainActor
     func testTheStoresScreenIsUsedWhenItHasSections() async throws {
-        let sections = try await home { try fixture("home_screen") }
+        let screen = try await homeFixture()
+        let sections = try await home { screen }
         XCTAssertEqual(calls, ["home"])
         XCTAssertEqual(sections.first.map { kind($0) }, "banner")
     }
 
+    @MainActor
     func testNoRenderableSectionsFallBack() async throws {
-        let sections = try await home { try json(#"{"metaobject":null}"#) }
+        let sections = try await home { [] }
         XCTAssertEqual(calls, ["home", "fallback"])
         XCTAssertEqual(sections.first.map { kind($0) }, "collections")
     }
 
+    @MainActor
     func testGraphqlErrorsFallBack() async throws {
         // e.g. a token without metaobject access: a 200 response carrying errors
-        let sections = try await home {
-            throw StorefrontException(messages: ["Access denied for metaobject"], status: 200, isGraphQL: true)
-        }
+        let sections = try await home { throw ArgonAPIError.graphql(messages: ["Access denied for metaobject"]) }
         XCTAssertEqual(calls, ["home", "fallback"])
         XCTAssertFalse(sections.isEmpty)
     }
 
+    @MainActor
     func testHttpFailuresAreRethrownNotReplacedByTheFallback() async throws {
-        do {
-            _ = try await home { throw StorefrontException(messages: ["HTTP 503"], status: 503) }
-            XCTFail("expected a StorefrontException")
-        } catch let e as StorefrontException {
-            XCTAssertEqual(e.messages, ["HTTP 503"])
-        }
+        let failed = await thrownError { try await self.home { throw ArgonAPIError.http(status: 503) } }
+        guard case let .http(status)? = failed as? ArgonAPIError else { return XCTFail("expected an HTTP error") }
+        XCTAssertEqual(status, 503)
         XCTAssertEqual(calls, ["home"], "the fallback must not run, or the screen would cache a degraded home")
     }
 
+    @MainActor
     func testInvalidResponsesAreRethrown() async throws {
-        do {
-            _ = try await home { throw StorefrontException(messages: ["Invalid response"], status: 200) }
-            XCTFail("expected a StorefrontException")
-        } catch is StorefrontException {
-        }
+        let failed = await thrownError { try await self.home { throw ArgonAPIError.decoding(operation: "HomeScreen", detail: "") } }
+        guard case .decoding? = failed as? ArgonAPIError else { return XCTFail("expected a decoding error") }
         XCTAssertEqual(calls, ["home"])
     }
 
+    @MainActor
     func testAFailingFallbackStillSurfacesItsError() async throws {
-        let brand = try mockShopBrand()
-        do {
-            _ = try await homeSections(
-                brand,
-                home: { try json(#"{"metaobject":null}"#) },
-                fallback: { throw StorefrontException(messages: ["HTTP 500"], status: 500) }
-            )
-            XCTFail("expected a StorefrontException")
-        } catch let e as StorefrontException {
-            XCTAssertEqual(e.messages, ["HTTP 500"])
+        let brand = try await mockShopBrand()
+        let failed = await thrownError {
+            try await homeSections(brand, home: { [] }, fallback: { throw ArgonAPIError.http(status: 500) })
         }
+        guard case let .http(status)? = failed as? ArgonAPIError else { return XCTFail("expected an HTTP error") }
+        XCTAssertEqual(status, 500)
     }
 }

@@ -1,0 +1,22 @@
+{
+  "pages": {
+    "pageInfo": {
+      "hasNextPage": false,
+      "endCursor": "eyJjIjoiaWQiLCJ2IjoyLCJpIjoyfQ"
+    },
+    "nodes": [
+      {
+        "id": "gid://shopify/Page/106594172950",
+        "handle": "contact",
+        "title": "Contact",
+        "bodySummary": ""
+      },
+      {
+        "id": "gid://shopify/Page/106636541974",
+        "handle": "liquid",
+        "title": "Liquid",
+        "bodySummary": "Liquid is a template language created by Shopify. It's available as an open source project on GitHub, and is used by many different software projec..."
+      }
+    ]
+  }
+}

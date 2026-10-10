@@ -1,0 +1,7 @@
+query Page(
+  $handle: String!
+  $country: CountryCode
+  $language: LanguageCode
+) @inContext(country: $country, language: $language) {
+  page(handle: $handle) { id handle title body bodySummary seo { title description } updatedAt }
+}

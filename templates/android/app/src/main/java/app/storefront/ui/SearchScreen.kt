@@ -49,18 +49,12 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.navigation.NavController
 import app.storefront.AppGraph
+import app.storefront.data.Page
 import app.storefront.data.ProductCard
 import app.storefront.data.Route
-import app.storefront.data.cards
-import app.storefront.data.obj
-import app.storefront.data.objects
-import app.storefront.data.parseProductPage
-import app.storefront.data.str
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 
 /** The typed text and, once submitted, the results of that query. State lives here so it survives opening a product. */
 class SearchModel(initial: String) : ViewModel() {
@@ -71,8 +65,8 @@ class SearchModel(initial: String) : ViewModel() {
         private set
 
     val listing = Listing(viewModelScope, SEARCH_SORTS) { after, sort, applied ->
-        val data = AppGraph.storefront.query("Search", listingVars(after, sort, applied, mapOf("query" to submitted.orEmpty())))
-        parseProductPage(data.connection("search"), "productFilters")
+        val page = AppGraph.storefront.search(submitted.orEmpty(), applied, sort.key, sort.reverse, after)
+        Page(page.items.filterIsInstance<ProductCard>(), page.endCursor, page.hasNextPage, page.filters)
     }
 
     init {
@@ -91,11 +85,11 @@ class SearchModel(initial: String) : ViewModel() {
 private class Suggestions(val queries: List<String>, val collections: List<Pair<String, String>>, val products: List<ProductCard>)
 
 private suspend fun loadSuggestions(query: String): Suggestions {
-    val p = AppGraph.storefront.query("PredictiveSearch", buildJsonObject { put("query", query) }).obj("predictiveSearch")
+    val p = AppGraph.storefront.predictiveSearch(query)
     return Suggestions(
-        queries = p?.objects("queries").orEmpty().mapNotNull { it.str("text") },
-        collections = p?.objects("collections").orEmpty().mapNotNull { c -> c.str("handle")?.let { it to (c.str("title") ?: it) } },
-        products = p?.objects("products").orEmpty().cards(),
+        queries = p.queries.map { it.text },
+        collections = p.collections.map { it.handle to (it.title ?: it.handle) },
+        products = p.products,
     )
 }
 

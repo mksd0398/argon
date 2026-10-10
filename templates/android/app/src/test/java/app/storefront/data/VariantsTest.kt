@@ -6,7 +6,7 @@ import org.junit.Test
 
 class VariantsTest {
     private fun variant(id: String, size: String, color: String) =
-        Variant(id, "$size / $color", true, mapOf("Size" to size, "Color" to color), Money("10.0", "USD"), null, null)
+        Variant(id, "$size / $color", available = true, selectedOptions = listOf(SelectedOption("Size", size), SelectedOption("Color", color)), price = Money("10.0", "USD"))
 
     private val variants = listOf(variant("1", "S", "Red"), variant("2", "S", "Blue"), variant("3", "M", "Red"))
 

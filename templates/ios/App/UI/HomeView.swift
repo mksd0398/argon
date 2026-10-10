@@ -1,12 +1,13 @@
 import SwiftUI
 
+@MainActor
 private func loadHome() async throws -> [Section] {
     let brand = try await AppGraph.loadBrand()
     let api = AppGraph.storefront
     return try await homeSections(
         brand,
-        home: { try await api.query("HomeScreen", ["handle": "home"]) },
-        fallback: { try await api.query("FallbackHome") }
+        home: { try await api.homeScreen() },
+        fallback: { try await api.fallbackHome() }
     )
 }
 

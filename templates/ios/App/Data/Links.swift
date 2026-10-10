@@ -32,6 +32,26 @@ enum Links {
         return .web("https://\(shop)/\(rest)")
     }
 
+    /// The menu's items as in-app routes: through their linked product or collection, else through `resolve`. Unroutable
+    /// leaves are dropped.
+    static func menu(_ items: [StoreMenu.Item], hosts: [String]) -> [MenuItem] {
+        var routed: [MenuItem] = []
+        for item in items {
+            let children = menu(item.items, hosts: hosts)
+            var route: Route?
+            switch item.resource {
+            case let .product(handle)?: route = .product(handle)
+            case let .collection(handle)?: route = .collection(handle)
+            default: route = resolve(item.url, hosts: hosts)
+            }
+            // ponytail: a pure header item (url "#") keeps its children behind a placeholder web route; the UI expands it
+            if route == nil && !children.isEmpty { route = .web(item.url ?? "") }
+            guard let target = route else { continue }
+            routed.append(MenuItem(title: item.title, route: target, children: children))
+        }
+        return routed
+    }
+
     // Form decoding, as URLDecoder does: `+` is a space.
     private static func param(_ url: URLComponents, _ name: String) -> String? {
         let pairs = (url.percentEncodedQuery ?? "").split(separator: "&").map { String($0) }

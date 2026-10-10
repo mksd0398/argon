@@ -1,0 +1,18 @@
+query Orders($first: Int!, $after: String, $sortKey: OrderSortKeys, $reverse: Boolean, $query: String) {
+  customer {
+    orders(first: $first, after: $after, sortKey: $sortKey, reverse: $reverse, query: $query) {
+      pageInfo { hasNextPage endCursor }
+      nodes {
+        id
+        name
+        number
+        processedAt
+        financialStatus
+        fulfillmentStatus
+        cancelledAt
+        totalPrice { ...Money }
+        lineItems(first: 3) { nodes { image { url altText } } }
+      }
+    }
+  }
+}

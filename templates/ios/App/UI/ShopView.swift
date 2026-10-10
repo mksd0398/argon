@@ -1,21 +1,15 @@
 import SwiftUI
 
 /// The `main-menu` tree; when the store has none, its first collections as a flat list.
+@MainActor
 private func loadMenu() async throws -> [MenuItem] {
     let brand = try await AppGraph.loadBrand()
     let api = AppGraph.storefront
-    let data = try await api.query("Menu", ["handle": "main-menu"])
-    if let menu = data.obj("menu") {
-        let items = try parseMenu(menu, hosts: brand.hosts)
+    if let menu = try await api.menu("main-menu") {
+        let items = Links.menu(menu.items, hosts: brand.hosts)
         if !items.isEmpty { return items }
     }
-    let fallback = try await api.query("FallbackHome")
-    var items: [MenuItem] = []
-    for node in fallback.nodes("collections") {
-        let collection = try parseCollectionCard(node)
-        items.append(MenuItem(title: collection.title, route: .collection(collection.handle), children: []))
-    }
-    return items
+    return try await api.fallbackHome().map { MenuItem(title: $0.title, route: .collection($0.handle), children: []) }
 }
 
 @MainActor

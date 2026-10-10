@@ -33,21 +33,14 @@ import androidx.navigation.NavController
 import app.storefront.AppGraph
 import app.storefront.data.MenuItem
 import app.storefront.data.Route
-import app.storefront.data.nodes
-import app.storefront.data.obj
-import app.storefront.data.parseCollectionCard
-import app.storefront.data.parseMenu
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
+import app.storefront.data.menuTree
 
 /** The `main-menu` tree; when the store has none, its first collections as a flat list. */
 private suspend fun loadMenu(): List<MenuItem> {
     val brand = AppGraph.loadBrand()
     val api = AppGraph.storefront
-    val menu = api.query("Menu", buildJsonObject { put("handle", "main-menu") }).obj("menu")?.let { parseMenu(it, brand.hosts) }.orEmpty()
-    return menu.ifEmpty {
-        api.query("FallbackHome").nodes("collections").map(::parseCollectionCard).map { MenuItem(it.title, Route.Collection(it.handle), emptyList()) }
-    }
+    val menu = api.menu("main-menu")?.let { menuTree(it.items, brand.hosts) }.orEmpty()
+    return menu.ifEmpty { api.fallbackHome().map { MenuItem(it.title, Route.Collection(it.handle), emptyList()) } }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

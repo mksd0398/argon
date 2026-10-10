@@ -1,3 +1,7 @@
-query Cart($id: ID!) {
-  cart(id: $id) { ...Cart }
+query Cart(
+  $id: ID!
+  $country: CountryCode
+  $language: LanguageCode
+) @inContext(country: $country, language: $language) {
+  cart(id: $id) { ...Cart ...CartDeliveryGroups }
 }

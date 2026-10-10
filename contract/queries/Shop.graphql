@@ -1,12 +1,22 @@
-query Shop {
+query Shop($country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {
   shop {
     id
     name
-    primaryDomain { host }
+    description
+    moneyFormat
+    shipsToCountries
+    primaryDomain { host url }
     brand {
-      logo { image { url } }
-      coverImage { image { url } }
-      colors { primary { background foreground } }
+      slogan
+      shortDescription
+      logo { image { ...Image } }
+      squareLogo { image { ...Image } }
+      coverImage { image { ...Image } }
+      colors {
+        primary { background foreground }
+        secondary { background foreground }
+      }
     }
+    paymentSettings { currencyCode countryCode acceptedCardBrands supportedDigitalWallets enabledPresentmentCurrencies }
   }
 }

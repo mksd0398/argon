@@ -1,4 +1,4 @@
-query FallbackHome {
+query FallbackHome($country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {
   collections(first: 6) {
     nodes {
       ...CollectionCard
