@@ -10,6 +10,7 @@
   - Each component uses the platform's own control where one exists and is custom only where none does.
   - The carousel runs edge to edge: neighbouring pages peek in by 4% of the width, with a gap between pages.
   - The gallery renders lazily, so off-screen components don't draw or animate.
+- **iOS without a Mac:** `ios/Package.swift` and `ios/xtool.yml` let [xtool](https://xtool.sh) build the same sources on Linux or Windows (WSL) and install the app on an iPhone. The app then reads its per-store values from the bundled `Config.xcconfig`.
 - **The complete Storefront and Customer Account API, prebuilt and typed** (2026-10).
   - 52 operations: catalogue, search, menus, pages, blogs, metaobjects, store locations, every cart mutation, and the customer's profile, orders, addresses, email marketing and returns.
   - Typed facades on both platforms: `StorefrontApi`/`StorefrontAPI` and `CustomerAccountApi`/`CustomerAccountAPI`.

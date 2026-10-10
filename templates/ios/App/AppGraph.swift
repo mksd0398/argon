@@ -68,9 +68,39 @@ enum AppGraph {
         return try String(contentsOf: url, encoding: .utf8)
     }
 
+    /// A per-store value: from Info.plist (Xcode fills it in from Config.xcconfig), else from Config.xcconfig itself,
+    /// which an xtool build bundles as a resource because it has no build settings to substitute.
     private static func info(_ key: String) -> String {
-        Bundle.main.object(forInfoDictionaryKey: key) as? String ?? ""
+        if let value = Bundle.main.object(forInfoDictionaryKey: key) as? String, !value.isEmpty { return value }
+        return bundledConfig[xcconfigKey(key)] ?? ""
     }
+
+    private static let bundledConfig: [String: String] = {
+        guard let url = Bundle.main.url(forResource: "Config", withExtension: "xcconfig"),
+              let text = try? String(contentsOf: url, encoding: .utf8) else { return [:] }
+        return xcconfigValues(text)
+    }()
+}
+
+/// "ShopDomain" -> "SHOP_DOMAIN": the Config.xcconfig key behind an Info.plist key.
+func xcconfigKey(_ infoKey: String) -> String {
+    infoKey.reduce(into: "") { out, character in
+        if character.isUppercase, !out.isEmpty { out.append("_") }
+        out.append(contentsOf: character.uppercased())
+    }
+}
+
+/// The `KEY = value` lines of an xcconfig file. `$()`, the empty substitution the CLI writes to keep `//` in a value,
+/// is dropped; comment lines are skipped.
+func xcconfigValues(_ text: String) -> [String: String] {
+    var values: [String: String] = [:]
+    for line in text.split(whereSeparator: \.isNewline) {
+        guard !line.hasPrefix("//"), let equals = line.firstIndex(of: "=") else { continue }
+        let key = line[..<equals].trimmingCharacters(in: .whitespaces)
+        let value = line[line.index(after: equals)...].trimmingCharacters(in: .whitespaces)
+        if !key.isEmpty { values[key] = value.replacingOccurrences(of: "$()", with: "") }
+    }
+    return values
 }
 
 /// Holds the shop's brand once `AppGraph.loadBrand()` has fetched it, so views observe it.

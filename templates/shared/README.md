@@ -4,8 +4,19 @@ A SwiftUI iOS app (`ios/`, iOS 17+) and a Jetpack Compose Android app (`android/
 
 ## Run
 
-- **iOS** (needs a Mac): open `ios/App.xcodeproj` in Xcode 16+, pick a simulator, press Run.
+- **iOS** (on a Mac): open `ios/App.xcodeproj` in Xcode 16+, pick a simulator, press Run.
+- **iOS without a Mac**: see [below](#ios-without-a-mac-xtool).
 - **Android**: open `android/` in Android Studio and press Run, or `cd android && ./gradlew assembleDebug`.
+
+### iOS without a Mac (xtool)
+
+[xtool](https://xtool.sh) builds the app on Linux or Windows (through WSL) and installs it on an iPhone over USB. `ios/Package.swift` and `ios/xtool.yml` are there for it; they build the same sources as the Xcode project.
+
+1. Install xtool and its prerequisites, following its [installation guide](https://xtool.sh/documentation/xtool/installation-linux): Swift, `usbmuxd`, the `Xcode.xip` download for the iOS SDK, and `xtool setup` to sign in with an Apple ID.
+2. Connect the iPhone by USB, trust the computer, and turn on Developer Mode (Settings → Privacy & Security).
+3. Run `cd ios && xtool dev`.
+
+xtool has no build settings, so the app reads its per-store values from `ios/Config.xcconfig`, which `xtool.yml` copies into the app. `xtool.yml` also lists every GraphQL document: when you add a query, add its file there too. With a free Apple ID the installed app expires after 7 days and xtool prefixes the bundle ID.
 
 ## Configuration
 
