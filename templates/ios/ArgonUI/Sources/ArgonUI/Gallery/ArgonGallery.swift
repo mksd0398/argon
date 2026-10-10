@@ -66,7 +66,8 @@ private struct GalleryContent: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: theme.spacing.xxl) {
+            // Lazy: a group is built (and its animations run) only while it is on screen
+            LazyVStack(alignment: .leading, spacing: theme.spacing.xxl) {
                 Group { tokens; icons; buttons; choices; fields }
                 Group { selection; pickers; tagSection; badges; containers }
                 Group { progress; list; navigation }
@@ -321,10 +322,11 @@ private struct GalleryContent: View {
                     RoundedRectangle(cornerRadius: theme.radius.l)
                         .fill(theme.colors.border)
                         .overlay { Text("Slide \(index + 1)").font(theme.type.title).foregroundStyle(theme.colors.ink) }
-                        .padding(.horizontal, theme.spacing.xxs)
                 }
                 .frame(height: 200)
-                caption("Autoplays every 3 s (not under Reduce Motion)")
+                // out of the gallery's side padding: a carousel spans the screen edge to edge
+                .padding(.horizontal, -theme.spacing.l)
+                caption("Edge to edge, neighbours peek 4%. Autoplays every 3 s (not under Reduce Motion)")
             }
             GallerySection("Accordion") {
                 ArgonAccordion(title: "Shipping & returns", isExpanded: accordionOpen, onToggle: { accordionOpen.toggle() }) {

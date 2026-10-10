@@ -5,7 +5,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -26,13 +28,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.argon.ui.ArgonTheme
 import kotlinx.coroutines.delay
 
 /**
- * [count] pages of [itemContent], one at a time: native [HorizontalPager] with page dots. [autoplaySeconds] advances
- * (and wraps) on a timer, paused while dragging and off when the system's animations are off.
+ * [count] pages of [itemContent], edge to edge: native [HorizontalPager] with page dots. The current page sits between
+ * [itemSpacing] gaps and its neighbours peek in by [peekFraction] of the width (0.04 = 4%), so pages scroll off the
+ * edges of the carousel. Give it the screen's full width (no horizontal padding around it).
+ * [autoplaySeconds] advances (and wraps) on a timer, paused while dragging and off when the system's animations are off.
  * [multiBrowse] (Android only) is the M3 multi-browse carousel instead: a large item with smaller peeks, no dots or autoplay.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,6 +47,8 @@ fun ArgonCarousel(
     modifier: Modifier = Modifier,
     autoplaySeconds: Double? = null,
     showsIndicators: Boolean = true,
+    peekFraction: Float = 0.04f,
+    itemSpacing: Dp = ArgonTheme.spacing.s,
     multiBrowse: Boolean = false,
     itemContent: @Composable (Int) -> Unit,
 ) {
@@ -50,7 +57,8 @@ fun ArgonCarousel(
             rememberCarouselState { count },
             preferredItemWidth = 220.dp,
             modifier = modifier.fillMaxWidth(),
-            itemSpacing = ArgonTheme.spacing.s,
+            itemSpacing = itemSpacing,
+            contentPadding = PaddingValues(horizontal = ArgonTheme.spacing.l),
         ) { Box(Modifier.maskClip(MaterialTheme.shapes.large)) { itemContent(it) } }
         return
     }
@@ -67,7 +75,11 @@ fun ArgonCarousel(
         }
     }
     Column(modifier) {
-        HorizontalPager(pager, Modifier.fillMaxWidth()) { itemContent(it) }
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            // the side padding is what shows the neighbours: a gap, then the peek
+            val side = itemSpacing + maxWidth * peekFraction.coerceIn(0f, 0.4f)
+            HorizontalPager(pager, contentPadding = PaddingValues(horizontal = side), pageSpacing = itemSpacing) { itemContent(it) }
+        }
         if (showsIndicators && count > 1) {
             Row(
                 Modifier.fillMaxWidth().padding(top = ArgonTheme.spacing.s)

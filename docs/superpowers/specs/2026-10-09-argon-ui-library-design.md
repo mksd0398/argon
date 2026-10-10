@@ -47,7 +47,7 @@ Native = the platform's own control styled with tokens. Custom = built from prim
 | 6 | `ArgonButton` | `title`, `style` primary/secondary/tertiary/destructive, `size` s/m/l, `icon?`, `isLoading`, `isEnabled`, `fullWidth`, `action` | native `Button` + style | native `Button`/`OutlinedButton`/`TextButton` |
 | 7 | `ArgonButtonGroup` | `options`, `selectedIndex`, `onSelect` | native segmented `Picker` | native `SingleChoiceSegmentedButtonRow` |
 | 8 | `ArgonCard` | `style` elevated/outlined/filled, `onClick?`, `content` | custom | native `Card`/`ElevatedCard`/`OutlinedCard` |
-| 9 | `ArgonCarousel` | `count`, `autoplaySeconds?`, `showsIndicators`, `itemContent(index)` | native paging (`TabView` page style) + custom autoplay | native `HorizontalPager` (+ `HorizontalMultiBrowseCarousel` variant) + custom dots/autoplay |
+| 9 | `ArgonCarousel` | `count`, `autoplaySeconds?`, `showsIndicators`, `peekFraction` (0.04), `itemSpacing`, `itemContent(index)`. Edge to edge: give it the full screen width; neighbours peek by `peekFraction` of the width with `itemSpacing` between pages | native paging scroll view (`scrollTargetBehavior(.viewAligned)`) + custom dots/autoplay | native `HorizontalPager` (+ `HorizontalMultiBrowseCarousel` variant) + custom dots/autoplay |
 | 10 | `ArgonCheckbox` | `isChecked`, `label?`, `isEnabled`, `onChange` | custom (checkbox style is macOS-only) | native `Checkbox` |
 | 11 | `ArgonDatePicker`, `ArgonDateRangePicker` | `selection` / `start`,`end`, `minDate?`, `maxDate?` | native `DatePicker`; range custom (two linked pickers) | native `DatePicker` / `DateRangePicker` |
 | 12 | `ArgonDivider` | `inset?` | native `Divider` | native `HorizontalDivider` |
@@ -73,7 +73,7 @@ Native = the platform's own control styled with tokens. Custom = built from prim
 
 ## Gallery
 
-`ArgonGallery` — one screen listing every component in each state (enabled/disabled, empty/filled/error, loading, selected), with a light/dark toggle. Shown only in debug builds, from a "Components" row at the bottom of Account (`#if DEBUG` / `BuildConfig.DEBUG`). It is the visual review surface: open it on the phone.
+`ArgonGallery` — one lazily rendered screen (sections are built only while on screen) listing every component in each state (enabled/disabled, empty/filled/error, loading, selected), with a light/dark toggle. Shown only in debug builds, from a "Components" row at the bottom of Account (`#if DEBUG` / `BuildConfig.DEBUG`). It is the visual review surface: open it on the phone.
 
 ## Accessibility
 

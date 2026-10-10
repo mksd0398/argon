@@ -16,10 +16,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -125,26 +125,30 @@ fun ArgonGallery(accentHex: String? = null, onBack: (() -> Unit)? = null) {
                     )
                 },
             ) { padding ->
-                Column(
-                    Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).verticalScroll(rememberScrollState())
-                        .padding(bottom = ArgonTheme.spacing.xxl),
+                // Lazy: a section is composed (and its animations run) only while it is on screen
+                LazyColumn(
+                    Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding),
+                    contentPadding = PaddingValues(bottom = ArgonTheme.spacing.xxl),
                 ) {
-                    ArgonSwitch(dark, { dark = it }, Modifier.padding(horizontal = ArgonTheme.spacing.l), label = "Dark mode")
-                    ArgonDivider()
-                    Tokens()
-                    Icons()
-                    Buttons()
-                    Choices()
-                    Badges()
-                    Inputs()
-                    Selection()
-                    Sliders()
-                    Progress()
-                    Containers()
-                    Lists()
-                    Bars()
-                    Overlays(onOpenMenu = { menuOpen = true })
-                    Dates()
+                    item {
+                        ArgonSwitch(dark, { dark = it }, Modifier.padding(horizontal = ArgonTheme.spacing.l), label = "Dark mode")
+                        ArgonDivider()
+                    }
+                    item { Tokens() }
+                    item { Icons() }
+                    item { Buttons() }
+                    item { Choices() }
+                    item { Badges() }
+                    item { Inputs() }
+                    item { Selection() }
+                    item { Sliders() }
+                    item { Progress() }
+                    item { Containers() }
+                    item { Carousels() }
+                    item { Lists() }
+                    item { Bars() }
+                    item { Overlays(onOpenMenu = { menuOpen = true }) }
+                    item { Dates() }
                 }
             }
         }
@@ -315,7 +319,7 @@ private fun Progress() = Section("Progress") {
 }
 
 @Composable
-private fun Containers() = Section("Cards, accordion, carousel") {
+private fun Containers() = Section("Cards, accordion") {
     ArgonCardStyle.entries.forEach { style ->
         ArgonCard(Modifier.fillMaxWidth(), style = style, onClick = if (style == ArgonCardStyle.Elevated) ({}) else null) {
             Column(Modifier.padding(ArgonTheme.spacing.l)) {
@@ -331,14 +335,24 @@ private fun Containers() = Section("Cards, accordion, carousel") {
         }
         ArgonDivider()
     }
-    Caption("Paged, autoplay every 3 s")
-    ArgonCarousel(photos.size, autoplaySeconds = 3.0) { i ->
-        AsyncImage(photos[i], "Photo ${i + 1}", Modifier.fillMaxWidth().aspectRatio(4f / 3f).clip(ArgonTheme.radius.l), contentScale = ContentScale.Crop)
+}
+
+/** Not in a padded [Section]: carousels span the screen edge to edge. */
+@Composable
+private fun Carousels() {
+    val side = Modifier.padding(horizontal = ArgonTheme.spacing.l)
+    Column(Modifier.fillMaxWidth().padding(vertical = ArgonTheme.spacing.l), verticalArrangement = Arrangement.spacedBy(ArgonTheme.spacing.m)) {
+        Text("Carousel", side, style = ArgonTheme.type.title, color = ArgonTheme.colors.ink)
+        Text("Edge to edge, neighbours peek 4%, autoplay every 3 s", side, style = ArgonTheme.type.caption, color = ArgonTheme.colors.muted)
+        ArgonCarousel(photos.size, autoplaySeconds = 3.0) { i ->
+            AsyncImage(photos[i], "Photo ${i + 1}", Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(ArgonTheme.radius.l), contentScale = ContentScale.Crop)
+        }
+        Text("Multi-browse", side, style = ArgonTheme.type.caption, color = ArgonTheme.colors.muted)
+        ArgonCarousel(photos.size, Modifier.height(200.dp), multiBrowse = true) { i ->
+            AsyncImage(photos[i], "Photo ${i + 1}", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        }
     }
-    Caption("Multi-browse")
-    ArgonCarousel(photos.size, Modifier.height(200.dp), multiBrowse = true) { i ->
-        AsyncImage(photos[i], "Photo ${i + 1}", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-    }
+    ArgonDivider()
 }
 
 @Composable
