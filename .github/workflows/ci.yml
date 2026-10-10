@@ -115,8 +115,11 @@ jobs:
             CODE_SIGNING_ALLOWED=NO -skipPackagePluginValidation -skipMacroValidation \
             build test
       # The same sources as a Swift package: what xtool builds where there is no Xcode (README, "iOS without a Mac")
+      # Copied out first: beside App.xcodeproj, xcodebuild would build the project instead of the package
       - name: Build the Swift package
         run: |
-          swift build --package-path demo/ios \
-            -Xswiftc -sdk -Xswiftc "$(xcrun --sdk iphonesimulator --show-sdk-path)" \
-            -Xswiftc -target -Xswiftc "$(uname -m)-apple-ios17.0-simulator"
+          mkdir package
+          cp -R demo/ios/Package.swift demo/ios/App demo/ios/ArgonUI package/
+          cd package
+          xcodebuild -scheme ArgonStorefront -destination "generic/platform=iOS Simulator" \
+            CODE_SIGNING_ALLOWED=NO -skipPackagePluginValidation -skipMacroValidation build
