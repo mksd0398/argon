@@ -11,7 +11,7 @@ struct Loader<Value, Content: View>: View {
     @State private var value: Value? = nil
     @State private var error: String? = nil
     @State private var attempt = 0
-    @Environment(.scenePhase) private var scenePhase
+    @Environment(\.scenePhase) private var scenePhase
 
     init(load: @escaping () async throws -> Value, @ViewBuilder content: @escaping (Value) -> Content) {
         self.load = load
