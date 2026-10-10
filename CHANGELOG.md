@@ -20,16 +20,15 @@
 
 - Text on the brand colour is black or white, whichever contrasts more (at least 4.58:1 for any colour).
 - The apps decode responses into typed models; the hand-written parsers are gone.
-
-### Fixed
-
-- A screen that failed to load (offline at launch, or started behind the lock screen) now reloads by itself when the app returns to the foreground. On Android the error reads "Can't reach the store. Check your internet connection." instead of a raw hostname error.
-
 - The Headless channel step is guided:
   - Argon opens the channel in your browser and prints Shopify's exact admin path for each value, including setting the login client type to Public (mobile app).
   - It checks the Storefront token as you paste it and asks again if Shopify rejects it.
   - It confirms that the app can see your products and read the home screen.
   - It warns when a client ID doesn't look like one.
+
+### Fixed
+
+- A screen that failed to load (offline at launch, or started behind the lock screen) now reloads by itself when the app returns to the foreground. On Android the error reads "Can't reach the store. Check your internet connection." instead of a raw hostname error.
 - Checkout now shows the store's own checkout branding. Checkout Kit uses the `web` color scheme (Android `ColorScheme.Web()`, iOS `.web`) instead of its default generic light/dark theme.
 
 ## 0.1.0 — 2026-10-05
