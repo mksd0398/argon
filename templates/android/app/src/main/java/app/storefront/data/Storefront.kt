@@ -16,8 +16,8 @@ import okhttp3.RequestBody.Companion.toRequestBody
 
 /** Every way a Storefront or Customer Account API call fails. [message] can be shown to the shopper. */
 sealed class ArgonApiError(message: String, cause: Throwable? = null) : Exception(message, cause) {
-    /** No answer: offline, timed out, or the connection dropped. */
-    class Network(cause: IOException) : ArgonApiError(cause.message ?: cause.toString(), cause)
+    /** No answer: offline, timed out, or the connection dropped. The [cause] keeps the detail (an unresolved host, say). */
+    class Network(cause: IOException) : ArgonApiError("Can't reach the store. Check your internet connection.", cause)
 
     /** The server answered with a non-2xx HTTP [status]. */
     class Http(val status: Int) : ArgonApiError("HTTP $status")

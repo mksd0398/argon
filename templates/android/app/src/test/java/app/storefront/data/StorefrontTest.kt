@@ -64,6 +64,6 @@ class StorefrontTest {
         val offline = IOException("Unable to resolve host")
         val e = assertThrows(ArgonApiError.Network::class.java) { query("", failure = offline) }
         assertSame(offline, e.cause)
-        assertEquals("Unable to resolve host", e.message)
+        assertEquals("Can't reach the store. Check your internet connection.", e.message)
     }
 }

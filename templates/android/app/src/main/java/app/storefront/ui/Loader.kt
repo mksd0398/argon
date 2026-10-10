@@ -9,6 +9,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -19,7 +20,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.CancellationException
 
@@ -30,6 +34,7 @@ internal class Loaded : ViewModel() {
 
 /**
  * Shows [content] with the result of [load]: a spinner meanwhile, the error message with Retry on failure.
+ * A failed load also runs again by itself when the screen comes back to the foreground (see [RetryOnResume]).
  * One per screen: the result is kept for the back stack entry, so coming back from a product doesn't reload.
  * With [keep] false nothing is kept: the screen loads again each time it is shown (the customer's own data).
  * ponytail: no refresh until the app restarts; add pull-to-refresh if merchants need live edits.
@@ -56,8 +61,31 @@ fun <T : Any> Loader(load: suspend () -> T, keep: Boolean = true, content: @Comp
     val failure = error
     when {
         loaded != null -> content(loaded)
-        failure != null -> ErrorView(failure) { attempt++ }
+        failure != null -> {
+            RetryOnResume { attempt++ }
+            ErrorView(failure) { attempt++ }
+        }
         else -> Spinner()
+    }
+}
+
+/**
+ * Runs [retry] when the screen returns to the foreground, so a load that failed offline or behind the lock screen
+ * (Android cuts the network while the device dozes) recovers without a tap.
+ */
+@Composable
+private fun RetryOnResume(retry: () -> Unit) {
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle) {
+        // A new observer is replayed the events up to the current state: that ON_RESUME is not a return
+        var replayed = lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                if (replayed) replayed = false else retry()
+            }
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
     }
 }
 

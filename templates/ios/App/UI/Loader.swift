@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Shows `content` with the result of `load`: a spinner meanwhile, the error message with Retry on failure.
 /// The result lives in the view's state, so coming back from a pushed screen doesn't reload.
+/// A failed load runs again by itself when the app returns to the foreground (offline at launch, say).
 /// ponytail: no refresh until the app restarts; add pull-to-refresh if merchants need live edits.
 @MainActor
 struct Loader<Value, Content: View>: View {
@@ -10,6 +11,7 @@ struct Loader<Value, Content: View>: View {
     @State private var value: Value? = nil
     @State private var error: String? = nil
     @State private var attempt = 0
+    @Environment(.scenePhase) private var scenePhase
 
     init(load: @escaping () async throws -> Value, @ViewBuilder content: @escaping (Value) -> Content) {
         self.load = load
@@ -27,6 +29,9 @@ struct Loader<Value, Content: View>: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active, error != nil { attempt += 1 }
+        }
         .task(id: attempt) {
             guard value == nil else { return }
             error = nil
