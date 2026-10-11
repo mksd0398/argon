@@ -25,13 +25,30 @@ test("parseArgs: --flag=value, defaults and missing value", () => {
   const o = parseArgs(["--store=a.myshopify.com", "--bundle-id", "com.x.y", "--token=t=1", "app"]);
   assert.deepEqual(o, {
     name: "app", demo: false, store: "a.myshopify.com", token: "t=1", clientId: undefined,
-    bundleId: "com.x.y", home: undefined, collection: undefined, judgemeToken: undefined, skipContent: false, yes: false, help: false,
+    bundleId: "com.x.y", home: undefined, collection: undefined, judgemeToken: undefined,
+    firebaseAndroid: undefined, firebaseIos: undefined, metaAppId: undefined, metaClientToken: undefined,
+    moengageWorkspaceId: undefined, moengageDataCenter: undefined, server: false, skipContent: false, yes: false, help: false,
   });
   assert.throws(() => parseArgs(["--store"]), /Missing value for --store/);
   const templates = parseArgs(["app", "--home=grocery", "--collection", "bottom", "--judgeme-token=pub"]);
   assert.deepEqual([templates.home, templates.collection, templates.judgemeToken], ["grocery", "bottom", "pub"]);
   assert.throws(() => parseArgs(["--home=luxury"]), /--home must be one of: fashion, beauty, grocery, b2b/);
   assert.throws(() => parseArgs(["--collection=side"]), /--collection must be one of: top, bottom/);
+});
+
+test("parseArgs: analytics flags", () => {
+  const o = parseArgs(["app", "--firebase-android=a/google-services.json", "--firebase-ios", "GoogleService-Info.plist",
+    "--meta-app-id=123", "--meta-client-token=abc", "--moengage-workspace-id=WS", "--moengage-data-center=6", "--server"]);
+  assert.deepEqual(
+    [o.firebaseAndroid, o.firebaseIos, o.metaAppId, o.metaClientToken, o.moengageWorkspaceId, o.moengageDataCenter, o.server],
+    ["a/google-services.json", "GoogleService-Info.plist", "123", "abc", "WS", "6", true],
+  );
+  for (const value of ["0", "7", "01", "eu"]) {
+    assert.throws(() => parseArgs([`--moengage-data-center=${value}`]), /--moengage-data-center must be a number from 1 to 6/);
+  }
+  // Meta's SDK needs both values, so one without the other is refused
+  assert.throws(() => parseArgs(["--meta-app-id=123"]), /--meta-app-id and --meta-client-token go together/);
+  assert.throws(() => parseArgs(["--meta-client-token=abc"]), /--meta-app-id and --meta-client-token go together/);
 });
 
 // run(): console and TTY are swapped out so --help and the no-terminal check can be asserted
@@ -50,7 +67,8 @@ async function runWith(argv, isTTY) {
 
 test("run --help lists every flag", async () => {
   const out = await runWith(["--help"], false);
-  for (const f of ["--demo", "--store", "--token", "--client-id", "--bundle-id", "--skip-content", "--yes", "--help"]) {
+  for (const f of ["--demo", "--store", "--token", "--client-id", "--bundle-id", "--skip-content", "--yes", "--help",
+    "--firebase-android", "--firebase-ios", "--meta-app-id", "--meta-client-token", "--moengage-workspace-id", "--moengage-data-center", "--server"]) {
     assert.ok(out.includes(f), `help mentions ${f}`);
   }
 });

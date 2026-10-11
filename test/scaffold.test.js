@@ -4,7 +4,8 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { run, scaffold, writeAppIcon, configText, xtoolFiles } from "../lib/index.js";
+import prompts from "prompts";
+import { run, scaffold, writeAppIcon, configText, xtoolFiles, packageSwift, firebaseConfig, ANALYTICS } from "../lib/index.js";
 import { loadContract } from "../lib/contract.js";
 import { decodePng, encodePng } from "../lib/png.js";
 
@@ -60,12 +61,12 @@ function fakes({
   return { calls, urls, exec, fetch };
 }
 
-/** A fresh temp cwd, console capture and no terminal. restore() undoes the capture; done() also removes the cwd. */
-function sandbox() {
+/** A fresh temp cwd, console capture and no terminal (terminal: true for one). restore() undoes the capture; done() also removes the cwd. */
+function sandbox({ terminal = false } = {}) {
   const cwd = mkdtempSync(join(tmpdir(), "argon-test-"));
   const lines = [], log = console.log, tty = Object.getOwnPropertyDescriptor(process.stdin, "isTTY");
   console.log = (s = "") => lines.push(s);
-  Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
+  Object.defineProperty(process.stdin, "isTTY", { value: terminal, configurable: true });
   const restore = () => {
     console.log = log;
     tty ? Object.defineProperty(process.stdin, "isTTY", tty) : delete process.stdin.isTTY;
@@ -73,9 +74,11 @@ function sandbox() {
   return { cwd, restore, out: () => lines.join("\n"), done: () => (restore(), rmSync(cwd, { recursive: true, force: true })) };
 }
 
-async function withRun(argv, deps, check) {
-  const t = sandbox();
+// files: { name: content } written into the cwd before the run; terminal: the run can ask (answers come from prompts.inject)
+async function withRun(argv, deps, check, { files = {}, terminal = false } = {}) {
+  const t = sandbox({ terminal });
   try {
+    for (const [name, content] of Object.entries(files)) writeFileSync(join(t.cwd, name), content);
     await run(argv, { ...deps, cwd: t.cwd });
     t.restore();
     await check(t.cwd, t.out());
@@ -166,9 +169,14 @@ test("--demo --yes scaffolds both apps against mock.shop", async () => {
     const props = readFileSync(join(dir, "android/shopify.properties"), "utf8");
     for (const line of ["SHOP_DOMAIN=mock.shop", "SHOP_ID=68817551382", "STOREFRONT_TOKEN=", "CUSTOMER_CLIENT_ID=",
       "API_VERSION=2026-10", "APP_NAME=Mock.shop", "BUNDLE_ID=com.mockshop.demoapp", "PDP_METAFIELDS=",
-      "HOME_TEMPLATE=fashion", "COLLECTION_TEMPLATE=top", "JUDGEME_PUBLIC_TOKEN=", "SHOW_VENDOR=false", "ONBOARDING=true", "FREE_SHIPPING_THRESHOLD=150"]) {
+      "HOME_TEMPLATE=fashion", "COLLECTION_TEMPLATE=top", "JUDGEME_PUBLIC_TOKEN=", "SHOW_VENDOR=false", "ONBOARDING=true", "FREE_SHIPPING_THRESHOLD=150",
+      "META_APP_ID=", "META_CLIENT_TOKEN=", "MOENGAGE_WORKSPACE_ID=", "MOENGAGE_DATA_CENTER=", "SERVER_PURCHASE=false"]) {
       assert.ok(props.split("\n").includes(line), `shopify.properties has ${line}`);
     }
+    // no analytics unless asked for: no SDK in the iOS package, no Firebase file, no server, nothing about it at the end
+    assert.equal(readFileSync(join(dir, "ios/Package.swift"), "utf8"), readFileSync(new URL("../templates/ios/Package.swift", import.meta.url), "utf8"));
+    for (const path of ["server", "android/app/google-services.json", "ios/App/GoogleService-Info.plist"]) assert.ok(!existsSync(join(dir, path)), path);
+    assert.ok(!out.includes("Analytics"));
     const xcconfig = readFileSync(join(dir, "ios/Config.xcconfig"), "utf8");
     assert.ok(xcconfig.split("\n").includes("SHOP_DOMAIN = mock.shop"));
     assert.ok(xcconfig.split("\n").includes("SHOP_ID = 68817551382"));
@@ -305,6 +313,202 @@ test("--skip-content skips the Shopify CLI; a failed password check and a blank 
     assert.ok(out.includes("Login hidden until CUSTOMER_CLIENT_ID is set"));
     assert.ok(readFileSync(join(cwd, "store-app/android/shopify.properties"), "utf8").includes("CUSTOMER_CLIENT_ID=\n"));
   });
+});
+
+// ─── Analytics: Firebase's two files as its console writes them, and what the CLI makes of each provider ───
+const googleServices = (...packages) => JSON.stringify({
+  project_info: { project_number: "1234", project_id: "argon-demo" },
+  client: packages.map((name, n) => ({ client_info: { mobilesdk_app_id: `1:1234:android:${n}abc`, android_client_info: { package_name: name } } })),
+}, null, 2);
+const googleServiceInfo = (bundleId) => `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyExample</string>
+	<key>BUNDLE_ID</key>
+	<string>${bundleId}</string>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:1234:ios:def</string>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+</dict>
+</plist>
+`;
+const TEMPLATE_PACKAGE = readFileSync(new URL("../templates/ios/Package.swift", import.meta.url), "utf8");
+const lines = (text) => text.split(/\r?\n/);
+// what packageSwift added to the template, in order (a changed line counts as added)
+const addedLines = (text) => lines(text).filter((line) => !lines(TEMPLATE_PACKAGE).includes(line)).map((line) => line.trim());
+const SDK_LINES = {
+  firebase: ['.package(url: "https://github.com/firebase/firebase-ios-sdk", from: "13.0.1"),', '.product(name: "FirebaseAnalytics", package: "firebase-ios-sdk"),'],
+  meta: ['.package(url: "https://github.com/facebook/facebook-ios-sdk", from: "18.1.1"),', '.product(name: "FacebookCore", package: "facebook-ios-sdk"),'],
+  moengage: ['.package(url: "https://github.com/moengage/apple-sdk", from: "11.3.0"),', '.product(name: "MoEngage-iOS-SDK", package: "apple-sdk"),'],
+};
+const FIREBASE_EXCLUDED = 'exclude: ["Resources", "PrivacyInfo.xcprivacy", "GoogleService-Info.plist"],';
+const config = (dir) => ({
+  android: readFileSync(join(dir, "android/shopify.properties"), "utf8").split("\n"),
+  ios: readFileSync(join(dir, "ios/Config.xcconfig"), "utf8").split("\n"),
+});
+
+test("every analytics flag: keys in both config files, Firebase's files, the iOS packages, Meta's Info.plist keys, server/", async () => {
+  const files = { "google-services.json": googleServices("com.other.app", "com.mockshop.demoapp"), "GoogleService-Info.plist": googleServiceInfo("com.mockshop.demoapp") };
+  const argv = ["demo-app", "--demo", "--yes", "--firebase-android=google-services.json", "--firebase-ios=GoogleService-Info.plist",
+    "--meta-app-id=123", "--meta-client-token=abc", "--moengage-workspace-id=XYZ", "--moengage-data-center=3"];
+  await withRun(argv, fakes(), (cwd, out) => {
+    const dir = join(cwd, "demo-app");
+    const { android, ios } = config(dir);
+    // SERVER_PURCHASE stays false without --server: the apps report the purchase to Google Analytics themselves
+    for (const [key, value] of [["META_APP_ID", "123"], ["META_CLIENT_TOKEN", "abc"], ["MOENGAGE_WORKSPACE_ID", "XYZ"], ["MOENGAGE_DATA_CENTER", "3"], ["SERVER_PURCHASE", "false"]]) {
+      assert.ok(android.includes(`${key}=${value}`) && ios.includes(`${key} = ${value}`), key);
+    }
+    // Firebase's files, byte for byte, where each platform's SDK looks for them
+    assert.equal(readFileSync(join(dir, "android/app/google-services.json"), "utf8"), files["google-services.json"]);
+    assert.equal(readFileSync(join(dir, "ios/App/GoogleService-Info.plist"), "utf8"), files["GoogleService-Info.plist"]);
+    assert.ok(lines(readFileSync(join(dir, "ios/xtool.yml"), "utf8")).includes("- App/GoogleService-Info.plist"), "bundled by an xtool build");
+
+    const added = addedLines(readFileSync(join(dir, "ios/Package.swift"), "utf8"));
+    assert.deepEqual(added, [...Object.values(SDK_LINES).map(([dependency]) => dependency), ...Object.values(SDK_LINES).map(([, product]) => product), FIREBASE_EXCLUDED]);
+    const info = readFileSync(join(dir, "ios/Xtool-Info.plist"), "utf8");
+    for (const [key, value] of [["CFBundleDisplayName", "Mock.shop"], ["FacebookAppID", "123"], ["FacebookClientToken", "abc"], ["FacebookDisplayName", "Mock.shop"]]) {
+      assert.ok(info.includes(`\t<key>${key}</key>\n\t<string>${value}</string>\n`), key);
+    }
+
+    assert.deepEqual(readdirSync(join(dir, "server")).sort(), [".gitignore", "README.md", "worker.js", "wrangler.toml"]);
+    assert.equal(readFileSync(join(dir, "server/worker.js"), "utf8"), readFileSync(new URL("../templates/server/worker.js", import.meta.url), "utf8"));
+
+    // one line per provider at the end, with each app's Firebase app ID
+    for (const line of [
+      "- Google Analytics (Android app 1:1234:android:1abc, iOS app 1:1234:ios:def): nothing more to set up; the apps report the purchase themselves",
+      "- Meta: deploy server/",
+      "- MoEngage: nothing more to set up; push and in-app messages are not included",
+      "- iOS built with Xcode: add each provider's Swift package to the App target",
+    ]) assert.ok(out.includes(line), line);
+  }, { files });
+});
+
+test("one provider at a time: only its SDK, and server/ only for Google Analytics, Meta or --server", async () => {
+  const project = (dir) => ({
+    added: addedLines(readFileSync(join(dir, "ios/Package.swift"), "utf8")),
+    server: existsSync(join(dir, "server/worker.js")),
+    info: readFileSync(join(dir, "ios/Xtool-Info.plist"), "utf8"),
+    ...config(dir),
+  });
+  await withRun(["demo-app", "--demo", "--yes", "--moengage-workspace-id=XYZ"], fakes(), (cwd, out) => {
+    const p = project(join(cwd, "demo-app"));
+    assert.deepEqual([p.added, p.server], [SDK_LINES.moengage, false]);
+    assert.ok(p.android.includes("MOENGAGE_DATA_CENTER=1") && p.ios.includes("MOENGAGE_DATA_CENTER = 1"), "data center 1 unless told");
+    assert.ok(!p.info.includes("Facebook") && !out.includes("Meta:") && !out.includes("Google Analytics"));
+  });
+  // a data center without a workspace configures nothing. --server: server/, and the Google Analytics purchase is its to report
+  await withRun(["demo-app", "--demo", "--yes", "--moengage-data-center=4", "--server"], fakes(), (cwd, out) => {
+    const p = project(join(cwd, "demo-app"));
+    assert.deepEqual([p.added, p.server], [[], true]);
+    assert.ok(p.android.includes("MOENGAGE_DATA_CENTER=") && !out.includes("Analytics"));
+    assert.ok(p.android.includes("SERVER_PURCHASE=true") && p.ios.includes("SERVER_PURCHASE = true"));
+  });
+  await withRun(["demo-app", "--demo", "--yes", "--meta-app-id=123", "--meta-client-token=a&b"], fakes(), (cwd) => {
+    const p = project(join(cwd, "demo-app"));
+    assert.deepEqual([p.added, p.server], [SDK_LINES.meta, true]);
+    assert.ok(p.info.includes("<string>a&amp;b</string>") && p.ios.includes("META_CLIENT_TOKEN = a&b"));
+  });
+  // Android's file alone: the iOS app gets no Firebase, and the last lines name only the Android app
+  const files = { "google-services.json": googleServices("com.mockshop.demoapp") };
+  await withRun(["demo-app", "--demo", "--yes", "--firebase-android", "google-services.json"], fakes(), (cwd, out) => {
+    const p = project(join(cwd, "demo-app"));
+    assert.deepEqual([p.added, p.server], [[], true]);
+    assert.ok(existsSync(join(cwd, "demo-app/android/app/google-services.json")) && !existsSync(join(cwd, "demo-app/ios/App/GoogleService-Info.plist")));
+    assert.ok(out.includes("- Google Analytics (Android app 1:1234:android:0abc): nothing more to set up") && !out.includes("iOS built with Xcode"));
+    assert.ok(p.android.includes("SERVER_PURCHASE=false"), "server/ is written, but only --server hands it the Google Analytics purchase");
+  }, { files });
+  await withRun(["demo-app", "--demo", "--yes", "--firebase-android", "google-services.json", "--server"], fakes(), (cwd, out) => {
+    assert.ok(project(join(cwd, "demo-app")).android.includes("SERVER_PURCHASE=true"));
+    assert.ok(out.includes("- Google Analytics (Android app 1:1234:android:0abc): deploy server/ with its Google secrets before you release the apps"));
+  }, { files });
+});
+
+test("a Firebase file for another app, or one that can't be read, stops the run before anything is written or fetched", async () => {
+  const files = {
+    "google-services.json": googleServices("com.other.app", "com.another.app"),
+    "GoogleService-Info.plist": googleServiceInfo("com.other.ios"),
+    "binary.plist": Buffer.concat([Buffer.from("bplist00"), Buffer.from([0xd1, 0x01, 0x02, 0x00])]),
+    "broken.json": "{ not json",
+    "empty.plist": '<?xml version="1.0" encoding="UTF-8"?>\n<plist version="1.0"><dict/></plist>\n',
+  };
+  const f = fakes();
+  const t = sandbox();
+  try {
+    for (const [name, content] of Object.entries(files)) writeFileSync(join(t.cwd, name), content);
+    const refused = async (flag, expected) => {
+      const error = await run(["demo-app", "--demo", "--yes", flag], { ...f, cwd: t.cwd }).then(() => assert.fail(`${flag} was accepted`), (err) => err);
+      for (const text of expected) assert.ok(error.message.includes(text), `${flag}: "${error.message}" has "${text}"`);
+    };
+    // the file and both ids are named
+    await refused("--firebase-android=google-services.json", [join(t.cwd, "google-services.json"), "is for com.other.app, com.another.app, but this app is com.mockshop.demoapp", "--bundle-id"]);
+    await refused("--firebase-ios=GoogleService-Info.plist", [join(t.cwd, "GoogleService-Info.plist"), "is for com.other.ios, but this app is com.mockshop.demoapp"]);
+    await refused("--firebase-ios=missing.plist", [join(t.cwd, "missing.plist"), "can't be read (ENOENT)", "GoogleService-Info.plist"]);
+    await refused("--firebase-ios=binary.plist", ["binary.plist is a binary plist"]);
+    await refused("--firebase-ios=empty.plist", ["empty.plist is not a GoogleService-Info.plist"]);
+    await refused("--firebase-android=broken.json", ["broken.json is not a google-services.json"]);
+    await refused("--firebase-android=GoogleService-Info.plist", ["is not a google-services.json"]); // the two files swapped
+    assert.deepEqual([existsSync(join(t.cwd, "demo-app")), f.urls.length, f.calls.length], [false, 0, 0]);
+
+    // --bundle-id is the id the files are checked against
+    const { appId } = firebaseConfig(join(t.cwd, "google-services.json"), "android", "com.another.app");
+    assert.equal(appId, "1:1234:android:1abc");
+    await run(["demo-app", "--demo", "--yes", "--bundle-id=com.other.ios", "--firebase-ios=GoogleService-Info.plist"], { ...f, cwd: t.cwd });
+    assert.ok(existsSync(join(t.cwd, "demo-app/ios/App/GoogleService-Info.plist")));
+  } finally {
+    t.done();
+  }
+});
+
+test("in a terminal: one Analytics question, then only what the picked providers need", async () => {
+  const f = fakes();
+  const argv = ["store-app", "--store", "nalli", "--token", "t", "--client-id", "3cecd990-4824-4e27-beb2-46c8e822ec14", "--skip-content"];
+  const files = { "google-services.json": googleServices("com.nalli.storeapp") };
+  // home, collection, Judge.me; Analytics; then Firebase's two files (the iOS one skipped), Meta's two values, MoEngage's two
+  prompts.inject(["beauty", "bottom", "", ["firebase", "meta", "moengage"], "google-services.json", "", "123", "abc", "WS1", "3"]);
+  await withRun(argv, f, (cwd, out) => {
+    const dir = join(cwd, "store-app");
+    const { android } = config(dir);
+    for (const line of ["HOME_TEMPLATE=beauty", "META_APP_ID=123", "META_CLIENT_TOKEN=abc", "MOENGAGE_WORKSPACE_ID=WS1", "MOENGAGE_DATA_CENTER=3"]) assert.ok(android.includes(line), line);
+    assert.ok(existsSync(join(dir, "android/app/google-services.json")) && !existsSync(join(dir, "ios/App/GoogleService-Info.plist")));
+    assert.deepEqual(addedLines(readFileSync(join(dir, "ios/Package.swift"), "utf8")), [SDK_LINES.meta[0], SDK_LINES.moengage[0], SDK_LINES.meta[1], SDK_LINES.moengage[1]]);
+    assert.ok(existsSync(join(dir, "server/worker.js")) && out.includes("- Google Analytics (Android app 1:1234:android:0abc)"));
+  }, { files, terminal: true });
+
+  // nothing picked: only what the flags gave is configured, and none of it is asked for again
+  prompts.inject(["fashion", "top", "", []]);
+  await withRun([...argv, "--meta-app-id=9", "--meta-client-token=z"], f, (cwd) => {
+    const { android } = config(join(cwd, "store-app"));
+    for (const line of ["META_APP_ID=9", "META_CLIENT_TOKEN=z", "MOENGAGE_WORKSPACE_ID=", "MOENGAGE_DATA_CENTER="]) assert.ok(android.includes(line), line);
+    assert.ok(!existsSync(join(cwd, "store-app/android/app/google-services.json")));
+  }, { terminal: true });
+});
+
+test("packageSwift: each SDK's package and product go in below Checkout Kit's, in the file's own line endings", () => {
+  assert.equal(packageSwift(TEMPLATE_PACKAGE, []), TEMPLATE_PACKAGE);
+  const meta = lines(packageSwift(TEMPLATE_PACKAGE, ["meta"]));
+  assert.equal(meta.length, lines(TEMPLATE_PACKAGE).length + 2);
+  assert.deepEqual(meta.slice(meta.findIndex((line) => line.includes("checkout-sheet-kit-swift\", from")) + 1).slice(0, 2), [`        ${SDK_LINES.meta[0]}`, "    ],"]);
+  assert.deepEqual(meta.slice(meta.findIndex((line) => line.includes("ShopifyCheckoutSheetKit")) + 1).slice(0, 2), [`                ${SDK_LINES.meta[1]}`, "            ],"]);
+  // the order is fixed, whatever order the providers are given in; only Firebase has a file to keep out of the target
+  assert.deepEqual(addedLines(packageSwift(TEMPLATE_PACKAGE, ["moengage", "firebase"])), [SDK_LINES.firebase[0], SDK_LINES.moengage[0], SDK_LINES.firebase[1], SDK_LINES.moengage[1], FIREBASE_EXCLUDED]);
+
+  const unix = lines(TEMPLATE_PACKAGE).join("\n"), windows = lines(TEMPLATE_PACKAGE).join("\r\n");
+  assert.ok(!packageSwift(unix, ["firebase", "meta", "moengage"]).includes("\r"));
+  assert.ok(!/[^\r]\n/.test(packageSwift(windows, ["firebase", "meta", "moengage"])), "every line still ends in CRLF");
+
+  // a template that lost a line this builds on is an error, not an app without its SDKs
+  assert.throws(() => packageSwift(TEMPLATE_PACKAGE.replace("Shopify/checkout-sheet-kit-swift", "Shopify/checkout-kit"), ["meta"]), /Package\.swift no longer has \.package\(url: "https:\/\/github\.com\/Shopify\/checkout-sheet-kit-swift"/);
+  assert.throws(() => packageSwift(TEMPLATE_PACKAGE.replace("ShopifyCheckoutSheetKit", "CheckoutKit"), ["moengage"]), /Package\.swift no longer has \.product\(name: "ShopifyCheckoutSheetKit"/);
+  const noExclude = TEMPLATE_PACKAGE.replace('"PrivacyInfo.xcprivacy"]', '"PrivacyInfo.xcprivacy", "Other"]');
+  assert.throws(() => packageSwift(noExclude, ["firebase"]), /Package\.swift no longer has "PrivacyInfo\.xcprivacy"\]/);
+  assert.deepEqual(addedLines(packageSwift(noExclude, ["meta"])).slice(0, 2), SDK_LINES.meta, "only Firebase needs the exclude list");
+
+  // the generated README names the same packages, for adding them in Xcode
+  const readme = readFileSync(new URL("../templates/shared/README.md", import.meta.url), "utf8");
+  for (const { ios } of ANALYTICS) assert.ok(readme.includes(`| \`${ios.url}\`, ${ios.from} or later | \`${ios.product}\` |`), ios.url);
 });
 
 const withLogos = (files, primary = []) => ({

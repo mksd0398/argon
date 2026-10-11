@@ -37,6 +37,7 @@ The apps work the way a Liquid theme does. They render whatever the store contai
 - **A home screen the merchant edits**: an ordered list of metaobject sections ([Content model](#content-model))
 - **Branding** from the store's own colours and logo
 - **The app icon and the launch screen**, made from the store's logo when the project is generated ([App icon and launch screen](#app-icon-and-launch-screen))
+- **Analytics**, only when asked for: Google Analytics, Meta and MoEngage behind one event hub, a consent switch, and a small server that reports the purchase ([Analytics](#analytics))
 - **A native component library**: 29 themed components on each platform (Compose `ui` module, `ArgonUI` Swift package), with a debug gallery at Account → Components
 - **The full Storefront and Customer Account API, prebuilt**: 55 typed operations behind `StorefrontApi` and `CustomerAccountApi` (same names on iOS), checked against Shopify's 2026-10 schemas
 - **One Shopify SDK**: Checkout Kit. A hand-written GraphQL client, no Mobile Buy SDK, no Apollo, no DI framework
@@ -119,7 +120,7 @@ cd my-store-app
 - **iOS**: open `ios/App.xcodeproj` in Xcode 16+, pick a simulator, Run.
 - **Android**: open `android/` in Android Studio, or `cd android && ./gradlew assembleDebug`.
 
-Per-store values live in `ios/Config.xcconfig` and `android/shopify.properties`, with the same fourteen keys on both (`SHOP_DOMAIN`, `STOREFRONT_TOKEN`, `CUSTOMER_CLIENT_ID`, `SHOP_ID`, `API_VERSION`, `APP_NAME`, `BUNDLE_ID`, `PDP_METAFIELDS`, `HOME_TEMPLATE`, `COLLECTION_TEMPLATE`, `JUDGEME_PUBLIC_TOKEN`, `SHOW_VENDOR`, `ONBOARDING`, `FREE_SHIPPING_THRESHOLD`). The generated README explains each. With an empty token on a store other than `mock.shop`, the app shows a setup screen naming the missing key instead of failing at run time.
+Per-store values live in `ios/Config.xcconfig` and `android/shopify.properties`, with the same nineteen keys on both (`SHOP_DOMAIN`, `STOREFRONT_TOKEN`, `CUSTOMER_CLIENT_ID`, `SHOP_ID`, `API_VERSION`, `APP_NAME`, `BUNDLE_ID`, `PDP_METAFIELDS`, `HOME_TEMPLATE`, `COLLECTION_TEMPLATE`, `JUDGEME_PUBLIC_TOKEN`, `SHOW_VENDOR`, `ONBOARDING`, `FREE_SHIPPING_THRESHOLD`, `META_APP_ID`, `META_CLIENT_TOKEN`, `MOENGAGE_WORKSPACE_ID`, `MOENGAGE_DATA_CENTER`, `SERVER_PURCHASE`). The generated README explains each. With an empty token on a store other than `mock.shop`, the app shows a setup screen naming the missing key instead of failing at run time.
 
 ---
 
@@ -162,6 +163,39 @@ To change them later, replace those files (the generated README lists them), or 
 
 ---
 
+## Analytics
+
+Off unless asked for. An app carries a provider's SDK only when that provider is configured: pick the providers in the Analytics question, or pass their flags.
+
+| Provider | Flags | What the store brings |
+|---|---|---|
+| Google Analytics 4 | `--firebase-android`, `--firebase-ios` | Firebase's own files, `google-services.json` and `GoogleService-Info.plist`: one for each app, downloaded from the Firebase console for an app registered with this project's bundle ID |
+| Meta | `--meta-app-id`, `--meta-client-token` | The Meta app's ID and its client token (`META_APP_ID`, `META_CLIENT_TOKEN`) |
+| MoEngage | `--moengage-workspace-id`, `--moengage-data-center` | The workspace ID and the data center, 1 to 6: the number in the dashboard's address (`MOENGAGE_WORKSPACE_ID`, `MOENGAGE_DATA_CENTER`) |
+
+- **One hub.** Every screen and store reports to it, and the providers plug in behind it: screen views, product lists and product pages, search, wishlist and cart changes, the checkout steps, the purchase and sign-in, under Google Analytics' event names. Product ids are Shopify's numeric ids, the ones Google's and Meta's catalogues use. Debug builds log each event (`Analytics: add_to_cart {…}`), so the events can be checked with no provider account.
+- **Firebase's files are checked before they are copied.** Each must be for this app's bundle ID. A file for another app stops the run with both ids, because Google Analytics would get nothing from it.
+- **iOS packages.** Argon writes the configured providers' Swift packages into `ios/Package.swift` (the xtool build), and Meta's keys into its Info.plist. It never edits `App.xcodeproj`: in Xcode, add the same packages to the App target (the generated README lists them). On Android the build adds an SDK when its file or its keys are there.
+- **Consent.** A "Share usage data" switch under Privacy on the Account screen, on by default; while it is off nothing is reported. It is one switch: a store selling in the EU needs a prompt before the first event, and iOS's tracking prompt (ATT) is not shown, so Meta gets no advertising id on iOS.
+- **MoEngage** push notifications and in-app messages are not included: they need FCM and APNs keys.
+
+### The purchase, from a server
+
+The keys that let a server report a sale (Google Analytics' API secrets, Meta's access token) must never be in an app, and Argon has no backend. So with Google Analytics or Meta configured, or with `--server`, the project gets `server/`: one Cloudflare Worker in one file with no dependencies, which the store deploys to its own account.
+
+- It receives Shopify's "Order creation" webhook and checks Shopify's signature on it.
+- It ignores orders that were not placed in the app: the store's web pixels already report those. The app marks a cart with a few attributes when it creates it (`_argon_platform` and each provider's ids), which reach the server as the order's additional details. A customer who switches "Share usage data" off after creating a cart is still reported for that cart.
+- It sends the purchase to Meta (Conversions API) and to Google Analytics (Measurement Protocol) with the ids the app uses: Meta's event id is `purchase-<order id>`, Google Analytics' `transaction_id` is the order's numeric id. A provider whose secrets are not set is skipped.
+
+Only the purchase goes through the server; every other event comes from the app alone. Who reports the purchase:
+
+- **Meta: the app and the server, both.** Meta counts the two once, by the event id.
+- **Google Analytics: one side only**, because it would count a purchase from each (it de-duplicates purchases for web streams, not for apps). By default that side is the app, and the server sends Google Analytics nothing. Generating with `--server`, or setting `SERVER_PURCHASE=true` in both config files and releasing that version of the apps, moves it to the server. Do that only once the Worker is deployed with the Google Analytics secrets: from then on Google Analytics gets the apps' purchases through the Worker or not at all.
+
+`server/README.md` has the deploy steps and where each secret is found.
+
+---
+
 ## Content model
 
 Argon creates four **merchant-owned** metaobject definitions with storefront read access and no publish step: an entry is live as soon as it is saved.
@@ -194,6 +228,13 @@ Edit them under **Content → Metaobjects**. The home screen is the `mobile_scre
 | `--home=TEMPLATE` | Home screen: `fashion` (default), `beauty`, `grocery` or `b2b`. |
 | `--collection=TEMPLATE` | Collection layout: `top` (default) or `bottom`. |
 | `--judgeme-token=TOKEN` | Judge.me public API token. Omit to hide reviews. |
+| `--firebase-android=FILE` | Google Analytics: the path to the Android app's `google-services.json`. Copied to `android/app/`. |
+| `--firebase-ios=FILE` | Google Analytics: the path to the iOS app's `GoogleService-Info.plist`. Copied to `ios/App/`. |
+| `--meta-app-id=ID` | Meta: the app ID. Needs `--meta-client-token` too. |
+| `--meta-client-token=TOKEN` | Meta: the app's client token. |
+| `--moengage-workspace-id=ID` | MoEngage: the workspace ID. |
+| `--moengage-data-center=N` | MoEngage: the data center, `1` to `6`. Default `1`. |
+| `--server` | Report the purchase to Google Analytics from `server/` instead of from the app (`SERVER_PURCHASE=true`). `server/` itself is written with Google Analytics or Meta anyway. |
 | `--skip-content` | Don't create the metaobject definitions or the `home` entry. |
 | `--yes` | Accept defaults and ask nothing. |
 | `--help` | Show help. |
@@ -206,7 +247,8 @@ Edit them under **Content → Metaobjects**. The home screen is the `mobile_scre
 my-store-app/
 ├── README.md, AGENTS.md, CLAUDE.md, .gitignore
 ├── android/     # Jetpack Compose, package app.storefront, shopify.properties
-└── ios/         # SwiftUI, target App, Config.xcconfig
+├── ios/         # SwiftUI, target App, Config.xcconfig
+└── server/      # only with Google Analytics, Meta or --server: the Worker that reports the purchase
 ```
 
 Both apps carry the same GraphQL documents (`queries/`) and the same names (`Storefront`, `ProductCard`, `Section`, `Route`, `Links`, `CartStore`, `WishlistStore`, `AuthStore` and more). Argon never edits `App.xcodeproj`, and on Android only `applicationId` varies, so no source folder is renamed.
@@ -239,7 +281,7 @@ Markets (`@inContext` and currency switching), Shop Pay / Apple Pay buttons, gif
 
 ```bash
 npm ci
-npm test            # CLI, scaffolding, the PNG reader, provisioning (stubbed), link parser, contract vs the 2026-10 schemas
+npm test            # CLI, scaffolding, the PNG reader, provisioning (stubbed), the purchase server (stubbed), link parser, contract vs the 2026-10 schemas
 npm run test:live   # also runs every Storefront contract document against mock.shop
 ```
 
