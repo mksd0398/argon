@@ -67,6 +67,20 @@ class ProductReviewsTest {
         assertNull("rated by nobody", shownRating(null, rating = 4.0, ratingCount = 0))
         assertNull(shownRating(null, rating = null, ratingCount = 5))
         assertNull(shownRating(summary(0), rating = null, ratingCount = null))
+        // reviews read without a token, their average not known yet
+        assertNull("a count is no stars", shownRating(ReviewSummary(null, 12, emptyMap()), rating = null, ratingCount = null))
+        assertEquals(4.0 to 10, shownRating(ReviewSummary(null, 12, emptyMap()), rating = 4.0, ratingCount = 10))
+    }
+
+    @Test
+    fun reviewsWithoutAnAverageTakeTheRatingMetafieldElseTheirOwnMeanOnceAllAreLoaded() {
+        val two = listOf(review(1, stars = 5), review(2, stars = 4))
+        assertEquals("the store's metafield, whatever is loaded", 4.2, reviewAverage(rating = 4.2, count = 12, loaded = two))
+        assertEquals(4.2, reviewAverage(rating = 4.2, count = 2, loaded = two))
+        assertEquals("both reviews are here: their mean", 4.5, reviewAverage(rating = null, count = 2, loaded = two))
+        assertNull("ten more are not loaded", reviewAverage(rating = null, count = 12, loaded = two))
+        assertNull(reviewAverage(rating = null, count = 0, loaded = emptyList()))
+        assertEquals("a rating of 0 is none", 4.5, reviewAverage(rating = 0.0, count = 2, loaded = two))
     }
 
     @Test
@@ -91,7 +105,7 @@ class ProductReviewsTest {
 
     // Loading
 
-    private fun review(id: Int) = Review("$id", 5, null, "Body $id", "Ada", verified = true, date = null, pictures = emptyList(), reply = null)
+    private fun review(id: Int, stars: Int = 5) = Review("$id", stars, null, "Body $id", "Ada", verified = true, date = null, pictures = emptyList(), reply = null)
 
     /** Seven reviews, five a page; review 5 shows again on page 2 (a new review came in between the two calls). */
     private class Pages {
@@ -149,6 +163,40 @@ class ProductReviewsTest {
         reviews.loadMore()
         assertEquals(listOf(1, 1, 2, 2), pages.asked)
         assertEquals(7, reviews.items.size)
+    }
+
+    // Without a token: three reviews, two a page, with their count and nothing else
+
+    private fun tokenless(page: Int) =
+        ReviewPage(ReviewSummary(null, 3, emptyMap()), if (page == 1) listOf(review(1, stars = 5), review(2, stars = 4)) else listOf(review(3, stars = 3)), page, hasNextPage = page == 1)
+
+    @Test
+    fun withoutATokenTheBlockWaitsForAReviewAndTheAverageForAllOfThem() = runBlocking {
+        val reviews = ReviewsState({ tokenless(it) }, {}, hidesEmpty = true)
+        assertFalse("nothing is known of the store's reviews yet", reviews.isShown)
+        assertTrue("with a token the block is there from the start", ReviewsState({ tokenless(it) }, {}).isShown)
+        reviews.loadFirst()
+        assertTrue(reviews.isShown)
+        assertEquals("one review is not loaded: the count alone", ReviewSummary(null, 3, emptyMap()), reviews.summary)
+        reviews.loadMore()
+        assertEquals("all three: (5 + 4 + 3) / 3", ReviewSummary(4.0, 3, emptyMap()), reviews.summary)
+
+        val rated = ReviewsState({ tokenless(it) }, {}, rating = 4.6, hidesEmpty = true)
+        rated.loadFirst()
+        assertEquals("the product's rating metafield, from the first page on", 4.6, rated.summary?.average)
+    }
+
+    @Test
+    fun withoutATokenAProductWithoutReviewsAndAFailedLoadShowNoBlock() = runBlocking {
+        val none = ReviewsState({ ReviewPage(ReviewSummary(null, 0, emptyMap()), emptyList(), it, hasNextPage = false) }, {}, hidesEmpty = true)
+        none.loadFirst()
+        assertTrue(none.isLoaded)
+        assertFalse(none.isShown)
+
+        val offline = ReviewsState({ throw IOException("offline") }, {}, hidesEmpty = true)
+        offline.loadFirst()
+        assertTrue(offline.failed)
+        assertFalse("no retry line for reviews that may not exist", offline.isShown)
     }
 
     @Test

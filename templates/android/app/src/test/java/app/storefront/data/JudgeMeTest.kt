@@ -1,5 +1,6 @@
 package app.storefront.data
 
+import java.io.IOException
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -27,7 +28,7 @@ class JudgeMeTest {
     @Test
     fun theSummaryComesFromTheWidgetsDataAttributes() {
         val summary = JudgeMeHtml.parse(widget).summary!!
-        assertEquals(4.33, summary.average, 0.0)
+        assertEquals(4.33, summary.average!!, 0.0)
         assertEquals(12, summary.count)
         assertEquals("the clear-filter row is no rating", mapOf(5 to 8, 4 to 2, 3 to 1, 2 to 0, 1 to 1), summary.histogram)
     }
@@ -108,13 +109,15 @@ class JudgeMeTest {
     // The client
 
     private val requests = mutableListOf<Request>()
+    private var offline = false
 
     // An interceptor answers every request, so nothing touches the network.
-    private fun client(code: Int = 200, body: String) = JudgeMe(
+    private fun client(code: Int = 200, body: String, token: String = "public-token") = JudgeMe(
         "shop.test",
-        "public-token",
+        token,
         OkHttpClient.Builder().addInterceptor { chain ->
             requests += chain.request()
+            if (offline) throw IOException("offline")
             Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1).code(code).message("test")
                 .body(body.toResponseBody("application/json".toMediaType())).build()
         }.build(),
@@ -187,5 +190,123 @@ class JudgeMeTest {
 
         sample.submit("gid://shopify/Product/1", "Ada", "ada@example.com", 5, "Lovely", "Soft")
         assertTrue(requests.isEmpty())
+        assertFalse("a sample is not a store without a token", sample.isTokenless)
+    }
+
+    // Without a token
+
+    /** What Judge.me's own storefront widget is answered with (contract/fixtures/JudgeMeReviews.json): two reviews and their count. */
+    private val tokenless = JudgeMeTest::class.java.getResource("/fixtures/JudgeMeReviews.json")!!.readText()
+    private val tokenlessHtml = (json(tokenless)["html"] as JsonPrimitive).content
+
+    /** The same answer for a product nobody has reviewed. */
+    private val noReviews = buildJsonObject {
+        put(
+            "html",
+            """<div class='jdgm-rev-widg__reviews'></div> <div class='jdgm-paginate' data-per-page='5' data-url='https://api.judge.me/reviews/reviews_for_widget' style="display: none;"></div>""",
+        )
+        put("total_count", 0)
+        put("page", "1")
+    }.toString()
+
+    @Test
+    fun theTokenlessHtmlIsTheReviewBlocksWithoutASummary() {
+        val page = JudgeMeHtml.parse(tokenlessHtml)
+        assertNull("no average, no count, no histogram", page.summary)
+        assertEquals(
+            listOf(
+                Review(
+                    id = "22222222-aaaa-4bbb-8ccc-000000000001",
+                    rating = 5,
+                    title = "Holds its shape & its colour",
+                    body = "Third month of wearing the navy one most days. The cuffs haven't stretched.\nWould buy it again.",
+                    author = "Mira K.",
+                    verified = true,
+                    date = "2026-10-06T09:15:42Z",
+                    pictures = listOf("https://review-images.judgeme.com/example-store/1791700031__crewneck-navy__original.jpeg?quality=80&width=1024"),
+                    reply = null,
+                ),
+                Review(
+                    id = "22222222-aaaa-4bbb-8ccc-000000000002",
+                    rating = 4,
+                    title = "Good, runs warm",
+                    body = "Nice weight. Too warm for me indoors.",
+                    author = "Tomas R.",
+                    verified = false,
+                    date = "2026-09-19T17:48:03Z", // its timestamp has `data-content` only
+                    pictures = emptyList(),
+                    reply = "Thanks Tomas! The lighter knit is back in spring.",
+                ),
+            ),
+            page.reviews,
+        )
+        assertTrue(JudgeMeHtml.parse((json(noReviews)["html"] as JsonPrimitive).content).reviews.isEmpty())
+    }
+
+    @Test
+    fun withoutATokenTheReviewsComeFromTheWidgetsOwnEndpoint() = runBlocking {
+        val judgeMe = client(body = tokenless, token = "")
+        assertTrue(judgeMe.isTokenless)
+        assertFalse(client(body = widgetJson).isTokenless)
+
+        val page = judgeMe.reviews("gid://shopify/Product/7982905098262")
+        assertEquals("the count alone: no average, no breakdown", ReviewSummary(null, 2, emptyMap()), page.summary)
+        assertEquals(JudgeMeHtml.parse(tokenlessHtml).reviews, page.reviews)
+        assertEquals(1, page.page)
+        assertFalse(page.hasNextPage)
+
+        val request = requests.single()
+        assertEquals("GET", request.method)
+        assertEquals("https://api.judge.me/reviews/reviews_for_widget", request.url.newBuilder().query(null).build().toString())
+        assertEquals(
+            mapOf("url" to "shop.test", "shop_domain" to "shop.test", "platform" to "shopify", "page" to "1", "per_page" to "5", "product_id" to "7982905098262"),
+            request.url.queryParameterNames.associateWith { request.url.queryParameter(it) },
+        )
+        assertNull(request.header("X-Api-Token"))
+
+        assertTrue("2 reviews, 1 a page", judgeMe.reviews("gid://shopify/Product/7982905098262", page = 1, perPage = 1).hasNextPage)
+        assertFalse(judgeMe.reviews("gid://shopify/Product/7982905098262", page = 2, perPage = 1).hasNextPage)
+
+        // writing a review never needed the token
+        judgeMe.submit("gid://shopify/Product/7982905098262", "Ada", "ada@example.com", 5, "Lovely", "Soft")
+        assertEquals("POST https://api.judge.me/api/v1/reviews", requests.last().let { "${it.method} ${it.url}" })
+    }
+
+    @Test
+    fun aProductWithoutReviewsIsAnEmptyPageAndTheNextProductIsStillAskedFor() = runBlocking {
+        val judgeMe = client(body = noReviews, token = "")
+        assertEquals(ReviewPage(ReviewSummary(null, 0, emptyMap()), emptyList(), 1, hasNextPage = false), judgeMe.reviews("gid://shopify/Product/1"))
+        judgeMe.reviews("gid://shopify/Product/2")
+        assertEquals(2, requests.size)
+    }
+
+    @Test
+    fun anyOtherAnswerTurnsTheTokenlessEndpointOffForTheRunWithoutAnError() = runBlocking {
+        val answers = listOf(
+            404 to """{"error":"Not found"}""",
+            500 to "",
+            200 to "<html>Not here</html>",
+            200 to "[]",
+            200 to """{"widget":"<div></div>"}""",
+            200 to """{"html":"<div class='jdgm-rev-widg__reviews'></div>"}""",
+            200 to """{"html":null,"total_count":0}""",
+            200 to """{"html":"<div class='jdgm-rev-widg__reviews'></div>","total_count":"many"}""",
+        )
+        for ((code, body) in answers) {
+            requests.clear()
+            val judgeMe = client(code, body, token = "")
+            assertEquals("$code $body", ReviewPage(null, emptyList(), 1, hasNextPage = false), judgeMe.reviews("gid://shopify/Product/1"))
+            assertEquals(ReviewPage(null, emptyList(), 2, hasNextPage = false), judgeMe.reviews("gid://shopify/Product/2", page = 2))
+            assertEquals("$code $body: asked once, then left alone", 1, requests.size)
+        }
+    }
+
+    @Test
+    fun beingOfflineIsNoAnswerTheNextCallAsksAgain() {
+        val judgeMe = client(body = tokenless, token = "")
+        offline = true
+        assertThrows(ArgonApiError.Network::class.java) { runBlocking { judgeMe.reviews("gid://shopify/Product/1") } }
+        offline = false
+        assertEquals(2, runBlocking { judgeMe.reviews("gid://shopify/Product/1") }.reviews.size)
     }
 }

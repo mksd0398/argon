@@ -81,7 +81,8 @@ function sample(type) {
 // Executing the document over the fixture returns the fixture unchanged only if the fixture
 // has exactly the selected fields, non-null where the schema says so, valid enum values, and __typename on abstract types.
 test("every operation has a fixture, shaped exactly like its document's response", () => {
-  const fixtures = readdirSync(new URL("fixtures/", CONTRACT)).filter((f) => f.endsWith(".json")).map((f) => f.slice(0, -".json".length));
+  // JudgeMeReviews.json is Judge.me's answer, not an operation's
+  const fixtures = readdirSync(new URL("fixtures/", CONTRACT)).filter((f) => f.endsWith(".json") && !f.startsWith("JudgeMe")).map((f) => f.slice(0, -".json".length));
   assert.deepEqual(fixtures.sort(), docs.map((d) => d.name).sort());
   for (const { name, ast, op, schema } of docs) {
     const data = JSON.parse(readFileSync(new URL(`fixtures/${name}.json`, CONTRACT), "utf8"));
