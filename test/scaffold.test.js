@@ -110,8 +110,10 @@ test("--demo --yes scaffolds both apps against mock.shop", async () => {
     assert.equal(images.length, 12);
     assert.deepEqual(readdirSync(join(dir, "android/app/src/main/assets/home")).sort(), images);
     const samples = readdirSync(join(dir, "android/app/src/main/assets/sample")).sort();
-    assert.equal(samples.length, 14);
-    assert.ok(samples.includes("Orders.sample.json"));
+    assert.equal(samples.length, 15); // the 14 Customer Account operations and the sample reviews
+    assert.ok(samples.includes("Orders.sample.json") && samples.includes("JudgeMeWidget.sample.html"));
+    const deleted = JSON.parse(readFileSync(join(dir, "android/app/src/main/assets/sample/CustomerAddressDelete.sample.json"), "utf8"));
+    assert.ok(deleted.customerAddressDelete.deletedAddressId, "the preview's address delete succeeds");
     assert.deepEqual(readdirSync(join(dir, "ios/App/Resources/sample")).sort(), samples);
     assert.deepEqual(resources.slice(2 + ios.length), [...images.map((file) => `App/Resources/home/${file}`), ...samples.map((file) => `App/Resources/sample/${file}`)]);
     for (const file of [...resources, "Xtool-Info.plist", "Package.swift"]) assert.ok(existsSync(join(dir, "ios", file)), file);
