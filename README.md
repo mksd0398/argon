@@ -49,6 +49,44 @@ The apps work the way a Liquid theme does. They render whatever the store contai
 
 ---
 
+## How it works
+
+Argon runs once for a store. It checks the store, then writes a project that is yours to edit: nothing of Argon runs in the apps, and there is no backend of Argon's between the apps and Shopify.
+
+```mermaid
+flowchart TD
+  store[("Your Shopify store")]
+
+  subgraph argon["Argon, this package"]
+    lib["lib/<br/>asks, checks the store, writes the project"]
+    templates["templates/<br/>the apps' source"]
+    contract["contract/<br/>the GraphQL queries both apps share"]
+  end
+
+  subgraph app["The generated app: the same layers in ios/ and android/"]
+    screens["Screens<br/>home, shop, product, cart, account"]
+    stores["Stores<br/>cart, wishlist, sign-in, buyer"]
+    clients["API clients<br/>StorefrontApi, CustomerAccountApi, JudgeMe"]
+    screens --> stores --> clients
+  end
+
+  store -. "checked live: token, products, logo" .-> argon
+  argon == "one run per store" ==> app
+  clients --> storefront["Storefront API<br/>products, collections, cart"]
+  clients --> account["Customer Account API<br/>sign-in, orders, addresses"]
+  clients --> reviews["Judge.me<br/>reviews"]
+  stores --> checkout["Checkout Kit<br/>Shopify's own checkout"]
+```
+
+- **When the project is generated**, `lib/` asks for the store's values and checks each one against the store (the token works, the app can see products), fetches the brand's logo for the app icon, then copies `templates/` and the queries in `contract/` into a new folder and writes the store's values into one config file per app.
+- **When a shopper uses the app**, a screen never calls Shopify itself. It asks a store (`CartStore`, `WishlistStore`, `AuthStore`), and the store calls an API client with one typed function per query. One object owns them all (`AppGraph`), so there is no dependency-injection framework.
+- **Checkout** is Shopify's: the cart is handed to Checkout Kit, and payment, tax, shipping and the order stay with Shopify.
+- **Content** comes from the store at run time (products, the home screen's sections, colours, logo), so the merchant changes it in Shopify admin with no app release.
+
+With a provider configured, the apps also report events ([Analytics](#analytics) has that flow).
+
+---
+
 ## Quick Start
 
 ### Prerequisites
@@ -172,6 +210,25 @@ Off unless asked for. An app carries a provider's SDK only when that provider is
 | Google Analytics 4 | `--firebase-android`, `--firebase-ios` | Firebase's own files, `google-services.json` and `GoogleService-Info.plist`: one for each app, downloaded from the Firebase console for an app registered with this project's bundle ID |
 | Meta | `--meta-app-id`, `--meta-client-token` | The Meta app's ID and its client token (`META_APP_ID`, `META_CLIENT_TOKEN`) |
 | MoEngage | `--moengage-workspace-id`, `--moengage-data-center` | The workspace ID and the data center, 1 to 6: the number in the dashboard's address (`MOENGAGE_WORKSPACE_ID`, `MOENGAGE_DATA_CENTER`) |
+
+```mermaid
+flowchart LR
+  subgraph inapp["In the app"]
+    sources["Screens and stores"] --> hub["Analytics hub<br/>13 events"]
+    hub --> consent{"Share usage<br/>data on?"}
+  end
+
+  consent -- yes --> ga["Google Analytics<br/>Firebase SDK"]
+  consent -- yes --> meta["Meta<br/>Facebook SDK"]
+  consent -- yes --> moengage["MoEngage"]
+
+  subgraph serverside["On the store's own server, optional"]
+    order["Shopify<br/>Order creation webhook"] --> worker["server/<br/>Cloudflare Worker"]
+  end
+
+  worker -- "Measurement Protocol" --> ga
+  worker -- "Conversions API" --> meta
+```
 
 - **One hub.** Every screen and store reports to it, and the providers plug in behind it: screen views, product lists and product pages, search, wishlist and cart changes, the checkout steps, the purchase and sign-in, under Google Analytics' event names. Product ids are Shopify's numeric ids, the ones Google's and Meta's catalogues use. Debug builds log each event (`Analytics: add_to_cart {…}`), so the events can be checked with no provider account.
 - **Firebase's files are checked before they are copied.** Each must be for this app's bundle ID. A file for another app stops the run with both ids, because Google Analytics would get nothing from it.
