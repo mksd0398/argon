@@ -190,4 +190,25 @@ final class JudgeMeTests: XCTestCase {
         XCTAssertEqual(sent["body"] as? String, "Warm too.")
         XCTAssertEqual(sent.count, 8)
     }
+
+    func testTheDemoStoresSampleIsOnePageAndSendsNothing() async throws {
+        let widget = try fixtureText("JudgeMeWidget", type: "html")
+        // a session that would fail the test if anything were sent
+        StubProtocol.lastRequest = nil
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [StubProtocol.self]
+        let sample = JudgeMe(shopDomain: "mock.shop", token: "", session: URLSession(configuration: configuration), sample: { widget })
+        XCTAssertTrue(sample.isSample)
+        XCTAssertFalse(client("{}").isSample)
+
+        let first = try await sample.reviews(productId: "gid://shopify/Product/1")
+        XCTAssertEqual(first.reviews.count, 3)
+        XCTAssertEqual(first.summary?.count, 12)
+        XCTAssertFalse(first.hasNextPage, "the sample has no second page to load")
+        let second = try await sample.reviews(productId: "gid://shopify/Product/1", page: 2)
+        XCTAssertTrue(second.reviews.isEmpty)
+
+        try await sample.submit(productId: "gid://shopify/Product/1", name: "Ada", email: "ada@example.com", rating: 5, title: "Lovely", body: "Soft")
+        XCTAssertNil(StubProtocol.lastRequest)
+    }
 }

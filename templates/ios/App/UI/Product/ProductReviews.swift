@@ -91,10 +91,13 @@ final class ReviewsState {
     @ObservationIgnored private var page = 0
     private let load: (_ page: Int) async throws -> ReviewPage
     private let send: (ReviewForm) async throws -> Void
+    /// The demo store's bundled sample reviews: the block says so, and nothing a shopper writes is sent.
+    let isSample: Bool
 
-    init(load: @escaping (_ page: Int) async throws -> ReviewPage, send: @escaping (ReviewForm) async throws -> Void) {
+    init(load: @escaping (_ page: Int) async throws -> ReviewPage, send: @escaping (ReviewForm) async throws -> Void, isSample: Bool = false) {
         self.load = load
         self.send = send
+        self.isSample = isSample
     }
 
     convenience init(judgeMe: JudgeMe, productId: String) {
@@ -110,7 +113,8 @@ final class ReviewsState {
                     title: trimmed(form.title),
                     body: trimmed(form.body)
                 )
-            }
+            },
+            isSample: judgeMe.isSample
         )
     }
 
@@ -166,6 +170,7 @@ struct ProductReviews: View {
     var body: some View {
         VStack(alignment: .leading, spacing: theme.spacing.l) {
             SectionHeader(title: "Reviews")
+            if reviews.isSample { LabelTag(text: "Sample reviews: nothing is sent") }
             if let summary = reviews.summary, summary.count > 0 {
                 SummaryView(summary: summary)
             } else if reviews.isLoaded {

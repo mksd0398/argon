@@ -15,6 +15,10 @@ enum SampleAccount {
         return Data("{\"data\":".utf8) + (try Data(contentsOf: url)) + Data("}".utf8)
     }
 
+    /// The demo store's sample reviews (a Judge.me widget's HTML), when the bundle has them.
+    static let reviewsURL: URL? = Bundle.main.url(forResource: "JudgeMeWidget.sample", withExtension: "html")
+        ?? Bundle.main.url(forResource: "JudgeMeWidget.sample", withExtension: "html", subdirectory: "sample")
+
     private static func url(_ operation: String) -> URL? {
         // a synchronized folder may copy sample/ flat into the bundle
         Bundle.main.url(forResource: "\(operation).sample", withExtension: "json")

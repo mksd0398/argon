@@ -34,12 +34,18 @@ final class JudgeMe: Sendable {
     private let shopDomain: String
     private let token: String
     private let session: URLSession
+    /// The demo store has no reviews app, so its app shows one bundled page of sample reviews instead: this returns
+    /// that widget's HTML (`JudgeMeWidget.sample.html`). Nothing is then asked of Judge.me or sent to it.
+    private let sample: (@Sendable () throws -> String)?
 
-    init(shopDomain: String, token: String, session: URLSession = .shared) {
+    init(shopDomain: String, token: String, session: URLSession = .shared, sample: (@Sendable () throws -> String)? = nil) {
         self.shopDomain = shopDomain
         self.token = token
         self.session = session
+        self.sample = sample
     }
+
+    var isSample: Bool { sample != nil }
 
     /// The digits that end a Shopify GID: `gid://shopify/Product/123` is Judge.me's external id `123`.
     static func numericId(_ gid: String) -> String {
@@ -49,6 +55,10 @@ final class JudgeMe: Sendable {
     /// A page of the reviews of product `productId` (its GID), in the order the store's widget shows them, with the
     /// product's totals.
     func reviews(productId: String, page: Int = 1, perPage: Int = 5) async throws -> ReviewPage {
+        if let sample {
+            let only = JudgeMeHtml.parse(try sample(), page: page, perPage: perPage)
+            return ReviewPage(summary: only.summary, reviews: page == 1 ? only.reviews : [], page: page, hasNextPage: false)
+        }
         var url = URLComponents(string: "https://api.judge.me/api/v1/widgets/product_review")
         url?.queryItems = [
             URLQueryItem(name: "shop_domain", value: shopDomain),
@@ -71,6 +81,7 @@ final class JudgeMe: Sendable {
     /// Sends a review of product `productId` (its GID). Judge.me asks for no token here; the store publishes the review
     /// once it has approved it.
     func submit(productId: String, name: String, email: String, rating: Int, title: String, body: String) async throws {
+        if sample != nil { return }
         guard let address = URL(string: "https://api.judge.me/api/v1/reviews") else { throw ArgonAPIError.network(URLError(.badURL)) }
         let id = Self.numericId(productId)
         let review: [String: Any] = [

@@ -46,8 +46,13 @@ enum AppGraph {
     /// Whether there is an account to show: a signed-in customer, or the sample one.
     @MainActor static var hasAccount: Bool { auth.signedIn || sampleAccount }
 
-    /// Product reviews; nil when the store has no Judge.me token (no reviews anywhere).
-    static let judgeMe: JudgeMe? = judgeMeToken.isEmpty ? nil : JudgeMe(shopDomain: shopDomain, token: judgeMeToken)
+    /// Product reviews; nil when the store has no Judge.me token (no reviews anywhere). The demo store's app has bundled
+    /// sample reviews instead (`JudgeMeWidget.sample.html`, which the CLI copies for mock.shop only).
+    static let judgeMe: JudgeMe? = {
+        if !judgeMeToken.isEmpty { return JudgeMe(shopDomain: shopDomain, token: judgeMeToken) }
+        guard let url = SampleAccount.reviewsURL else { return nil }
+        return JudgeMe(shopDomain: shopDomain, token: "", sample: { try String(contentsOf: url, encoding: .utf8) })
+    }()
 
     @MainActor static let wishlist = WishlistStore(defaults: .standard)
     @MainActor static let recentlyViewed = RecentlyViewedStore(defaults: .standard)
