@@ -42,4 +42,16 @@ final class WishlistStoreTests: XCTestCase {
         await store().toggle("a")
         XCTAssertEqual(store().ids, ["a"])
     }
+
+    @MainActor
+    func testSavingAProductReportsItToAnalyticsAndTakingItOutDoesNot() async {
+        var events: [AnalyticsEvent] = []
+        let s = WishlistStore(defaults: UserDefaults(suiteName: suite)!, track: { events.append($0) })
+        let saved = AnalyticsEvent.addToWishlist(AnalyticsItem(productId: "1", name: "Hoodie", price: 90.0), currency: "CAD")
+        await s.toggle("gid://shopify/Product/1", added: saved)
+        XCTAssertEqual(events, [saved])
+        await s.toggle("gid://shopify/Product/1", added: saved) // taken out again
+        await s.toggle("gid://shopify/Product/2") // a caller that doesn't describe the product
+        XCTAssertEqual(events, [saved])
+    }
 }

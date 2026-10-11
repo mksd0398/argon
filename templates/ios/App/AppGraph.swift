@@ -65,13 +65,27 @@ enum AppGraph {
         return JudgeMe(shopDomain: shopDomain, token: "", sample: { try String(contentsOf: url, encoding: .utf8) })
     }()
 
-    @MainActor static let wishlist = WishlistStore(defaults: .standard)
+    /// Whether the shopper shares usage data (the Account screen's "Privacy" switch); `analytics` reports only while they do.
+    @MainActor static let analyticsConsent = AnalyticsConsentStore(defaults: .standard)
+
+    /// Where every screen and store reports what the shopper does: `analytics.track(event)`. `sinks` is every sink the
+    /// app has: a provider's factory joins the list; it returns nil when the provider isn't configured.
+    @MainActor static let analytics = Analytics(
+        sinks: [
+            logSink(),
+        ].compactMap { $0 },
+        allowed: { AppGraph.analyticsConsent.allowed }
+    )
+
+    @MainActor static let wishlist = WishlistStore(defaults: .standard, track: { AppGraph.analytics.track($0) })
     @MainActor static let recentlyViewed = RecentlyViewedStore(defaults: .standard)
     @MainActor static let onboardingStore = OnboardingStore(defaults: .standard)
     @MainActor static let cart = CartStore(
         api: AppGraph.storefront,
         defaults: .standard,
-        accessToken: { try await AppGraph.auth.validAccessToken() }
+        accessToken: { try await AppGraph.auth.validAccessToken() },
+        track: { AppGraph.analytics.track($0) },
+        cartAttributes: { await AppGraph.analytics.cartAttributes() }
     )
 
     /// The company a signed-in B2B customer buys for: it puts `storefront` and `cart` in that company's context.

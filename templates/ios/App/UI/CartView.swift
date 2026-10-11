@@ -92,6 +92,10 @@ private func checkoutMessage(_ error: CheckoutError) -> String {
 }
 
 /// Shopify's checkout for `url` (`CartStore.checkoutUrl`) as a sheet: see `View.checkoutSheet`.
+///
+/// Analytics hears of the whole way from here: `begin_checkout` as the sheet opens (the app has the whole cart), the
+/// shipping and payment steps from the checkout's web pixel events, and the purchase from the completed order, which
+/// comes once (the pixel's `checkout_completed` is left alone).
 private struct CheckoutPresenter: ViewModifier {
     @Binding var isPresented: Bool
     let url: URL?
@@ -105,7 +109,13 @@ private struct CheckoutPresenter: ViewModifier {
                 CheckoutSheet(checkout: url)
                     .onCancel { isPresented = false }
                     // the sheet stays open on the order confirmation until the shopper closes it (onCancel)
-                    .onComplete { _ in Task { await AppGraph.cart.completed() } }
+                    .onComplete { event in
+                        AppGraph.analytics.track(purchase(event.orderDetails))
+                        Task { await AppGraph.cart.completed() }
+                    }
+                    .onPixelEvent { event in
+                        if let step = checkoutStep(event) { AppGraph.analytics.track(step) }
+                    }
                     .onFail { error in
                         // the cart is kept; one Shopify no longer has (expired, already paid) is dropped by loading it again
                         if case .checkoutExpired = error { Task { _ = try? await AppGraph.cart.load() } }
@@ -114,6 +124,9 @@ private struct CheckoutPresenter: ViewModifier {
                     }
                     .ignoresSafeArea()
             }
+        }
+        .onChange(of: isPresented) { _, presented in
+            if presented, let cart = AppGraph.cart.cart { AppGraph.analytics.track(beginCheckout(cart)) }
         }
     }
 
@@ -283,6 +296,8 @@ struct CartView: View {
             if !Task.isCancelled { failure = error.localizedDescription }
         }
         loading = false
+        // analytics' `view_cart`: once per visit, of the cart as it is now (the last known one when the load failed)
+        if !Task.isCancelled, let cart = AppGraph.cart.cart, !cart.lines.isEmpty { AppGraph.analytics.track(viewCart(cart)) }
     }
 
     /// The sleep is a debounce: tapping the stepper quickly restarts this task, so only the last cart is preloaded.
