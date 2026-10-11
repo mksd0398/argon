@@ -48,9 +48,10 @@ class CartStore(
         }
     }
 
-    suspend fun add(variantId: String, quantity: Int) {
+    /** [sellingPlanId]: the subscription the line is bought on; null for a one-time purchase. */
+    suspend fun add(variantId: String, quantity: Int, sellingPlanId: String? = null) {
         lock.withLock {
-            val lines = listOf(CartLineInput(variantId, quantity))
+            val lines = listOf(CartLineInput(variantId, quantity, sellingPlanId))
             val create: suspend () -> Cart = { keep { api.cartCreate(CartInput(lines = lines, buyerIdentity = newCartBuyer())) } }
             // a stored cart that has expired is replaced by a new one holding these lines
             change({ api.addLines(it, lines) }, ifGone = create) ?: create()

@@ -3,7 +3,7 @@ package app.storefront.ui
 import android.content.Context
 import android.content.ContextWrapper
 import androidx.activity.ComponentActivity
-import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,24 +13,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -42,18 +30,25 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.argon.ui.ArgonSize
+import app.argon.ui.ArgonTheme
+import app.argon.ui.components.ArgonButton
+import app.argon.ui.components.ArgonDivider
+import app.argon.ui.components.ArgonIcon
+import app.argon.ui.components.ArgonIconName
+import app.argon.ui.components.ArgonQuantityStepper
+import app.argon.ui.components.ArgonTopBar
 import app.storefront.AppGraph
 import app.storefront.data.Cart
 import app.storefront.data.CartLine
-import coil3.compose.AsyncImage
+import app.storefront.data.CartLineComponent
+import app.storefront.data.QuantityRule
 import com.shopify.checkoutsheetkit.CheckoutException
 import com.shopify.checkoutsheetkit.CheckoutExpiredException
 import com.shopify.checkoutsheetkit.DefaultCheckoutEventProcessor
@@ -72,7 +67,31 @@ private tailrec fun Context.componentActivity(): ComponentActivity? = when (this
     else -> null
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Shows Shopify's checkout for [url] (`CartStore.checkoutUrl`) over [host]: the cart screen's "Checkout" and the product
+ * page's "Buy now". A placed order spends the cart. A checkout that fails keeps it and hands the reason to [onError];
+ * one Shopify no longer has (expired, already paid) is dropped by loading the cart again.
+ */
+internal fun presentCheckout(url: String, host: ComponentActivity, onError: (String) -> Unit) {
+    val processor = object : DefaultCheckoutEventProcessor(host) {
+        override fun onCheckoutCompleted(checkoutCompletedEvent: CheckoutCompletedEvent) {
+            AppGraph.scope.launch { AppGraph.cart.completed() }
+        }
+
+        override fun onCheckoutFailed(error: CheckoutException) {
+            if (error is CheckoutExpiredException) AppGraph.scope.launch { runCatching { AppGraph.cart.load() } }
+            onError(error.errorDescription)
+        }
+
+        override fun onCheckoutCanceled() {}
+    }
+    ShopifyCheckoutSheetKit.present(url, host, processor)
+}
+
+/** "Men's T-shirt · Small / Olive × 1": a bundle's part on a cart line (the variant left out when it is "Default Title"). */
+internal fun componentLabel(part: CartLineComponent): String =
+    listOfNotNull(part.productTitle.takeIf { it.isNotBlank() }, part.variantTitle.takeIf { it != "Default Title" }).joinToString(" · ") + " × ${part.quantity}"
+
 @Composable
 fun CartScreen() {
     val cart by AppGraph.cart.cart.collectAsState()
@@ -137,25 +156,12 @@ fun CartScreen() {
 
     fun checkout(host: ComponentActivity) = act(screen) {
         val url = AppGraph.cart.checkoutUrl() ?: return@act
-        val processor = object : DefaultCheckoutEventProcessor(host) {
-            override fun onCheckoutCompleted(checkoutCompletedEvent: CheckoutCompletedEvent) {
-                AppGraph.scope.launch { AppGraph.cart.completed() }
-            }
-
-            override fun onCheckoutFailed(error: CheckoutException) {
-                // the cart is kept; one Shopify no longer has (expired, already paid) is dropped by loading it again
-                if (error is CheckoutExpiredException) AppGraph.scope.launch { runCatching { AppGraph.cart.load() } }
-                screen.launch { snackbar.showSnackbar(error.errorDescription) }
-            }
-
-            override fun onCheckoutCanceled() {}
-        }
         preload?.cancel()
-        ShopifyCheckoutSheetKit.present(url, host, processor)
+        presentCheckout(url, host) { screen.launch { snackbar.showSnackbar(it) } }
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Cart") }) },
+        topBar = { ArgonTopBar("Cart") },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
@@ -170,7 +176,7 @@ fun CartScreen() {
                 )
                 loading && current == null -> Spinner()
                 error != null && current == null -> ErrorView(error) { attempt++ }
-                else -> Text("Your cart is empty", Modifier.align(Alignment.Center), style = MaterialTheme.typography.bodyLarge)
+                else -> Text("Your cart is empty", Modifier.align(Alignment.Center), style = ArgonTheme.type.body, color = ArgonTheme.colors.muted)
             }
         }
     }
@@ -178,54 +184,53 @@ fun CartScreen() {
 
 @Composable
 private fun CartContent(cart: Cart, busy: Boolean, onQuantity: (CartLine, Int) -> Unit, onCheckout: () -> Unit) {
+    val spacing = ArgonTheme.spacing
     Column(Modifier.fillMaxSize()) {
-        LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp), contentPadding = PaddingValues(16.dp)) {
+        LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.l), contentPadding = PaddingValues(spacing.l)) {
             items(cart.lines, key = { it.id }) { line -> CartLineRow(line, busy) { onQuantity(line, it) } }
         }
-        HorizontalDivider()
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        ArgonDivider()
+        Column(Modifier.padding(spacing.l), verticalArrangement = Arrangement.spacedBy(spacing.m)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Subtotal", style = MaterialTheme.typography.titleMedium)
-                Text(cart.subtotal.display(), style = MaterialTheme.typography.titleMedium)
+                Text("Subtotal", style = ArgonTheme.type.headline, color = ArgonTheme.colors.ink)
+                Text(cart.subtotal.display(), style = ArgonTheme.type.headline, color = ArgonTheme.colors.ink)
             }
-            Button(onClick = onCheckout, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Checkout") }
+            ArgonButton("Checkout", isEnabled = !busy, fullWidth = true, action = onCheckout)
         }
     }
 }
 
+/**
+ * A cart line: image, product, variant, the selling plan it is bought on, a bundle's parts, then the quantity on the
+ * variant's quantity rule (its minimum, maximum and increments) with a bin beside it that removes the line.
+ * [onQuantity] gets the new quantity; 0 removes the line.
+ */
 @Composable
 private fun CartLineRow(line: CartLine, busy: Boolean, onQuantity: (Int) -> Unit) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        AsyncImage(
-            model = line.image?.url,
-            contentDescription = line.image?.alt ?: line.productTitle,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.size(88.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant),
-        )
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(line.productTitle, style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    val spacing = ArgonTheme.spacing
+    val type = ArgonTheme.type
+    val colors = ArgonTheme.colors
+    val rule = line.merchandise.quantityRule ?: QuantityRule()
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing.m)) {
+        StoreImage(line.image, line.productTitle, Modifier.size(88.dp).clip(ArgonTheme.radius.m))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.xxs)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(spacing.s)) {
+                Text(line.productTitle, Modifier.weight(1f), style = type.label, color = colors.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(line.total.display(), style = type.label, color = colors.ink, maxLines = 1)
+            }
             // a product without options has Shopify's one "Default Title" variant; nothing worth showing
-            if (line.variantTitle != "Default Title") {
-                Text(line.variantTitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Stepper(line.quantity, busy, onQuantity)
-        }
-        Text(line.total.display(), style = MaterialTheme.typography.bodyLarge)
-    }
-}
-
-/** − and +; at 1 the − becomes a bin, because it removes the line. */
-@Composable
-private fun Stepper(quantity: Int, busy: Boolean, onChange: (Int) -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = { onChange(quantity - 1) }, enabled = !busy) {
-            if (quantity <= 1) {
-                Icon(Icons.Filled.Delete, "Remove from cart")
-            } else {
-                Text("−", Modifier.semantics { contentDescription = "Decrease quantity" }, style = MaterialTheme.typography.titleLarge)
+            if (line.variantTitle != "Default Title") Text(line.variantTitle, style = type.caption, color = colors.muted)
+            line.sellingPlanName?.let { Text(it, style = type.caption, color = colors.muted) }
+            for (part in line.components) Text(componentLabel(part), style = type.caption, color = colors.muted)
+            Row(Modifier.padding(top = spacing.xs), horizontalArrangement = Arrangement.spacedBy(spacing.xs), verticalAlignment = Alignment.CenterVertically) {
+                ArgonQuantityStepper(line.quantity, onQuantity, min = rule.min, max = rule.maximum, step = rule.step, size = ArgonSize.S, isEnabled = !busy)
+                Box(
+                    Modifier.size(44.dp).alpha(if (busy) 0.4f else 1f).clickable(enabled = !busy, role = Role.Button) { onQuantity(0) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    ArgonIcon(ArgonIconName.Trash, size = 20.dp, tint = colors.muted, contentDescription = "Remove from cart")
+                }
             }
         }
-        Text("$quantity", Modifier.widthIn(min = 28.dp), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyLarge)
-        IconButton(onClick = { onChange(quantity + 1) }, enabled = !busy) { Icon(Icons.Filled.Add, "Increase quantity") }
     }
 }

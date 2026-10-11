@@ -108,6 +108,15 @@ class CartStoreTest {
     }
 
     @Test
+    fun addOnASellingPlanNamesThePlanAndAOneTimePurchaseNamesNone() = runBlocking {
+        val s = store()
+        s.add("v1", 1)
+        s.add("v2", 2, sellingPlanId = "gid://shopify/SellingPlan/1")
+        assertNull(calls[0].second.getValue("input").jsonObject.lines.single()["sellingPlanId"])
+        assertEquals("gid://shopify/SellingPlan/1", calls[1].second.lines.single().getValue("sellingPlanId").jsonPrimitive.content)
+    }
+
+    @Test
     fun anExpiredCartIsDroppedWithoutAnError() = runBlocking {
         store().add("v1", 1)
         calls.clear()
