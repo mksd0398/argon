@@ -68,6 +68,13 @@ func addressLines(_ address: CustomerAddress) -> [String] {
     ].compactMap { trimmedText($0) }
 }
 
+/// A country's name in the address form's picker: the store's `name` for it, else the device's own name for the ISO
+/// `code` ("CA" is "Canada"; a store may send no names), else the code itself.
+func countryName(_ code: String, _ name: String?, locale: Locale = .current) -> String {
+    if let name = name, trimmedText(name) != nil { return name }
+    return trimmedText(locale.localizedString(forRegionCode: code)) ?? code
+}
+
 /// The fields the address form checks itself.
 enum AddressField {
     case address1, city, country

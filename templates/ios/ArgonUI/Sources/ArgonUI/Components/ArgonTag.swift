@@ -5,11 +5,11 @@ public enum ArgonTagStyle: Sendable {
     case filter
     /// A value the user entered, usually removable.
     case input
-    /// A label, not interactive unless given `onClick`.
+    /// A label: plain text on a quiet fill. A chip only when it has an `onClick`.
     case info
 }
 
-/// A small capsule label. `onRemove` adds a remove button.
+/// A small capsule chip, or a plain label (`info` without `onClick`). `onRemove` adds a remove button.
 @MainActor
 public struct ArgonTag: View {
     let text: String
@@ -34,6 +34,22 @@ public struct ArgonTag: View {
     }
 
     public var body: some View {
+        if style == .info && onClick == nil && onRemove == nil {
+            // A label that does nothing when tapped must not look or act like a button: plain text on a quiet fill, with
+            // no border and no touch target around it (VoiceOver reads it as text).
+            Text(text)
+                .font(theme.type.label)
+                .foregroundStyle(theme.colors.ink)
+                .lineLimit(1)
+                .padding(.horizontal, theme.spacing.m)
+                .padding(.vertical, theme.spacing.xs)
+                .background(theme.colors.border.opacity(0.6), in: RoundedRectangle(cornerRadius: theme.radius.s))
+        } else {
+            chip
+        }
+    }
+
+    private var chip: some View {
         // the remove button sits beside the tappable part, never inside it
         HStack(spacing: 0) {
             if let onClick = onClick {

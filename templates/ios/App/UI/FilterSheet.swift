@@ -130,6 +130,11 @@ struct FilterSheet: View {
     var results: String? = nil
     var currencyCode: String? = nil
     var scrollTo: String? = nil
+    // A change reloads the filters, and a section above the one just used can come back shorter (fewer values are left).
+    // The section that was used (its filter's id, and how far under the list's top edge it sat when the change was made)
+    // is put back where it was, so it doesn't jump from under the finger.
+    @State private var used: String? = nil
+    @State private var usedTop: CGFloat = 0
     @Environment(\.argonTheme) private var theme
 
     var body: some View {
@@ -139,25 +144,66 @@ struct FilterSheet: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: theme.spacing.l) {
                         ForEach(filters, id: \.id) { filter in
-                            FilterSection(filter: filter, applied: applied, onChange: onChange, currencyCode: currencyCode)
+                            FilterSection(
+                                filter: filter,
+                                applied: applied,
+                                onChange: { next in
+                                    used = filter.id
+                                    onChange(next)
+                                },
+                                currencyCode: currencyCode
+                            )
+                            // where the section sits in the list's window, read as a change is made in it (the selection
+                            // changes at once, the filters only when the list has reloaded)
+                            .background {
+                                GeometryReader { geometry in
+                                    Color.clear.onChange(of: applied) {
+                                        if used == filter.id { usedTop = geometry.frame(in: .named(filterList)).minY }
+                                    }
+                                }
+                            }
+                            // The section's anchor: a point as far above the section's top as the section sat under the
+                            // list's top edge (for the section in use; its own top for any other). Scrolling that point
+                            // to the list's top puts the section back where it was.
+                            .overlay(alignment: .topLeading) {
+                                Color.clear
+                                    .frame(width: 0, height: 0)
+                                    .id(SectionAnchor(filter: filter.id))
+                                    .alignmentGuide(.top) { _ in used == filter.id ? usedTop : 0 }
+                            }
                         }
                     }
                     .padding(.horizontal, theme.spacing.l)
                     .padding(.vertical, theme.spacing.m)
                 }
+                .coordinateSpace(.named(filterList))
                 // once the sheet is laid out (a task runs after it appears)
                 .task {
                     if let scrollTo = scrollTo, filters.contains(where: { $0.id == scrollTo }) { proxy.scrollTo(scrollTo, anchor: .top) }
                 }
+                .onChange(of: filters) {
+                    if let used = used { proxy.scrollTo(SectionAnchor(filter: used), anchor: .top) }
+                }
             }
             HStack(spacing: theme.spacing.m) {
-                ArgonButton(title: "Clear", style: .tertiary, isEnabled: !applied.isEmpty) { onChange([]) }
+                ArgonButton(title: "Clear", style: .tertiary, isEnabled: !applied.isEmpty) {
+                    used = nil
+                    onChange([])
+                }
                 ArgonButton(title: results.map { "Show \($0)" } ?? "Show products", fullWidth: true, action: onDismiss)
             }
             .padding(theme.spacing.l)
         }
         .background { theme.colors.surface.ignoresSafeArea() }
     }
+}
+
+/// The name of the filter list's own coordinate space: a section's place in the list's window is measured in it.
+private let filterList = "filterList"
+
+/// The id of a filter section's anchor in the list (see `FilterSheet`); apart from the section's own id, the filter's.
+private struct SectionAnchor: Hashable {
+    let filter: String
 }
 
 /// A sheet's title; with `section`, the smaller heading of one of its sections.

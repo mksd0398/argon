@@ -469,7 +469,8 @@ private struct ProductContent: View {
     }
 }
 
-/// Block 2: the vendor, the title, and the rating (`shownRating`); `onRating` makes the stars a way to the reviews.
+/// Block 2: the vendor (when `AppGraph.showVendor`), the title, and the rating (`shownRating`); `onRating` makes the
+/// stars a way to the reviews.
 @MainActor
 private struct ProductTitle: View {
     let product: Product
@@ -479,7 +480,7 @@ private struct ProductTitle: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: theme.spacing.xs) {
-            if !product.vendor.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if AppGraph.showVendor && !product.vendor.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Text(product.vendor).font(theme.type.caption).foregroundStyle(theme.colors.muted).lineLimit(1)
             }
             Text(product.title).font(theme.type.title).foregroundStyle(theme.colors.ink).accessibilityAddTraits(.isHeader)

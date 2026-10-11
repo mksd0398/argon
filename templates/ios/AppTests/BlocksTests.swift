@@ -91,4 +91,15 @@ final class BlocksTests: XCTestCase {
         XCTAssertEqual(swatch(for: filter), SwatchFill(colorHex: "#6B6B3A"))
         XCTAssertEqual(swatch(for: FilterValue(id: "v", label: "Olive", count: 2, input: "{}")), SwatchFill(colorHex: SwatchColors.hex("olive")))
     }
+
+    // MARK: Merchant HTML
+
+    func testStyleAndScriptBlocksAreLeftOutOfMerchantHtml() {
+        XCTAssertEqual(withoutStyleBlocks("<style>#html-body{display:flex}</style><p>Soft cotton.</p>"), "<p>Soft cotton.</p>")
+        XCTAssertEqual(
+            withoutStyleBlocks("<p>a</p><STYLE type=\"text/css\">\n.x{color:red}\n</STYLE><script>alert(1)</script><p>b</p>"),
+            "<p>a</p><p>b</p>"
+        )
+        XCTAssertEqual(withoutStyleBlocks("<p>In style.</p>"), "<p>In style.</p>", "nothing to take out")
+    }
 }

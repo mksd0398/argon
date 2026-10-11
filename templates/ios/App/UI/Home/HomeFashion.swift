@@ -62,7 +62,7 @@ private struct CategoryTiles: View {
                     ForEach(categories, id: \.id) { category in
                         Button { onOpen(.collection(category.handle)) } label: {
                             VStack(alignment: .leading, spacing: theme.spacing.s) {
-                                CategoryImage(image: category.image, ratio: 3.0 / 4.0)
+                                CategoryImage(image: category.picture, ratio: 3.0 / 4.0)
                                 Text(category.title).font(theme.type.label).foregroundStyle(theme.colors.ink).lineLimit(1)
                             }
                             .frame(width: 132, alignment: .leading)

@@ -1,4 +1,5 @@
 import ArgonUI
+import CoreText
 import SwiftUI
 import UIKit
 
@@ -60,12 +61,19 @@ struct StoreImage: View {
 
 // MARK: Text
 
-/// The merchant's HTML (a product description, a policy) as text: paragraphs, lists, bold, links. Nil when blank or
-/// unreadable. The HTML importer runs WebKit, which must be on the main thread.
+/// `html` without its `<style>` and `<script>` blocks: a page builder's CSS must not restyle the text, and neither may
+/// show as words.
+func withoutStyleBlocks(_ html: String) -> String {
+    html.replacingOccurrences(of: #"(?is)<(style|script)\b[^>]*>.*?</\1\s*>"#, with: "", options: .regularExpression)
+}
+
+/// The merchant's HTML (a product description, a policy) as text: paragraphs, lists, bold, links, in the theme's body
+/// font. Nil when blank or unreadable. The HTML importer runs WebKit, which must be on the main thread.
 @MainActor
 func htmlText(_ html: String) -> AttributedString? {
+    let html = withoutStyleBlocks(html)
     guard !html.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
-    // the system body font instead of the importer's 12 pt Times
+    // the system body font instead of the importer's 12 pt Times: every size it gives is then relative to that one
     let styled = "<style>body{font:-apple-system-body}</style>" + html
     guard let imported = try? NSAttributedString(
         data: Data(styled.utf8),
@@ -73,8 +81,25 @@ func htmlText(_ html: String) -> AttributedString? {
         documentAttributes: nil
     ) else { return nil }
     let text = NSMutableAttributedString(attributedString: imported)
+    let whole = NSRange(location: 0, length: text.length)
     // the importer's fixed black would vanish in dark mode; links keep their own colour
-    text.removeAttribute(.foregroundColor, range: NSRange(location: 0, length: text.length))
+    text.removeAttribute(.foregroundColor, range: whole)
+    // The body style of the theme (Hanken Grotesk, 16 pt at the default text size) in place of the system's font, run by
+    // run: a heading keeps its larger size and bold its weight; italic is slanted, as the font has no italic of its own.
+    // Without the bundled font the system's stays.
+    let systemSize = UIFont.preferredFont(forTextStyle: .body).pointSize
+    let bodySize = UIFontMetrics(forTextStyle: .body).scaledValue(for: 16)
+    text.enumerateAttribute(.font, in: whole) { value, range, _ in
+        guard let font = value as? UIFont else { return }
+        let traits = font.fontDescriptor.symbolicTraits
+        let size = bodySize * font.pointSize / systemSize
+        guard var themed = ArgonFonts.text(size: size, weight: traits.contains(.traitBold) ? 700 : 400) else { return }
+        if traits.contains(.traitItalic) {
+            var slant = CGAffineTransform(a: 1, b: 0, c: 0.25, d: 1, tx: 0, ty: 0)
+            themed = CTFontCreateCopyWithAttributes(themed, 0, &slant, nil)
+        }
+        text.addAttribute(.font, value: themed, range: range)
+    }
     while text.string.hasSuffix("\n") {
         text.deleteCharacters(in: NSRange(location: text.length - 1, length: 1))
     }

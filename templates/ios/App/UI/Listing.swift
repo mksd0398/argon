@@ -124,7 +124,7 @@ final class Listing {
                 self.pagesLoaded += 1
                 if let first = page.items.first { self.currencyCode = first.price.currencyCode }
                 // a filtered first page that comes back without filters keeps the old ones, so the user can still clear them
-                if after == nil && !page.filters.isEmpty { self.filters = page.filters }
+                if after == nil && !page.filters.isEmpty { self.filters = keepingPriceBounds(self.filters, page.filters, applied) }
                 self.loading = false
             } catch {
                 guard mine == self.generation else { return }
@@ -135,6 +135,23 @@ final class Listing {
         task = started
         return started
     }
+}
+
+/// The filters to show after a reload: the list's new ones (`fresh`), except that while a price range is selected
+/// (`applied`) a price filter stays as it was (`current`). Shopify answers a list filtered by price with the range of
+/// what is left, which would shrink the slider to the selection and leave no way to widen it again.
+/// ponytail: the bounds are those from before the price was chosen, even if other filters change meanwhile.
+func keepingPriceBounds(_ current: [Filter], _ fresh: [Filter], _ applied: [String]) -> [Filter] {
+    if priceSelection(applied) == nil { return fresh }
+    return fresh.map { filter in current.first { $0.type == "PRICE_RANGE" && $0.id == filter.id } ?? filter }
+}
+
+/// `text` without the CSS rules a page builder left at its start; the words after them are the description. A
+/// collection's description is Shopify's plain text of the merchant's HTML, and that keeps the text of a `<style>` block
+/// (page builders put one first): rules like `#html-body [data-pb-style=X]{display:flex}` before the words.
+func withoutLeadingCss(_ text: String) -> String {
+    text.replacingOccurrences(of: #"^(?:\s*[^{}]{1,200}\{[^{}]*\})+"#, with: "", options: .regularExpression)
+        .trimmingCharacters(in: .whitespacesAndNewlines)
 }
 
 // The filter selection is `Listing.applied`: the `input` JSON of every selected filter value, in the order they were

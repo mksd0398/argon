@@ -311,6 +311,8 @@ struct StickyAddBar: View {
     let isEnabled: Bool
     let isLoading: Bool
     let onAdd: () -> Void
+    // this bar among the ones the toast knows of
+    @State private var id = UUID()
     @Environment(\.argonTheme) private var theme
 
     var body: some View {
@@ -330,5 +332,17 @@ struct StickyAddBar: View {
             .padding(.vertical, theme.spacing.m)
         }
         .background(theme.colors.surface)
+        // The app's toast shows above the bar (see ToastView): it is told how tall the bar is while the bar is on screen
+        // (not while its page is under another one, or in a tab that isn't on show).
+        .background {
+            GeometryReader { geometry in
+                Color.clear
+                    .onAppear { AppGraph.toast.stickyBars[id] = geometry.size.height }
+                    .onChange(of: geometry.size.height) { _, height in
+                        if AppGraph.toast.stickyBars[id] != nil { AppGraph.toast.stickyBars[id] = height }
+                    }
+                    .onDisappear { AppGraph.toast.stickyBars[id] = nil }
+            }
+        }
     }
 }

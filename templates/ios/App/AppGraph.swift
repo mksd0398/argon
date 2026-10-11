@@ -14,6 +14,9 @@ enum AppGraph {
     static let collectionTemplate = CollectionTemplate(config: info("CollectionTemplate"))
     /// Judge.me's public token; empty hides reviews.
     static let judgeMeToken = info("JudgemePublicToken").trimmingCharacters(in: .whitespaces)
+    /// Whether product cards and the product page show the vendor (`SHOW_VENDOR`, false unless it is `true`): many
+    /// stores' vendor is their own name on every product, or an internal label.
+    static let showVendor = info("ShowVendor").trimmingCharacters(in: .whitespaces).lowercased() == "true"
 
     private static let client = Storefront(domain: shopDomain, token: storefrontToken, apiVersion: apiVersion, loadDocument: AppGraph.document)
 

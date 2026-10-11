@@ -50,7 +50,7 @@ private struct CategoryGrid: View {
                     ForEach(row, id: \.id) { category in
                         Button { onOpen(.collection(category.handle)) } label: {
                             VStack(spacing: theme.spacing.xs) {
-                                CategoryImage(image: category.image, ratio: 1)
+                                CategoryImage(image: category.picture, ratio: 1)
                                 Text(category.title)
                                     .font(theme.type.caption)
                                     .foregroundStyle(theme.colors.ink)

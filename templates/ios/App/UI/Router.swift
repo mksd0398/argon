@@ -104,6 +104,10 @@ final class ToastState {
     private(set) var message: String? = nil
     @ObservationIgnored private var hiding: Task<Void, Never>? = nil
 
+    /// How tall the product page's sticky add-to-cart bar is, for each bar on screen (by the bar's own id; a bar takes
+    /// itself out when its page is covered or left): the toast shows above the bar, not over its button.
+    var stickyBars: [UUID: CGFloat] = [:]
+
     /// Shows `message`, in place of the one on show if any.
     func show(_ message: String) {
         self.message = message
@@ -132,8 +136,8 @@ private struct ToastView: View {
                     .padding(.vertical, theme.spacing.m)
                     .background(theme.colors.ink, in: RoundedRectangle(cornerRadius: theme.radius.m))
                     .padding(.horizontal, theme.spacing.l)
-                    // above the tab bar
-                    .padding(.bottom, 64)
+                    // above the tab bar, and on a product page above its sticky add-to-cart bar too
+                    .padding(.bottom, 64 + (AppGraph.toast.stickyBars.values.max() ?? 0))
                     .transition(.opacity)
                     .accessibilityAddTraits(.isStaticText)
             }

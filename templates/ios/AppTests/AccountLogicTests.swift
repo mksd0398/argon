@@ -148,4 +148,13 @@ final class AccountLogicTests: XCTestCase {
         XCTAssertEqual(AddressForm.of(nil), AddressForm())
         XCTAssertEqual(AddressForm.of(addresses[0]).toInput(addresses[0]).address2, "Suite 400", "an unchanged form changes nothing it had")
     }
+
+    func testACountryWithoutANameGetsTheDevicesNameForItsCode() {
+        let us = Locale(identifier: "en_US")
+        XCTAssertEqual(countryName("CA", "Kanada", locale: us), "Kanada", "the store's name wins")
+        XCTAssertEqual(countryName("CA", "", locale: us), "Canada", "mock.shop sends no names")
+        XCTAssertEqual(countryName("CA", nil, locale: us), "Canada")
+        XCTAssertEqual(countryName("IN", " ", locale: us), "India", "blank is no name")
+        XCTAssertEqual(countryName("CA", nil, locale: Locale(identifier: "de_DE")), "Kanada", "in the device's language")
+    }
 }

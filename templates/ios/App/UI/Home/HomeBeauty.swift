@@ -59,7 +59,7 @@ private struct CategoryCircles: View {
                     ForEach(categories, id: \.id) { category in
                         Button { onOpen(.collection(category.handle)) } label: {
                             VStack(spacing: theme.spacing.xs) {
-                                ArgonAvatar(imageUrl: category.image.flatMap { URL(string: $0.url) }, initials: category.title, size: .l)
+                                ArgonAvatar(imageUrl: category.picture.flatMap { URL(string: $0.url) }, initials: category.title, size: .l)
                                     // the title under it names the collection
                                     .accessibilityHidden(true)
                                 Text(category.title)

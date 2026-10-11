@@ -20,5 +20,7 @@
 	<string>$(COLLECTION_TEMPLATE)</string>
 	<key>JudgemePublicToken</key>
 	<string>$(JUDGEME_PUBLIC_TOKEN)</string>
+	<key>ShowVendor</key>
+	<string>$(SHOW_VENDOR)</string>
 </dict>
 </plist>

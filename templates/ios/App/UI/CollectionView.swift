@@ -25,7 +25,7 @@ final class CollectionModel {
             let found = try await api.collection(handle, filters: applied, sortKey: sort.key, reverse: sort.reverse, after: after)
             guard let collection = found else { throw NotFound(what: "Collection") }
             self?.title = collection.title
-            self?.description = collection.description
+            self?.description = withoutLeadingCss(collection.description)
             return ProductPage(collection.products)
         }
     }

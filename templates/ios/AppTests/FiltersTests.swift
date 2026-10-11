@@ -185,4 +185,25 @@ final class FiltersTests: XCTestCase {
         XCTAssertEqual(countLabel("Filters", 0), "Filters")
         XCTAssertEqual(countLabel("Filter", 2), "Filter (2)")
     }
+
+    @MainActor
+    func testThePriceSliderKeepsItsBoundsWhileAPriceIsSelected() async throws {
+        let f = try await collectionFilters()
+        // Shopify answers a list filtered to 0...80 with a price filter of 0...80: the slider must not shrink to it
+        let narrowed = priceFilter(#"{"price":{"min":0,"max":80}}"#)
+        let fresh = [f.availability, narrowed, changed(f.color, values: Array(f.color.values.prefix(1)))]
+        let kept = keepingPriceBounds(f.filters, fresh, [priceInput(0, 80), f.green])
+        XCTAssertEqual(kept[1], f.price, "the price filter is the one from before")
+        XCTAssertEqual([kept[0], kept[2]], [fresh[0], fresh[2]], "every other filter is the new one")
+        XCTAssertEqual(keepingPriceBounds(f.filters, fresh, [f.green]), fresh, "no price selected: all new")
+        XCTAssertEqual(keepingPriceBounds([], fresh, [priceInput(0, 80)]), fresh, "nothing to keep yet")
+    }
+
+    func testADescriptionLosesTheCssAPageBuilderLeftBeforeIt() {
+        let css = "#html-body [data-pb-style=SMHWSI9]{justify-content:flex-start;display:flex}#html-body [data-pb-style=A1]{border-style:none}"
+        XCTAssertEqual(withoutLeadingCss("\(css) Silk sarees for every day."), "Silk sarees for every day.")
+        XCTAssertEqual(withoutLeadingCss(css), "", "only CSS: nothing to show")
+        XCTAssertEqual(withoutLeadingCss("Cotton Silk Saree- Drape every occasion"), "Cotton Silk Saree- Drape every occasion", "plain words stay as they are")
+        XCTAssertEqual(withoutLeadingCss(""), "")
+    }
 }

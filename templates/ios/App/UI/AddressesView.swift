@@ -26,7 +26,7 @@ private func loadAddresses() async throws -> [CustomerAddress] {
 private func loadCountries() async -> [CountryChoice] {
     do {
         return try await AppGraph.storefront.localization().availableCountries
-            .map { CountryChoice(code: $0.isoCode, name: trimmedText($0.name) == nil ? $0.isoCode : $0.name) }
+            .map { CountryChoice(code: $0.isoCode, name: countryName($0.isoCode, $0.name)) }
             .sorted { $0.name < $1.name }
     } catch {
         // the error's type only: a message could carry a URL

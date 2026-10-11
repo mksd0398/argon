@@ -33,7 +33,8 @@ private enum CurrencyFormat {
     }
 }
 
-/// Heart toggle for the product with id `productId`: filled while it is in the wishlist.
+/// Heart toggle for the product with id `productId`: filled while it is in the wishlist. A 36 pt disc centred in the
+/// 44 pt touch target, so the disc sits 4 pt inside whatever corner the button is aligned to.
 @MainActor
 struct WishlistHeart: View {
     let productId: String
@@ -47,6 +48,8 @@ struct WishlistHeart: View {
         } label: {
             ArgonIcon(name: saved ? .heartFilled : .heart, size: 17, tint: theme.colors.ink)
                 .frame(width: 36, height: 36)
+                .background(theme.colors.surface.opacity(0.9), in: Circle())
+                .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -56,7 +59,8 @@ struct WishlistHeart: View {
 
 /// How a product card is laid out.
 enum ProductCardStyle {
-    /// A 4:5 image with the wishlist heart and a "Sold out" or "Sale" tag, then vendor, title, rating, price and colours.
+    /// A 4:5 image with the wishlist heart and a "Sold out" or "Sale" tag, then the vendor (when `AppGraph.showVendor`),
+    /// title, rating, price and colours.
     case standard
     /// Dense (grocery): a square image, title, price and a quick add.
     case compact
@@ -99,12 +103,8 @@ struct ProductCardView: View {
                     }
                     .padding(theme.spacing.s)
                 }
-                .overlay(alignment: .topTrailing) {
-                    WishlistHeart(productId: card.id)
-                        .background(theme.colors.surface.opacity(0.9), in: Circle())
-                        .padding(theme.spacing.xs)
-                }
-            if !card.vendor.trimmingCharacters(in: .whitespaces).isEmpty {
+                .overlay(alignment: .topTrailing) { WishlistHeart(productId: card.id) }
+            if AppGraph.showVendor && !card.vendor.trimmingCharacters(in: .whitespaces).isEmpty {
                 Text(card.vendor).font(theme.type.caption).foregroundStyle(theme.colors.muted).lineLimit(1)
             }
             title()
@@ -179,6 +179,35 @@ struct ProductCardView: View {
                     Text(verbatim: "+\(colors.count - 4)").font(theme.type.caption).foregroundStyle(theme.colors.muted)
                 }
             }
+        }
+    }
+}
+
+/// Product cards in a row that scrolls sideways (a rail), each `cardWidth` wide, inset by the page's gutter. `onOpen`
+/// gets the card tapped. Not lazy: a rail is a handful of cards, and a lazy row sizes itself on its first cards only, so
+/// the page under it would jump when a taller card (a second title line, colour dots) scrolled in. This row is as tall
+/// as its tallest card, and every card is stretched to that height.
+@MainActor
+struct ProductCardRow: View {
+    let cards: [ProductCard]
+    var style: ProductCardStyle = .standard
+    var cardWidth: CGFloat = 160
+    let onOpen: (ProductCard) -> Void
+    @Environment(\.argonTheme) private var theme
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(alignment: .top, spacing: theme.spacing.m) {
+                // by position: a store's section may list a product twice
+                ForEach(Array(cards.enumerated()), id: \.offset) { _, card in
+                    ProductCardView(card: card, style: style) { onOpen(card) }
+                        .frame(width: cardWidth)
+                        .frame(maxHeight: .infinity, alignment: .top)
+                }
+            }
+            // the row measures itself on its tallest card, then hands that height to every card
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, theme.spacing.l)
         }
     }
 }

@@ -100,8 +100,8 @@ private struct CategoryList: View {
             ForEach(categories, id: \.id) { category in
                 ArgonListItem(
                     title: category.title,
-                    // a collection without a picture keeps the row's shape with an icon
-                    leading: category.image.map { ArgonListLeading.image(URL(string: $0.url)) } ?? .icon(.grid),
+                    // a collection without a picture (its own or a product's) keeps the row's shape with an icon
+                    leading: category.picture.map { ArgonListLeading.image(URL(string: $0.url)) } ?? .icon(.grid),
                     trailing: .chevron,
                     onClick: { onOpen(.collection(category.handle)) }
                 )

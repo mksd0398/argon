@@ -27,6 +27,12 @@ extension HomeContent {
     }
 }
 
+extension CollectionCard {
+    /// A category's picture: the collection's own image, else its first product's (many stores never give their
+    /// collections one). Nil, and so the quiet placeholder, only when it has neither.
+    var picture: Img? { image ?? products.first?.image }
+}
+
 /// The banners of a hero carousel: all but the second, which a template shows as a card further down the page.
 func heroBanners(_ banners: [HomeContent.Banner]) -> [HomeContent.Banner] {
     banners.enumerated().filter { $0.offset != 1 }.map { $0.element }
@@ -109,18 +115,23 @@ struct BannerView: View {
         .environment(\.colorScheme, .dark)
     }
 
-    /// The shade grows towards the bottom, where the words are; a banner without a picture is all shade.
+    /// The shade grows towards the bottom, where the words are; a banner without a picture is all shade. In a short
+    /// banner the heading reaches the top, so the whole picture is shaded a little for it to stay readable.
     private var shade: AnyShapeStyle {
         if banner.image == nil { return AnyShapeStyle(theme.colors.paper) }
+        let top: Gradient.Stop = compact
+            ? .init(color: theme.colors.paper.opacity(0.3), location: 0)
+            : .init(color: .clear, location: 0.35)
         return AnyShapeStyle(LinearGradient(
-            stops: [.init(color: .clear, location: 0.35), .init(color: theme.colors.paper.opacity(0.85), location: 1)],
+            stops: [top, .init(color: theme.colors.paper.opacity(0.85), location: 1)],
             startPoint: .top,
             endPoint: .bottom
         ))
     }
 }
 
-/// A titled row of product cards that scrolls sideways, each card `cardWidth` wide, with "View all" (`viewAll`).
+/// A titled row of product cards that scrolls sideways (`ProductCardRow`), each card `cardWidth` wide, with "View all"
+/// (`viewAll`).
 @MainActor
 struct ProductRail: View {
     let title: String
@@ -135,16 +146,7 @@ struct ProductRail: View {
         VStack(alignment: .leading, spacing: theme.spacing.m) {
             SectionHeader(title: title, actionLabel: "View all") { onOpen(viewAll) }
                 .padding(.horizontal, theme.spacing.l)
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(alignment: .top, spacing: theme.spacing.m) {
-                    // by position: a store's section may list a product twice
-                    ForEach(Array(cards.enumerated()), id: \.offset) { _, card in
-                        ProductCardView(card: card, style: style) { onOpen(.product(card.handle)) }
-                            .frame(width: cardWidth)
-                    }
-                }
-                .padding(.horizontal, theme.spacing.l)
-            }
+            ProductCardRow(cards: cards, style: style, cardWidth: cardWidth) { onOpen(.product($0.handle)) }
         }
     }
 }
