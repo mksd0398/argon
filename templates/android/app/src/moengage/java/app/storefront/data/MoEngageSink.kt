@@ -8,6 +8,8 @@ import com.moengage.core.MoEngage
 import com.moengage.core.Properties
 import com.moengage.core.analytics.MoEAnalyticsHelper
 import com.moengage.core.config.FcmConfig
+import com.moengage.core.disableSdk
+import com.moengage.core.enableSdk
 import org.json.JSONArray
 
 /**
@@ -36,6 +38,13 @@ private class MoEngageSink(private val app: Application) : AnalyticsSink {
         for ((key, value) in attributes) properties.addAttribute(key, if (value is List<*>) JSONArray(value) else value)
         MoEAnalyticsHelper.trackEvent(app, name, properties)
     }
+
+    // The SDK's own off switch: off, it tracks and sends nothing and drops what it had not sent yet, and it keeps the
+    // state across launches. (Not its "data tracking" opt-out, under which it goes on collecting "analytical data".)
+    // ponytail: the SDK has no setting to start off, so on a fresh install it runs from its start until the choice is
+    // read, which is "on" there. A store that asks before the first event needs the choice at start-up, to start it with
+    // SdkState.DISABLED.
+    override fun setEnabled(allowed: Boolean) = if (allowed) enableSdk(app) else disableSdk(app)
 
     override fun identify(user: AnalyticsUser?) {
         // a sign-out: what follows on this phone is no longer this customer's

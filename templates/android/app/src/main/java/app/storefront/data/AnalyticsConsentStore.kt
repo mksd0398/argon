@@ -5,8 +5,10 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
@@ -18,9 +20,11 @@ import kotlinx.coroutines.flow.stateIn
 class AnalyticsConsentStore(private val dataStore: DataStore<Preferences>, scope: CoroutineScope) {
     private val key = booleanPreferencesKey("analytics.allowed")
 
+    /** The choice as it is stored: nothing until the file is read, then the choice, and each change of it. */
+    val choice: Flow<Boolean> = dataStore.safeData().map { it[key] ?: true }.distinctUntilChanged()
+
     /** False for the first few milliseconds after launch, until the file is read: nothing is reported before the choice is known. */
-    val allowed: StateFlow<Boolean> =
-        dataStore.safeData().map { it[key] ?: true }.stateIn(scope, SharingStarted.Eagerly, false)
+    val allowed: StateFlow<Boolean> = choice.stateIn(scope, SharingStarted.Eagerly, false)
 
     suspend fun set(allowed: Boolean) {
         dataStore.edit { it[key] = allowed }

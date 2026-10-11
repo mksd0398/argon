@@ -41,5 +41,11 @@
         <meta-data android:name="com.facebook.sdk.ClientToken" android:value="${metaClientToken}" />
         <!-- Firebase: the app reports each screen itself (ui/Nav.kt), so the SDK's own screen_view per activity is off. -->
         <meta-data android:name="google_analytics_automatic_screen_reporting_enabled" android:value="false" />
+        <!-- What the SDKs collect on their own starts off: Firebase's collection, and the Facebook SDK's automatic events and
+             its reading of the advertising id. Each is turned on in code once the shopper's choice to share usage data is
+             known to be on, and off again with it (AnalyticsSink.setEnabled); the SDK remembers which. -->
+        <meta-data android:name="firebase_analytics_collection_enabled" android:value="false" />
+        <meta-data android:name="com.facebook.sdk.AutoLogAppEventsEnabled" android:value="false" />
+        <meta-data android:name="com.facebook.sdk.AdvertiserIDCollectionEnabled" android:value="false" />
     </application>
 </manifest>

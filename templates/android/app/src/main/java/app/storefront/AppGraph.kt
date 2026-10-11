@@ -71,6 +71,9 @@ class StorefrontApp : Application(), SingletonImageLoader.Factory {
             ),
             allowed = { AppGraph.analyticsConsent.allowed.value },
         )
+        // A provider's SDK collects on its own too, so each is switched with the choice: started off (the manifest), and
+        // told the choice once it is read and each time it changes.
+        AppGraph.scope.launch { AppGraph.analytics.follow(AppGraph.analyticsConsent.choice) }
         AppGraph.wishlist = WishlistStore(prefs("wishlist"), AppGraph.scope, track = AppGraph.analytics::track)
         AppGraph.recentlyViewed = RecentlyViewedStore(prefs("recent"), AppGraph.scope)
         AppGraph.onboardingStore = OnboardingStore(prefs("onboarding"), AppGraph.scope)

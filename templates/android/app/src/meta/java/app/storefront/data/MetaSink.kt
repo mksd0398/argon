@@ -6,6 +6,7 @@ import android.os.Environment
 import android.os.StatFs
 import android.telephony.TelephonyManager
 import app.storefront.BuildConfig
+import com.facebook.FacebookSdk
 import com.facebook.appevents.AppEventsLogger
 import java.math.BigDecimal
 import java.util.Currency
@@ -40,6 +41,15 @@ private class MetaSink(private val app: Application, private val logger: AppEven
             AppEventsLogger.setUserID(user.id)
             AppEventsLogger.setUserData(user.email, user.firstName, user.lastName, user.phone, null, null, null, null, null, null)
         }
+    }
+
+    // What the SDK does on its own: its automatic events (installs, sessions) and reading the phone's advertising id.
+    // Both are off in the manifest until this turns them on, and the SDK keeps what it was last told across launches.
+    // One thing wins over this: the "Automatic event logging for the Facebook SDK" switch in Meta's own dashboard, once
+    // someone has set it there. A store that wants the shopper's choice to rule leaves that switch alone.
+    override fun setEnabled(allowed: Boolean) {
+        FacebookSdk.setAutoLogAppEventsEnabled(allowed)
+        FacebookSdk.setAdvertiserIDCollectionEnabled(allowed)
     }
 
     /** What the store's server needs to send Meta the purchase as this app install's: the SDK's id for it, and the device. */
