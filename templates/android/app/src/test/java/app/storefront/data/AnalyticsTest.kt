@@ -23,7 +23,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.After
@@ -247,6 +251,11 @@ class AnalyticsTest {
     private class Recorder(private val attributes: Map<String, String> = emptyMap()) : AnalyticsSink {
         val events = mutableListOf<AnalyticsEvent>()
         val users = mutableListOf<AnalyticsUser?>()
+        val enabled = mutableListOf<Boolean>()
+
+        override fun setEnabled(allowed: Boolean) {
+            enabled += allowed
+        }
 
         override fun track(event: AnalyticsEvent) {
             events += event
@@ -285,6 +294,7 @@ class AnalyticsTest {
             override fun track(event: AnalyticsEvent): Unit = throw IllegalStateException("sdk")
             override fun identify(user: AnalyticsUser?): Unit = throw IllegalStateException("sdk")
             override suspend fun cartAttributes(): Map<String, String> = throw IllegalStateException("sdk")
+            override fun setEnabled(allowed: Boolean): Unit = throw IllegalStateException("sdk")
         }
         val sink = Recorder(mapOf("_meta_anon_id" to "xyz"))
         val analytics = Analytics(listOf(broken, sink)) { true }
@@ -295,6 +305,19 @@ class AnalyticsTest {
         assertEquals(listOf<AnalyticsEvent>(AnalyticsEvent.Login), sink.events)
         assertEquals(listOf<AnalyticsUser?>(ada), sink.users)
         assertEquals(mapOf("_meta_anon_id" to "xyz", "_argon_platform" to "android"), analytics.cartAttributes())
+        analytics.follow(flowOf(true, false))
+        assertEquals(listOf(true, false), sink.enabled)
+    }
+
+    @Test
+    fun everySinkIsToldTheChoiceThenEachChangeOfIt() = runBlocking {
+        val sinks = listOf(Recorder(), Recorder())
+        // also while nothing is reported: that the choice is "off" is what a sink's SDK has to hear
+        val analytics = Analytics(sinks) { false }
+        assertEquals("nothing before the choice is known", emptyList<Boolean>(), sinks[0].enabled)
+
+        analytics.follow(flowOf(false, true, false))
+        for (sink in sinks) assertEquals(listOf(false, true, false), sink.enabled)
     }
 
     @Test
@@ -369,9 +392,25 @@ class AnalyticsTest {
         first.coroutineContext[Job]!!.cancelAndJoin() // the process ends: its DataStore is closed
 
         val again = consent()
+        assertEquals("the stored choice is the first thing told after a launch", false, again.choice.first())
         assertNull("still off once the file is read", again.becomes(true, millis = 500))
         again.set(true)
         assertEquals(true, again.becomes(true))
+    }
+
+    @Test
+    fun theChoiceIsToldAsStoredThenEachChangeOfIt() = runBlocking {
+        val s = consent()
+        val heard = MutableStateFlow(emptyList<Boolean>())
+        scope.launch { s.choice.collect { told -> heard.update { it + told } } }
+        suspend fun hears(expected: List<Boolean>) = withTimeoutOrNull(5_000) { heard.first { it == expected } }
+
+        // [AnalyticsConsentStore.allowed] starts false; this never says so
+        assertEquals("on by default, and not the false of before the file is read", listOf(true), hears(listOf(true)))
+        s.set(false)
+        assertEquals(listOf(true, false), hears(listOf(true, false)))
+        s.set(true)
+        assertEquals(listOf(true, false, true), hears(listOf(true, false, true)))
     }
 
     @Test

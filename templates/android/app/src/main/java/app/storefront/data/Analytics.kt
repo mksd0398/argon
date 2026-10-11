@@ -6,6 +6,7 @@ import com.shopify.checkoutsheetkit.pixelevents.StandardPixelEvent
 import java.util.logging.Level
 import java.util.logging.Logger
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.Flow
 
 // Analytics: one hub ([Analytics]) that every screen and store reports into, with the providers (Google Analytics, Meta,
 // MoEngage) behind it as [AnalyticsSink]s. The events, their names and where each is fired are the same on iOS.
@@ -108,6 +109,12 @@ interface AnalyticsSink {
 
     /** What a new cart carries for the store's server to tie the order to this app install (the provider's own ids). */
     suspend fun cartAttributes(): Map<String, String> = emptyMap()
+
+    /**
+     * Whether the shopper shares usage data: told once the stored choice is read, and each time it changes. For a sink
+     * whose SDK collects on its own (automatic events, sessions, an advertising id): the switch has to stop that too.
+     */
+    fun setEnabled(allowed: Boolean) {}
 }
 
 /**
@@ -145,8 +152,19 @@ class Analytics(private val sinks: List<AnalyticsSink>, private val allowed: () 
         }
     }
 
+    /**
+     * Keeps every sink told whether the shopper shares usage data ([AnalyticsSink.setEnabled]): the [choice] as it is
+     * stored, then each change of it. Only a choice that is known: a provider's SDK remembers what it was last told and
+     * starts each launch from that, so it is not switched off and on again while the choice is being read (off, an SDK
+     * drops what it has not sent yet). Runs for as long as [choice] does.
+     */
+    suspend fun follow(choice: Flow<Boolean>) = choice.collect { shares -> all { it.setEnabled(shares) } }
+
     private inline fun each(action: (AnalyticsSink) -> Unit) {
-        if (!allowed()) return
+        if (allowed()) all(action)
+    }
+
+    private inline fun all(action: (AnalyticsSink) -> Unit) {
         for (sink in sinks) {
             try {
                 action(sink)

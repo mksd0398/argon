@@ -26,6 +26,10 @@ private class FirebaseSink(private val analytics: FirebaseAnalytics, private val
 
     override fun identify(user: AnalyticsUser?) = analytics.setUserId(user?.id)
 
+    // The SDK collects nothing until this turns it on (the manifest's firebase_analytics_collection_enabled is false),
+    // and it keeps what it was last told across launches.
+    override fun setEnabled(allowed: Boolean) = analytics.setAnalyticsCollectionEnabled(allowed)
+
     override suspend fun cartAttributes(): Map<String, String> {
         if (!serverPurchase) return emptyMap()
         // The SDK's Task, awaited by hand (no coroutines-play-services library), and not for long: a first cart must not
