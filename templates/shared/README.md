@@ -125,7 +125,7 @@ MoEngage push notifications and in-app messages are not included: they need FCM 
 
 ### Consent
 
-The Account screen has a **Share usage data** switch under Privacy, on by default. While it is off, the apps report nothing. It is one switch: a store that sells in the EU needs a prompt before the first event, and the apps don't show iOS's tracking prompt (ATT), so Meta gets no advertising id on iOS.
+The Account screen has a **Share usage data** switch under Privacy, on by default. While it is off, the apps report nothing and each provider's SDK is switched off as well (they collect on their own otherwise). In Meta's Events Manager leave the "Automatic event logging for the Facebook SDK" toggle untouched: set there, it overrides the shopper's choice. It is one switch: a store that sells in the EU needs a prompt before the first event, and the apps don't show iOS's tracking prompt (ATT), so Meta gets no advertising id on iOS.
 
 ### Purchases from a server (`server/`)
 
