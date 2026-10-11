@@ -5,14 +5,16 @@ import { readFileSync } from "node:fs";
 import worker, { validSignature, ga4Purchase, metaPurchase } from "../templates/server/worker.js";
 
 // An order placed in the Android app, in the shape of Shopify's orders/create webhook: 2 shirts, a tote and a custom
-// line (150.00), a 10% code (-15.00), 10.80 tax and 10.00 shipping on top: 155.80
+// line (150.00), a 10% code (-15.00), 10.80 tax and 10.00 shipping on top: 155.80. The app that placed it leaves the
+// Google Analytics purchase to the server (SERVER_PURCHASE=true), so the order carries _ga_app_instance_id
 const RAW = readFileSync(new URL("./fixtures/orders-create.json", import.meta.url), "utf8");
 const ORDER = JSON.parse(RAW);
 const PLACED = Date.parse("2026-10-11T13:30:00Z"); // the order's created_at
 const SECRET = "webhook-secret";
 const ENV = {
   SHOPIFY_WEBHOOK_SECRET: SECRET,
-  GA4_API_SECRET: "ga-secret", GA4_FIREBASE_APP_ID_ANDROID: "1:1234:android:abcd", GA4_FIREBASE_APP_ID_IOS: "1:1234:ios:ef01",
+  GA4_FIREBASE_APP_ID_ANDROID: "1:1234:android:abcd", GA4_API_SECRET_ANDROID: "android-secret",
+  GA4_FIREBASE_APP_ID_IOS: "1:1234:ios:ef01", GA4_API_SECRET_IOS: "ios-secret",
   META_DATASET_ID: "998877", META_ACCESS_TOKEN: "meta-token",
 };
 const GOOGLE = "www.google-analytics.com", META = "graph.facebook.com";
@@ -134,16 +136,14 @@ test("an order that wasn't placed in the app gets 200 and is not forwarded", asy
 test("ga4Purchase: a Measurement Protocol purchase for the app's stream, with the order's numeric id as transaction_id", () => {
   const { url, body } = ga4Purchase(ORDER, ENV);
   assert.equal(url.split("?")[0], `https://${GOOGLE}/mp/collect`);
-  assert.deepEqual(Object.fromEntries(new URL(url).searchParams), { api_secret: "ga-secret", firebase_app_id: "1:1234:android:abcd" });
+  assert.deepEqual(Object.fromEntries(new URL(url).searchParams), { api_secret: "android-secret", firebase_app_id: "1:1234:android:abcd" });
   assert.deepEqual(json(body), GA4_BODY);
 
-  // an order from the iOS app goes to the iOS app's stream; a stream's own secret is used when it is set
+  // an order from the iOS app goes to the iOS app's stream, with that stream's own secret: two streams never share one
   const ios = withNote("_argon_platform", "ios");
-  assert.equal(new URL(ga4Purchase(ios, ENV).url).searchParams.get("firebase_app_id"), "1:1234:ios:ef01");
-  const ownSecrets = { ...ENV, GA4_API_SECRET_IOS: "ios-secret" };
-  assert.equal(new URL(ga4Purchase(ios, ownSecrets).url).searchParams.get("api_secret"), "ios-secret");
-  assert.equal(new URL(ga4Purchase(ORDER, ownSecrets).url).searchParams.get("api_secret"), "ga-secret");
-  assert.equal(new URL(ga4Purchase(ios, omit(ownSecrets, "GA4_API_SECRET")).url).searchParams.get("api_secret"), "ios-secret");
+  assert.deepEqual(Object.fromEntries(new URL(ga4Purchase(ios, ENV).url).searchParams), { api_secret: "ios-secret", firebase_app_id: "1:1234:ios:ef01" });
+  assert.equal(ga4Purchase(ios, omit(ENV, "GA4_API_SECRET_IOS")), null);
+  assert.equal(ga4Purchase(ORDER, { ...omit(ENV, "GA4_API_SECRET_ANDROID"), GA4_API_SECRET: "shared" }), null, "no secret for both streams");
 
   // no discount code: no coupon. Prices that include tax: the value is still without it
   assert.equal("coupon" in json(ga4Purchase(changed((o) => (o.discount_codes = [])), ENV).body).events[0].params, false);
@@ -169,13 +169,13 @@ test("metaPurchase: a Conversions API app event with the id purchase-<order id>,
   assert.deepEqual(omit(limited.body.data[0].app_data, "extinfo"), { advertiser_tracking_enabled: 0, application_tracking_enabled: 1 });
 });
 
-test("the Worker posts both purchases as JSON and answers 200", async () => {
+test("the Worker posts both purchases as JSON, Meta's first, and answers 200", async () => {
   const { status, sent, logged } = await deliver();
   assert.equal(status, 200);
   assert.deepEqual(logged, []);
-  assert.deepEqual(sent.map(({ host, method, type }) => [host, method, type]), [[GOOGLE, "POST", "application/json"], [META, "POST", "application/json"]]);
-  assert.deepEqual(sent.map((request) => request.body), [GA4_BODY, META_BODY]);
-  assert.equal(sent[0].url, ga4Purchase(ORDER, ENV).url);
+  assert.deepEqual(sent.map(({ host, method, type }) => [host, method, type]), [[META, "POST", "application/json"], [GOOGLE, "POST", "application/json"]]);
+  assert.deepEqual(sent.map((request) => request.body), [META_BODY, GA4_BODY]);
+  assert.equal(sent[1].url, ga4Purchase(ORDER, ENV).url);
 });
 
 test("a provider without its secrets, or without its ids on the order, is skipped", async () => {
@@ -184,13 +184,14 @@ test("a provider without its secrets, or without its ids on the order, is skippe
     assert.equal(status, 200);
     return sent.map((request) => request.host);
   };
-  assert.deepEqual(await hosts({ env: omit(ENV, "GA4_API_SECRET") }), [META]);
-  assert.deepEqual(await hosts({ env: omit(ENV, "GA4_FIREBASE_APP_ID_ANDROID") }), [META], "the order is from the Android app");
-  assert.deepEqual(await hosts({ env: omit(ENV, "GA4_FIREBASE_APP_ID_IOS") }), [GOOGLE, META]);
+  assert.deepEqual(await hosts({ env: omit(ENV, "GA4_API_SECRET_ANDROID") }), [META], "the order is from the Android app");
+  assert.deepEqual(await hosts({ env: omit(ENV, "GA4_FIREBASE_APP_ID_ANDROID") }), [META]);
+  assert.deepEqual(await hosts({ env: omit(ENV, "GA4_API_SECRET_IOS", "GA4_FIREBASE_APP_ID_IOS") }), [META, GOOGLE]);
   assert.deepEqual(await hosts({ env: omit(ENV, "META_ACCESS_TOKEN") }), [GOOGLE]);
   assert.deepEqual(await hosts({ env: omit(ENV, "META_DATASET_ID") }), [GOOGLE]);
   assert.deepEqual(await hosts({ env: { SHOPIFY_WEBHOOK_SECRET: SECRET } }), []);
-  // an app without Firebase sends no instance id, one without Meta's SDK no device details
+  // no instance id: the app reported the purchase to Google Analytics itself (the default), or has no Firebase.
+  // No device details: the app has no Meta SDK
   assert.deepEqual(await hosts({ body: JSON.stringify(without("_ga_app_instance_id")) }), [META]);
   assert.deepEqual(await hosts({ body: JSON.stringify(without("_meta_extinfo")) }), [GOOGLE]);
   assert.equal(ga4Purchase(without("_ga_app_instance_id"), ENV), null);
@@ -198,26 +199,28 @@ test("a provider without its secrets, or without its ids on the order, is skippe
   assert.equal(await metaPurchase(withNote("_meta_extinfo", "not json"), ENV), null);
 });
 
-test("a provider that fails gives 500, so Shopify sends the order again; the failure is logged without a secret", async () => {
+test("a provider that fails gives 500, so Shopify sends the order again, and Google Analytics is never sent a purchase twice", async () => {
   const refused = () => new Response('{"error":{"message":"Invalid OAuth access token"}}', { status: 400 });
   const down = () => {
     throw new Error("network down");
   };
-  const metaOnly = omit(ENV, "GA4_API_SECRET");
-  const failed = await deliver({ env: metaOnly, answers: { [META]: refused } });
-  assert.equal(failed.status, 500);
-  assert.deepEqual(failed.logged, ['Meta: HTTP 400 {"error":{"message":"Invalid OAuth access token"}}']);
-  assert.deepEqual(await deliver({ env: metaOnly, answers: { [META]: down } }), { status: 500, sent: failed.sent, logged: ["Meta: network down"] });
+  const hosts = ({ sent }) => sent.map((request) => request.host);
 
-  // Google Analytics failed: Meta, which took the purchase, counts the repeat once
-  const google = await deliver({ answers: { [GOOGLE]: () => new Response("", { status: 503 }) } });
-  assert.deepEqual([google.status, google.sent.length, google.logged], [500, 2, ["Google Analytics: HTTP 503 "]]);
-  assert.equal((await deliver({ answers: { [GOOGLE]: down, [META]: refused } })).status, 500);
-
-  // Google Analytics took it and Meta didn't: 200, because Google Analytics would count a repeat (it only
-  // de-duplicates purchases on web streams). Meta's failure is still logged
+  // Meta fails: 500 before Google Analytics is called, so the retry is the first time Google hears of the order
   const meta = await deliver({ answers: { [META]: refused } });
-  assert.deepEqual([meta.status, meta.sent.length, meta.logged.length], [200, 2, 1]);
+  assert.deepEqual([meta.status, hosts(meta)], [500, [META]]);
+  assert.deepEqual(meta.logged, ['Meta: HTTP 400 {"error":{"message":"Invalid OAuth access token"}}']);
+  assert.deepEqual(await deliver({ answers: { [META]: down } }), { status: 500, sent: meta.sent, logged: ["Meta: network down"] });
 
-  for (const { logged } of [failed, google, meta]) assert.equal(/ga-secret|meta-token|webhook-secret/.test(logged.join()), false);
+  // Google Analytics fails after Meta took the purchase: 500, and Meta counts the repeat once (same event id)
+  const google = await deliver({ answers: { [GOOGLE]: () => new Response("", { status: 503 }) } });
+  assert.deepEqual([google.status, hosts(google), google.logged], [500, [META, GOOGLE], ["Google Analytics: HTTP 503 "]]);
+
+  // one provider set up: its failure alone decides
+  const metaOnly = await deliver({ env: omit(ENV, "GA4_API_SECRET_ANDROID"), answers: { [META]: refused } });
+  assert.deepEqual([metaOnly.status, hosts(metaOnly)], [500, [META]]);
+  const googleOnly = await deliver({ env: omit(ENV, "META_ACCESS_TOKEN"), answers: { [GOOGLE]: down } });
+  assert.deepEqual([googleOnly.status, hosts(googleOnly), googleOnly.logged], [500, [GOOGLE], ["Google Analytics: network down"]]);
+
+  for (const { logged } of [meta, google, metaOnly, googleOnly]) assert.equal(/android-secret|ios-secret|meta-token|webhook-secret/.test(logged.join()), false);
 });

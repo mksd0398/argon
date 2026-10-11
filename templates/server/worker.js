@@ -40,15 +40,16 @@ const productId = (line) => (line.product_id == null ? undefined : String(line.p
 
 /**
  * The Measurement Protocol request ({ url, body }) for the order's `purchase`, or null when Google Analytics isn't
- * set up for the order's platform or the order has no app instance id.
+ * set up for the order's platform or the order has no app instance id. The app puts that id on the cart only when
+ * it leaves the purchase to this server (SERVER_PURCHASE=true); otherwise it has reported the purchase itself.
  * https://developers.google.com/analytics/devguides/collection/protocol/ga4/reference?client_type=firebase
  */
 export function ga4Purchase(order, env) {
   const notes = attributes(order);
+  // Each app is its own data stream in Google Analytics, with its own app id and Measurement Protocol secret
   const platform = String(notes._argon_platform).toUpperCase(); // ANDROID or IOS
   const appId = env[`GA4_FIREBASE_APP_ID_${platform}`];
-  // A Measurement Protocol secret belongs to one data stream, and each app is its own stream
-  const secret = env[`GA4_API_SECRET_${platform}`] ?? env.GA4_API_SECRET;
+  const secret = env[`GA4_API_SECRET_${platform}`];
   if (!appId || !secret || !notes._ga_app_instance_id) return null;
   const tax = amount(order.total_tax);
   const shipping = amount(order.total_shipping_price_set?.shop_money?.amount);
@@ -164,11 +165,10 @@ export default {
     }
     // An order from the website: the store's web pixels already report it
     if (!attributes(order)._argon_platform) return new Response("Not an app order");
-    const [google, meta] = await Promise.all([send("Google Analytics", ga4Purchase(order, env)), send("Meta", await metaPurchase(order, env))]);
-    // Anything but 200 makes Shopify deliver the order again, and both providers are then sent it again. Meta counts
-    // a repeated purchase once (same event id). Google Analytics does that for web streams only, not for apps
-    // (https://support.google.com/analytics/answer/12313109), so once it has taken the purchase the answer is 200
-    const again = google === false || (meta === false && !google);
-    return again ? new Response("A provider didn't take the purchase", { status: 500 }) : new Response("OK");
+    // Anything but 200 makes Shopify deliver the order again. Meta counts a repeated purchase once (same event id);
+    // Google Analytics does that for web streams only, not for apps (https://support.google.com/analytics/answer/12313109).
+    // So Meta goes first and Google last: whichever fails, Google has not taken the purchase when Shopify retries
+    const taken = (await send("Meta", await metaPurchase(order, env))) !== false && (await send("Google Analytics", ga4Purchase(order, env))) !== false;
+    return taken ? new Response("OK") : new Response("A provider didn't take the purchase", { status: 500 });
   },
 };

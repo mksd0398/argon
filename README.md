@@ -120,7 +120,7 @@ cd my-store-app
 - **iOS**: open `ios/App.xcodeproj` in Xcode 16+, pick a simulator, Run.
 - **Android**: open `android/` in Android Studio, or `cd android && ./gradlew assembleDebug`.
 
-Per-store values live in `ios/Config.xcconfig` and `android/shopify.properties`, with the same eighteen keys on both (`SHOP_DOMAIN`, `STOREFRONT_TOKEN`, `CUSTOMER_CLIENT_ID`, `SHOP_ID`, `API_VERSION`, `APP_NAME`, `BUNDLE_ID`, `PDP_METAFIELDS`, `HOME_TEMPLATE`, `COLLECTION_TEMPLATE`, `JUDGEME_PUBLIC_TOKEN`, `SHOW_VENDOR`, `ONBOARDING`, `FREE_SHIPPING_THRESHOLD`, `META_APP_ID`, `META_CLIENT_TOKEN`, `MOENGAGE_WORKSPACE_ID`, `MOENGAGE_DATA_CENTER`). The generated README explains each. With an empty token on a store other than `mock.shop`, the app shows a setup screen naming the missing key instead of failing at run time.
+Per-store values live in `ios/Config.xcconfig` and `android/shopify.properties`, with the same nineteen keys on both (`SHOP_DOMAIN`, `STOREFRONT_TOKEN`, `CUSTOMER_CLIENT_ID`, `SHOP_ID`, `API_VERSION`, `APP_NAME`, `BUNDLE_ID`, `PDP_METAFIELDS`, `HOME_TEMPLATE`, `COLLECTION_TEMPLATE`, `JUDGEME_PUBLIC_TOKEN`, `SHOW_VENDOR`, `ONBOARDING`, `FREE_SHIPPING_THRESHOLD`, `META_APP_ID`, `META_CLIENT_TOKEN`, `MOENGAGE_WORKSPACE_ID`, `MOENGAGE_DATA_CENTER`, `SERVER_PURCHASE`). The generated README explains each. With an empty token on a store other than `mock.shop`, the app shows a setup screen naming the missing key instead of failing at run time.
 
 ---
 
@@ -181,13 +181,18 @@ Off unless asked for. An app carries a provider's SDK only when that provider is
 
 ### The purchase, from a server
 
-The keys that let a server report a sale (Google Analytics' API secret, Meta's access token) must never be in an app, and Argon has no backend. So with Google Analytics or Meta configured, or with `--server`, the project gets `server/`: one Cloudflare Worker in one file with no dependencies, which the store deploys to its own account.
+The keys that let a server report a sale (Google Analytics' API secrets, Meta's access token) must never be in an app, and Argon has no backend. So with Google Analytics or Meta configured, or with `--server`, the project gets `server/`: one Cloudflare Worker in one file with no dependencies, which the store deploys to its own account.
 
 - It receives Shopify's "Order creation" webhook and checks Shopify's signature on it.
-- It ignores orders that were not placed in the app: the store's web pixels already report those. The app marks its carts with a few attributes (`_argon_platform` and each provider's ids), which reach the server as the order's additional details.
-- It sends the purchase to Google Analytics (Measurement Protocol) and to Meta (Conversions API) with the ids the app uses: Google Analytics' `transaction_id` is the order's numeric id, Meta's event id is `purchase-<order id>`. A provider whose secrets are not set is skipped.
+- It ignores orders that were not placed in the app: the store's web pixels already report those. The app marks a cart with a few attributes when it creates it (`_argon_platform` and each provider's ids), which reach the server as the order's additional details. A customer who switches "Share usage data" off after creating a cart is still reported for that cart.
+- It sends the purchase to Meta (Conversions API) and to Google Analytics (Measurement Protocol) with the ids the app uses: Meta's event id is `purchase-<order id>`, Google Analytics' `transaction_id` is the order's numeric id. A provider whose secrets are not set is skipped.
 
-Only the purchase goes through the server. Every other event comes from the app alone: from both sides it would be counted twice, since only a purchase carries an id, the order's, that a platform can match. Meta counts the app's and the server's purchase once. Google Analytics de-duplicates purchases for web streams only, not for apps, so read `server/README.md` before giving the Worker its Google Analytics secrets. That file also has the deploy steps and where each secret is found.
+Only the purchase goes through the server; every other event comes from the app alone. Who reports the purchase:
+
+- **Meta: the app and the server, both.** Meta counts the two once, by the event id.
+- **Google Analytics: one side only**, because it would count a purchase from each (it de-duplicates purchases for web streams, not for apps). By default that side is the app, and the server sends Google Analytics nothing. Generating with `--server`, or setting `SERVER_PURCHASE=true` in both config files and releasing that version of the apps, moves it to the server. Do that only once the Worker is deployed with the Google Analytics secrets: from then on Google Analytics gets the apps' purchases through the Worker or not at all.
+
+`server/README.md` has the deploy steps and where each secret is found.
 
 ---
 
@@ -229,7 +234,7 @@ Edit them under **Content → Metaobjects**. The home screen is the `mobile_scre
 | `--meta-client-token=TOKEN` | Meta: the app's client token. |
 | `--moengage-workspace-id=ID` | MoEngage: the workspace ID. |
 | `--moengage-data-center=N` | MoEngage: the data center, `1` to `6`. Default `1`. |
-| `--server` | Write `server/`, the Worker that reports purchases. Always written with Google Analytics or Meta. |
+| `--server` | Report the purchase to Google Analytics from `server/` instead of from the app (`SERVER_PURCHASE=true`). `server/` itself is written with Google Analytics or Meta anyway. |
 | `--skip-content` | Don't create the metaobject definitions or the `home` entry. |
 | `--yes` | Accept defaults and ask nothing. |
 | `--help` | Show help. |
@@ -243,7 +248,7 @@ my-store-app/
 ├── README.md, AGENTS.md, CLAUDE.md, .gitignore
 ├── android/     # Jetpack Compose, package app.storefront, shopify.properties
 ├── ios/         # SwiftUI, target App, Config.xcconfig
-└── server/      # only with Google Analytics, Meta or --server: the Worker that reports purchases
+└── server/      # only with Google Analytics, Meta or --server: the Worker that reports the purchase
 ```
 
 Both apps carry the same GraphQL documents (`queries/`) and the same names (`Storefront`, `ProductCard`, `Section`, `Route`, `Links`, `CartStore`, `WishlistStore`, `AuthStore` and more). Argon never edits `App.xcodeproj`, and on Android only `applicationId` varies, so no source folder is renamed.

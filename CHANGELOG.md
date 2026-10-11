@@ -5,12 +5,14 @@
 ### Added
 
 - **Analytics: Google Analytics, Meta and MoEngage**, off unless asked for. An app carries a provider's SDK only when that provider is configured.
-  - CLI: `--firebase-android` and `--firebase-ios` (Firebase's own files, copied in), `--meta-app-id` and `--meta-client-token`, `--moengage-workspace-id` and `--moengage-data-center`, or one "Analytics" question when run interactively. New config keys `META_APP_ID`, `META_CLIENT_TOKEN`, `MOENGAGE_WORKSPACE_ID`, `MOENGAGE_DATA_CENTER`, empty by default.
+  - CLI: `--firebase-android` and `--firebase-ios` (Firebase's own files, copied in), `--meta-app-id` and `--meta-client-token`, `--moengage-workspace-id` and `--moengage-data-center`, or one "Analytics" question when run interactively. New config keys `META_APP_ID`, `META_CLIENT_TOKEN`, `MOENGAGE_WORKSPACE_ID`, `MOENGAGE_DATA_CENTER`, empty by default, and `SERVER_PURCHASE`, `false` by default.
   - Firebase's files are checked against the app's bundle ID before they are copied. A file for another app stops the run with both ids, because Google Analytics would get nothing from it.
   - iOS: the configured providers' Swift packages are written into `ios/Package.swift` and Meta's keys into the xtool Info.plist. In Xcode the packages are added by hand.
   - One hub in the apps that every screen and store reports to, with Google Analytics' event names, and a debug log of each event.
   - Consent: a "Share usage data" switch on the Account screen, on by default.
-  - **The purchase from a server:** `server/`, one Cloudflare Worker in one file with no dependencies, written with Google Analytics or Meta, or with `--server`. It takes Shopify's "Order creation" webhook, checks its signature, ignores orders that were not placed in the app, and sends the purchase to Google Analytics (Measurement Protocol) and Meta (Conversions API) with the ids the app uses. Only the purchase goes through it: the keys that report a sale can't be in an app, and any other event sent from both sides would be counted twice.
+  - **The purchase from a server:** `server/`, one Cloudflare Worker in one file with no dependencies, written with Google Analytics or Meta, or with `--server`. It takes Shopify's "Order creation" webhook, checks its signature, ignores orders that were not placed in the app, and sends the purchase to Meta (Conversions API) and Google Analytics (Measurement Protocol) with the ids the app uses. Only the purchase goes through it: the keys that report a sale can't be in an app.
+    - Meta gets the purchase from the app and from the server, and counts it once.
+    - Google Analytics gets it from one side only, because it would count both: the app by default, the server with `--server` (`SERVER_PURCHASE=true`).
   - Not included: MoEngage push notifications and in-app messages.
 - **The app icon and the launch screen come from the store's logo.** When it generates a project, the CLI asks the Storefront API for the brand's square logo (else its default logo) as a PNG and writes the Android adaptive icon's logo and background colour, the iOS app icon, and the iOS launch logo and background.
   - The background is the logo's own (its top-left pixel when opaque), else white.

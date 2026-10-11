@@ -40,6 +40,7 @@ One key list, two files with the same key names. Edit, then rebuild.
 | `FREE_SHIPPING_THRESHOLD` | The cart total from which shipping is free, as a number in the shop's currency (e.g. `150`). The cart shows the progress towards it. Empty hides the bar |
 | `META_APP_ID`, `META_CLIENT_TOKEN` | The Meta app's ID and client token, for [analytics](#analytics). Both empty leaves Meta out |
 | `MOENGAGE_WORKSPACE_ID`, `MOENGAGE_DATA_CENTER` | The MoEngage workspace ID and its data center, `1` to `6`. An empty workspace ID leaves MoEngage out |
+| `SERVER_PURCHASE` | Who reports the purchase to Google Analytics: the app (`false`, the default) or `server/` (`true`). Read [Purchases from a server](#purchases-from-a-server-server) before turning it on |
 
 - iOS: `ios/Config.xcconfig` (`KEY = value`)
 - Android: `android/shopify.properties` (`KEY=value`)
@@ -126,11 +127,20 @@ The Account screen has a **Share usage data** switch under Privacy, on by defaul
 
 ### Purchases from a server (`server/`)
 
-Argon writes this folder when Google Analytics or Meta is configured (or with `--server`). The keys that let a server report a sale, Google Analytics' API secret and Meta's access token, must never be inside an app, so one small Cloudflare Worker holds them, and you deploy it to your own account.
+Argon writes this folder when Google Analytics or Meta is configured (or with `--server`). The keys that let a server report a sale, Google Analytics' API secrets and Meta's access token, must never be inside an app, so one small Cloudflare Worker holds them, and you deploy it to your own account.
 
-Shopify tells the Worker about every new order. It reports the ones placed in the app to Google Analytics and Meta as a purchase, with the ids the app uses: Google Analytics' `transaction_id` is the order's numeric id, and Meta's event id is `purchase-<order id>`. It knows an app order by the attributes the app puts on a cart when it creates it (`_argon_platform`, and each provider's ids), which Shopify passes on as the order's additional details.
+Shopify tells the Worker about every new order, and it reports the ones placed in the app as a purchase, with the ids the app uses: Meta's event id is `purchase-<order id>`, and Google Analytics' `transaction_id` is the order's numeric id. It knows an app order by the attributes the app puts on a cart when it creates it (`_argon_platform`, and each provider's ids), which Shopify passes on as the order's additional details. They are put on once: a customer who switches "Share usage data" off after creating a cart is still reported for that cart.
 
-Only the purchase goes through the server; every other event comes from the app alone. `server/README.md` has the deploy steps, where each secret is found, and what to know about a purchase that both the app and the server report.
+Only the purchase goes through the server; every other event comes from the app alone. Who reports the purchase:
+
+- **Meta: the app and the server, both.** Meta counts the two once, by the event id.
+- **Google Analytics: one side only**, because it would count a purchase from each. `SERVER_PURCHASE` picks the side.
+  - `false`, the default: the app reports the purchase itself, and the server sends Google Analytics nothing.
+  - `true`: the app leaves the purchase to the server. Argon sets it when the project is generated with `--server`; to switch later, set it in both config files and release that version of the apps.
+
+Turn `SERVER_PURCHASE` on only once the Worker is deployed with the Google Analytics secrets: from then on Google Analytics gets the apps' purchases through the Worker or not at all.
+
+`server/README.md` has the deploy steps and where each secret is found.
 
 ## Demo store (`mock.shop`)
 

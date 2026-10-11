@@ -170,7 +170,7 @@ test("--demo --yes scaffolds both apps against mock.shop", async () => {
     for (const line of ["SHOP_DOMAIN=mock.shop", "SHOP_ID=68817551382", "STOREFRONT_TOKEN=", "CUSTOMER_CLIENT_ID=",
       "API_VERSION=2026-10", "APP_NAME=Mock.shop", "BUNDLE_ID=com.mockshop.demoapp", "PDP_METAFIELDS=",
       "HOME_TEMPLATE=fashion", "COLLECTION_TEMPLATE=top", "JUDGEME_PUBLIC_TOKEN=", "SHOW_VENDOR=false", "ONBOARDING=true", "FREE_SHIPPING_THRESHOLD=150",
-      "META_APP_ID=", "META_CLIENT_TOKEN=", "MOENGAGE_WORKSPACE_ID=", "MOENGAGE_DATA_CENTER="]) {
+      "META_APP_ID=", "META_CLIENT_TOKEN=", "MOENGAGE_WORKSPACE_ID=", "MOENGAGE_DATA_CENTER=", "SERVER_PURCHASE=false"]) {
       assert.ok(props.split("\n").includes(line), `shopify.properties has ${line}`);
     }
     // no analytics unless asked for: no SDK in the iOS package, no Firebase file, no server, nothing about it at the end
@@ -357,7 +357,8 @@ test("every analytics flag: keys in both config files, Firebase's files, the iOS
   await withRun(argv, fakes(), (cwd, out) => {
     const dir = join(cwd, "demo-app");
     const { android, ios } = config(dir);
-    for (const [key, value] of [["META_APP_ID", "123"], ["META_CLIENT_TOKEN", "abc"], ["MOENGAGE_WORKSPACE_ID", "XYZ"], ["MOENGAGE_DATA_CENTER", "3"]]) {
+    // SERVER_PURCHASE stays false without --server: the apps report the purchase to Google Analytics themselves
+    for (const [key, value] of [["META_APP_ID", "123"], ["META_CLIENT_TOKEN", "abc"], ["MOENGAGE_WORKSPACE_ID", "XYZ"], ["MOENGAGE_DATA_CENTER", "3"], ["SERVER_PURCHASE", "false"]]) {
       assert.ok(android.includes(`${key}=${value}`) && ios.includes(`${key} = ${value}`), key);
     }
     // Firebase's files, byte for byte, where each platform's SDK looks for them
@@ -375,9 +376,9 @@ test("every analytics flag: keys in both config files, Firebase's files, the iOS
     assert.deepEqual(readdirSync(join(dir, "server")).sort(), [".gitignore", "README.md", "worker.js", "wrangler.toml"]);
     assert.equal(readFileSync(join(dir, "server/worker.js"), "utf8"), readFileSync(new URL("../templates/server/worker.js", import.meta.url), "utf8"));
 
-    // one line per provider at the end, with the Firebase app IDs the server needs
+    // one line per provider at the end, with each app's Firebase app ID
     for (const line of [
-      "- Google Analytics (Android app 1:1234:android:1abc, iOS app 1:1234:ios:def): deploy server/",
+      "- Google Analytics (Android app 1:1234:android:1abc, iOS app 1:1234:ios:def): nothing more to set up; the apps report the purchase themselves",
       "- Meta: deploy server/",
       "- MoEngage: nothing more to set up; push and in-app messages are not included",
       "- iOS built with Xcode: add each provider's Swift package to the App target",
@@ -398,11 +399,12 @@ test("one provider at a time: only its SDK, and server/ only for Google Analytic
     assert.ok(p.android.includes("MOENGAGE_DATA_CENTER=1") && p.ios.includes("MOENGAGE_DATA_CENTER = 1"), "data center 1 unless told");
     assert.ok(!p.info.includes("Facebook") && !out.includes("Meta:") && !out.includes("Google Analytics"));
   });
-  // a data center without a workspace configures nothing
+  // a data center without a workspace configures nothing. --server: server/, and the Google Analytics purchase is its to report
   await withRun(["demo-app", "--demo", "--yes", "--moengage-data-center=4", "--server"], fakes(), (cwd, out) => {
     const p = project(join(cwd, "demo-app"));
     assert.deepEqual([p.added, p.server], [[], true]);
     assert.ok(p.android.includes("MOENGAGE_DATA_CENTER=") && !out.includes("Analytics"));
+    assert.ok(p.android.includes("SERVER_PURCHASE=true") && p.ios.includes("SERVER_PURCHASE = true"));
   });
   await withRun(["demo-app", "--demo", "--yes", "--meta-app-id=123", "--meta-client-token=a&b"], fakes(), (cwd) => {
     const p = project(join(cwd, "demo-app"));
@@ -415,7 +417,12 @@ test("one provider at a time: only its SDK, and server/ only for Google Analytic
     const p = project(join(cwd, "demo-app"));
     assert.deepEqual([p.added, p.server], [[], true]);
     assert.ok(existsSync(join(cwd, "demo-app/android/app/google-services.json")) && !existsSync(join(cwd, "demo-app/ios/App/GoogleService-Info.plist")));
-    assert.ok(out.includes("- Google Analytics (Android app 1:1234:android:0abc): deploy server/") && !out.includes("iOS built with Xcode"));
+    assert.ok(out.includes("- Google Analytics (Android app 1:1234:android:0abc): nothing more to set up") && !out.includes("iOS built with Xcode"));
+    assert.ok(p.android.includes("SERVER_PURCHASE=false"), "server/ is written, but only --server hands it the Google Analytics purchase");
+  }, { files });
+  await withRun(["demo-app", "--demo", "--yes", "--firebase-android", "google-services.json", "--server"], fakes(), (cwd, out) => {
+    assert.ok(project(join(cwd, "demo-app")).android.includes("SERVER_PURCHASE=true"));
+    assert.ok(out.includes("- Google Analytics (Android app 1:1234:android:0abc): deploy server/ with its Google secrets before you release the apps"));
   }, { files });
 });
 
