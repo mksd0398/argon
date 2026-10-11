@@ -209,6 +209,70 @@ Cart: lines show a bundle's components, the selling plan name, and step by the q
 - Android: `:app:testDebugUnitTest :ui:testDebugUnitTest assembleDebug`, then a walkthrough on the emulator against mock.shop (all four home templates, both collection templates, product, sample account → orders → return) and against the live test store.
 - iOS: compiled on this PC through xtool/WSL (app target only); unit tests run in CI on macOS.
 
+## Round 2 (2026-10-11): icon and launch screen, onboarding, overlay top bar, cart
+
+### Fixed in this round
+
+Checkout reloaded about once a second for a signed-in customer. Shopify answers every cart buyer update with a checkout URL under a new key; `CartStore.checkoutUrl()` attached the customer on every call, so the cart changed each time, and the cart screen prepares checkout whenever the cart changes. The store now remembers the buyer a cart already has (`attached`: cart id, token, company location) and attaches it once.
+
+### App icon and launch screen from the store's logo
+
+The app already shows `shop.brand` in its top bar. The CLI now also builds the app icon and the launch screen from it, at generation time (they are part of the binary; nothing can set them at run time).
+
+**CLI.** After the Storefront token is verified (and for `--demo`), it asks the Storefront API for `shop.brand.squareLogo.image` and `shop.brand.logo.image`, each as a PNG through `url(transform: { maxWidth, maxHeight, preferredContentType: PNG })`, so Shopify's CDN does the resizing and the conversion. It prefers the square logo. A pure-JS PNG reader/writer in `lib/png.js` (Node's `zlib`, no dependency) decodes it, takes the background colour (the top-left pixel when it is opaque, else white), and writes:
+
+| File | Content |
+|---|---|
+| `android/app/src/main/res/drawable-xxxhdpi/launcher_logo.png` | the logo, at most 264×264 px (66 dp, the adaptive icon's safe zone), transparent as downloaded |
+| `android/app/src/main/res/values/launcher.xml` | `<color name="launcher_background">#RRGGBB</color>` |
+| `ios/App/Assets.xcassets/AppIcon.appiconset/AppIcon.png` | 1024×1024, opaque: the logo centred within 62% of the side on the background colour |
+| `ios/App/Assets.xcassets/LaunchLogo.imageset/LaunchLogo.png` | the logo, at most 600×600 px, transparent |
+| `ios/App/Assets.xcassets/LaunchBackground.colorset/Contents.json` | the background colour |
+
+When the CLI writes `launcher_logo.png` it deletes the template's `res/drawable/launcher_logo.xml` (a resource can't be both). Without a logo (none set, the download fails, or an image it can't read) it keeps the template's Android vector and draws a plain default for iOS (the brand's primary colour, else ink, with a paper square), and says so in one line. `ios/xtool.yml` gets `iconPath: App/Assets.xcassets/AppIcon.appiconset/AppIcon.png`.
+
+**Android template** (minSdk 26, so adaptive icons only):
+- `res/mipmap-anydpi-v26/ic_launcher.xml` and `ic_launcher_round.xml`: background `@color/launcher_background`, foreground `@drawable/launcher_foreground`.
+- `res/drawable/launcher_foreground.xml`: a layer list with `@drawable/launcher_logo` centred (gravity center, never scaled up).
+- `res/drawable/launcher_logo.xml`: the default mark, a vector bag in ink, 66 dp.
+- `res/values/launcher.xml`: `launcher_background` `#FFFFFF`.
+- `res/values/themes.xml`: `Theme.App` (parent `android:Theme.Material.Light.NoActionBar`) with `android:windowBackground` = `@drawable/launch_screen` (the background colour with the logo centred), for Android 8 to 11.
+- `res/values-v31/themes.xml`: the same theme with `android:windowSplashScreenBackground` = `@color/launcher_background` and `android:windowSplashScreenAnimatedIcon` = `@drawable/launcher_foreground` (Android 12+ shows the system splash).
+- Manifest: `android:icon="@mipmap/ic_launcher"`, `android:roundIcon="@mipmap/ic_launcher_round"`, `android:theme="@style/Theme.App"`.
+
+**iOS template:** `App/Assets.xcassets` with `AppIcon.appiconset` (one 1024 universal icon), `LaunchLogo.imageset`, `LaunchBackground.colorset` (their `Contents.json`; the PNGs come from the CLI). Build settings `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon` on the app target, and the launch screen in `Info.plist`: `UILaunchScreen` = `{ UIColorName: LaunchBackground, UIImageName: LaunchLogo }` (replacing `INFOPLIST_KEY_UILaunchScreen_Generation`). `Package.swift` excludes `Assets.xcassets` (xtool can't compile asset catalogs; its icon comes from `iconPath`, and its launch screen stays plain).
+
+### Onboarding
+
+A first-launch welcome, shown once before the tabs. Config key `ONBOARDING` (`true` default / `false`), `AppGraph.onboarding`.
+
+- Three pages in a full-screen pager with page dots: a full-bleed image (the home template's three stock banners, `StockImages`), a display heading and one line of text over a bottom shade.
+  1. "Welcome to <shop name>" / the brand's short description, else its slogan, else "Everything from <shop name>, in one app."
+  2. "Find it fast" / "Search, filter and save what you love."
+  3. "Checkout in a few taps" / "Track your orders and returns from your account."
+- "Skip" at the top end on pages 1 and 2. Bottom button: "Next" on pages 1 and 2, "Get started" on page 3. On page 3, when sign-in is configured, a second button "Sign in" opens the Account tab.
+- Finishing or skipping stores `onboarding.done` (`OnboardingStore`, prefs/UserDefaults) and shows the tabs. The page list is a pure `Onboarding.pages(brand, template)`, tested.
+- Debug builds: a row "Show onboarding" on the Account screen runs it again.
+
+### Overlay top bar and an edge-to-edge hero
+
+`ArgonTopBar` gets a variant `Overlay` (`.overlay`): no background, its logo, title and actions in white over a short dark shade, drawn on top of content that runs to the top edge of the screen, status bar included. A parameter `solid: Float` (0...1) fades in the normal surface and ink content as the content under it scrolls away. Gallery entry.
+
+The fashion home uses it: the hero carousel starts at the very top of the screen (under the status bar and the bar), the bar is transparent over it and turns solid once the hero has scrolled most of the way out. Status bar icons are light over the hero and follow the theme once solid. The other three home templates keep their bars. The product page keeps its bar.
+
+### Cart
+
+Top bar "Cart". One scrolling list, then a pinned summary.
+
+1. **Free shipping progress** when `FREE_SHIPPING_THRESHOLD` is set (a number in the shop's currency; empty hides it; the demo sets 150): `ArgonProgressBar` with "Add <amount> more for free shipping" or, once reached, "You've unlocked free shipping". Pure `freeShipping(subtotal, threshold)`: remaining amount and progress 0...1, tested. It compares the cart's total (after discounts).
+2. **Lines**, as now (image, title, variant, plan, bundle parts, stepper, remove), plus: the line's compare-at price struck beside its price when it has one, and under it each discount on the line ("WELCOME10 −$12.00", the code or the automatic discount's title).
+3. **Discount code**: an `ArgonInput` "Discount code" with an "Apply" button. Applied codes show as removable `ArgonTag`s. `CartStore.applyDiscount(code)` / `removeDiscount(code)` use `updateDiscountCodes` with the full list. A code Shopify reports as not applicable is removed again and the row shows "This code can't be used on your cart" under the field.
+4. **You may also like**: `recommendations(productId, RELATED)` for the first line's product, without products already in the cart, `compact` cards with `QuickAdd` in a `ProductCardRow`. Hidden when empty or it fails.
+5. **Summary** (pinned): "Subtotal" (the lines before discounts), "Discounts" (−amount, hidden at zero), "You save" (compare-at savings plus discounts, in the success colour, hidden at zero), "Total" (headline), the note "Taxes and shipping are calculated at checkout", then "Checkout". Pure `cartSummary(cart)`, tested with the `Cart` fixture (360.00, −36.00, save 126.00, total 324.00).
+6. Empty: "Your cart is empty" and a "Start shopping" button (Shop tab).
+
+Models: `CartLine` gains `subtotal`, `unitPrice`, `compareAtUnitPrice: Money?`, `discounts: [CartDiscount(amount, label)]`, `productId`. New config key `FREE_SHIPPING_THRESHOLD` → `AppGraph.freeShippingThreshold: Double?`.
+
 ## Not in this change
 
-Order editing, payment-method management, subscriptions management, native sign-in, review photo upload, wishlist sync to the account, push notifications.
+Order editing, payment-method management, subscriptions management, native sign-in, review photo upload, wishlist sync to the account, push notifications, gift cards in the cart.

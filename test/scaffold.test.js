@@ -87,7 +87,7 @@ test("--demo --yes scaffolds both apps against mock.shop", async () => {
     const props = readFileSync(join(dir, "android/shopify.properties"), "utf8");
     for (const line of ["SHOP_DOMAIN=mock.shop", "SHOP_ID=68817551382", "STOREFRONT_TOKEN=", "CUSTOMER_CLIENT_ID=",
       "API_VERSION=2026-10", "APP_NAME=Mock.shop", "BUNDLE_ID=com.mockshop.demoapp", "PDP_METAFIELDS=",
-      "HOME_TEMPLATE=fashion", "COLLECTION_TEMPLATE=top", "JUDGEME_PUBLIC_TOKEN=", "SHOW_VENDOR=false"]) {
+      "HOME_TEMPLATE=fashion", "COLLECTION_TEMPLATE=top", "JUDGEME_PUBLIC_TOKEN=", "SHOW_VENDOR=false", "ONBOARDING=true", "FREE_SHIPPING_THRESHOLD=150"]) {
       assert.ok(props.split("\n").includes(line), `shopify.properties has ${line}`);
     }
     const xcconfig = readFileSync(join(dir, "ios/Config.xcconfig"), "utf8");
