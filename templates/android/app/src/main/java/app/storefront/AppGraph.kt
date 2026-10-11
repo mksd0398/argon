@@ -10,6 +10,8 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import app.storefront.auth.AuthStore
 import app.storefront.auth.TokenCrypto
+import app.storefront.data.Analytics
+import app.storefront.data.AnalyticsConsentStore
 import app.storefront.data.Brand
 import app.storefront.data.BuyerStore
 import app.storefront.data.CartStore
@@ -17,6 +19,7 @@ import app.storefront.data.CollectionTemplate
 import app.storefront.data.CustomerAccountApi
 import app.storefront.data.HomeTemplate
 import app.storefront.data.JudgeMe
+import app.storefront.data.LogSink
 import app.storefront.data.OnboardingStore
 import app.storefront.data.RecentlyViewedStore
 import app.storefront.data.Storefront
@@ -53,7 +56,15 @@ class StorefrontApp : Application(), SingletonImageLoader.Factory {
     override fun onCreate() {
         super.onCreate()
         AppGraph.assets = assets
-        AppGraph.wishlist = WishlistStore(prefs("wishlist"), AppGraph.scope)
+        AppGraph.analyticsConsent = AnalyticsConsentStore(prefs("analytics"), AppGraph.scope)
+        // Every sink the app has. A provider's factory joins this list; it returns null when the provider isn't configured.
+        AppGraph.analytics = Analytics(
+            listOfNotNull(
+                if (BuildConfig.DEBUG) LogSink() else null,
+            ),
+            allowed = { AppGraph.analyticsConsent.allowed.value },
+        )
+        AppGraph.wishlist = WishlistStore(prefs("wishlist"), AppGraph.scope, track = AppGraph.analytics::track)
         AppGraph.recentlyViewed = RecentlyViewedStore(prefs("recent"), AppGraph.scope)
         AppGraph.onboardingStore = OnboardingStore(prefs("onboarding"), AppGraph.scope)
         AppGraph.auth = AuthStore(
@@ -70,6 +81,8 @@ class StorefrontApp : Application(), SingletonImageLoader.Factory {
             AppGraph.storefront,
             prefs("cart"),
             accessToken = { AppGraph.auth.validAccessToken() },
+            track = AppGraph.analytics::track,
+            cartAttributes = AppGraph.analytics::cartAttributes,
         )
         AppGraph.buyer = BuyerStore(
             AppGraph.storefront,
@@ -161,6 +174,12 @@ object AppGraph {
 
     /** Outlives every screen: a tap that starts a write (wishlist, cart) finishes even if the screen goes away. */
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    /** Whether the shopper shares usage data (the Account screen's "Privacy" switch); [analytics] reports only while they do. */
+    internal lateinit var analyticsConsent: AnalyticsConsentStore
+
+    /** Where every screen and store reports what the shopper does: `analytics.track(event)`. */
+    internal lateinit var analytics: Analytics
 
     internal lateinit var wishlist: WishlistStore
     internal lateinit var recentlyViewed: RecentlyViewedStore

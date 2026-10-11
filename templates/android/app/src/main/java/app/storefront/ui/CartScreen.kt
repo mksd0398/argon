@@ -74,11 +74,16 @@ import app.storefront.data.Money
 import app.storefront.data.ProductCard
 import app.storefront.data.QuantityRule
 import app.storefront.data.Route
+import app.storefront.data.beginCheckout
+import app.storefront.data.checkoutStep
+import app.storefront.data.purchase
+import app.storefront.data.viewCart
 import com.shopify.checkoutsheetkit.CheckoutException
 import com.shopify.checkoutsheetkit.CheckoutExpiredException
 import com.shopify.checkoutsheetkit.DefaultCheckoutEventProcessor
 import com.shopify.checkoutsheetkit.ShopifyCheckoutSheetKit
 import com.shopify.checkoutsheetkit.lifecycleevents.CheckoutCompletedEvent
+import com.shopify.checkoutsheetkit.pixelevents.PixelEvent
 import java.math.BigDecimal
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -97,11 +102,20 @@ internal tailrec fun Context.componentActivity(): ComponentActivity? = when (thi
  * Shows Shopify's checkout for [url] (`CartStore.checkoutUrl`) over [host]: the cart screen's "Checkout" and the product
  * page's "Buy now". A placed order spends the cart. A checkout that fails keeps it and hands the reason to [onError];
  * one Shopify no longer has (expired, already paid) is dropped by loading the cart again.
+ *
+ * Analytics hears of the whole way from here: `begin_checkout` as the sheet opens (the app has the whole cart), the
+ * shipping and payment steps from the checkout's web pixel events, and the purchase from the completed order, which
+ * comes once (the pixel's `checkout_completed` is left alone).
  */
 internal fun presentCheckout(url: String, host: ComponentActivity, onError: (String) -> Unit) {
     val processor = object : DefaultCheckoutEventProcessor(host) {
         override fun onCheckoutCompleted(checkoutCompletedEvent: CheckoutCompletedEvent) {
+            AppGraph.analytics.track(purchase(checkoutCompletedEvent.orderDetails))
             AppGraph.scope.launch { AppGraph.cart.completed() }
+        }
+
+        override fun onWebPixelEvent(event: PixelEvent) {
+            checkoutStep(event)?.let { AppGraph.analytics.track(it) }
         }
 
         override fun onCheckoutFailed(error: CheckoutException) {
@@ -111,6 +125,7 @@ internal fun presentCheckout(url: String, host: ComponentActivity, onError: (Str
 
         override fun onCheckoutCanceled() {}
     }
+    AppGraph.cart.cart.value?.let { AppGraph.analytics.track(beginCheckout(it)) }
     ShopifyCheckoutSheetKit.present(url, host, processor)
 }
 
@@ -198,6 +213,8 @@ fun CartScreen(nav: NavController) {
         } finally {
             loading = false
         }
+        // analytics' `view_cart`: once per visit, of the cart as it is now (the last known one when the load failed)
+        AppGraph.cart.cart.value?.takeIf { it.lines.isNotEmpty() }?.let { AppGraph.analytics.track(viewCart(it)) }
     }
 
     // Warm up checkout once the shopper is looking at a non-empty cart, and again after every change to it.

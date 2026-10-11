@@ -47,6 +47,7 @@ import app.argon.ui.components.ArgonRating
 import app.argon.ui.components.ArgonTopBar
 import app.argon.ui.components.ArgonTopBarAction
 import app.storefront.AppGraph
+import app.storefront.data.AnalyticsEvent
 import app.storefront.data.Metafield
 import app.storefront.data.MetafieldIdentifier
 import app.storefront.data.Product
@@ -57,6 +58,8 @@ import app.storefront.data.SellingPlanAllocation
 import app.storefront.data.ShopPolicies
 import app.storefront.data.Variant
 import app.storefront.data.Variants
+import app.storefront.data.analyticsCurrency
+import app.storefront.data.analyticsItem
 import app.storefront.ui.product.AddPhase
 import app.storefront.ui.product.ChosenPrice
 import app.storefront.ui.product.DESCRIPTION
@@ -144,7 +147,10 @@ private const val ADDED_MILLIS = 2000L
 private suspend fun loadProduct(handle: String): Product {
     // The Product query loads variants(first: 250), the Storefront API's page ceiling. A selection past those is not in
     // the list: the page then goes by variantBySelectedOptions alone (ProductState.loadVariant).
-    return AppGraph.storefront.product(handle) ?: error("Product not found")
+    val product = AppGraph.storefront.product(handle) ?: error("Product not found")
+    // once per load: coming back to a page that is kept is not another view
+    AppGraph.analytics.track(AnalyticsEvent.ViewItem(product.analyticsItem(), product.analyticsCurrency))
+    return product
 }
 
 /**
@@ -375,7 +381,7 @@ private fun ProductTopBar(product: Product?, nav: NavController) {
                     AppGraph.scope.launch {
                         // a failed write leaves the heart as it was; it must not crash the app
                         try {
-                            AppGraph.wishlist.toggle(product.id)
+                            AppGraph.wishlist.toggle(product.id, AnalyticsEvent.AddToWishlist(product.analyticsItem(), product.analyticsCurrency))
                         } catch (e: IOException) {
                             Log.w("Wishlist", "toggle failed", e)
                         }

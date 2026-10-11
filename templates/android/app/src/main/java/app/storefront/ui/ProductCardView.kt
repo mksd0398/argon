@@ -41,10 +41,12 @@ import app.argon.ui.components.ArgonQuantityStepper
 import app.argon.ui.components.ArgonRating
 import app.argon.ui.components.ArgonSwatch
 import app.storefront.AppGraph
+import app.storefront.data.AnalyticsEvent
 import app.storefront.data.CartStore
 import app.storefront.data.Money
 import app.storefront.data.ProductCard
 import app.storefront.data.QuantityRule
+import app.storefront.data.analyticsItem
 import java.io.IOException
 import java.text.NumberFormat
 import java.util.Currency
@@ -57,19 +59,19 @@ fun Money.display(): String = runCatching {
 }.getOrDefault("$amount $currencyCode")
 
 /**
- * Heart toggle for the product with id [productId]: filled while it is in the wishlist. A 36 dp disc inside the 48 dp
- * touch target, so the disc sits 6 dp inside whatever corner the button is aligned to.
+ * Heart toggle for the product [card]: filled while it is in the wishlist. A 36 dp disc inside the 48 dp touch target,
+ * so the disc sits 6 dp inside whatever corner the button is aligned to.
  */
 @Composable
-fun WishlistHeart(productId: String, modifier: Modifier = Modifier) {
+fun WishlistHeart(card: ProductCard, modifier: Modifier = Modifier) {
     val ids by AppGraph.wishlist.ids.collectAsState()
-    val saved = productId in ids
+    val saved = card.id in ids
     IconButton(
         onClick = {
             AppGraph.scope.launch {
                 // a failed write leaves the heart as it was; it must not crash the app
                 try {
-                    AppGraph.wishlist.toggle(productId)
+                    AppGraph.wishlist.toggle(card.id, AnalyticsEvent.AddToWishlist(card.analyticsItem(), card.price.currencyCode))
                 } catch (e: IOException) {
                     Log.w("Wishlist", "toggle failed", e)
                 }
@@ -137,7 +139,7 @@ private fun StandardCard(card: ProductCard, onOpen: () -> Unit, modifier: Modifi
     Column(modifier.clickable(onClick = onOpen), verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
         Box(Modifier.fillMaxWidth().aspectRatio(4f / 5f).clip(ArgonTheme.radius.m)) {
             StoreImage(card.image, card.title, Modifier.matchParentSize())
-            WishlistHeart(card.id, Modifier.align(Alignment.TopEnd))
+            WishlistHeart(card, Modifier.align(Alignment.TopEnd))
             val tag = Modifier.align(Alignment.TopStart).padding(spacing.s)
             if (!card.available) LabelTag("Sold out", tag) else if (card.compareAt != null) LabelTag("Sale", tag, isSale = true)
         }

@@ -18,11 +18,17 @@ import kotlinx.coroutines.sync.withLock
  * The shopper's cart through the Storefront Cart API. Only the cart id is kept on the device; [cart] is whatever the last
  * response said. [accessToken] is the signed-in customer's token (null when signed out), attached to the cart before
  * checkout. A change Shopify refuses throws [ArgonApiError.UserErrors]; its message is Shopify's, meant for the shopper.
+ *
+ * Analytics: [track] gets what each change of the lines put in the cart and took out of it, once Shopify has accepted it,
+ * whoever asked for the change; [cartAttributes] are what a new cart carries (`Analytics.cartAttributes`). Neither may
+ * throw: the hub's don't.
  */
 class CartStore(
     private val api: StorefrontApi,
     private val prefs: DataStore<Preferences>,
     private val accessToken: suspend () -> String? = { null },
+    private val track: (AnalyticsEvent) -> Unit = {},
+    private val cartAttributes: suspend () -> Map<String, String> = { emptyMap() },
 ) {
     private val idKey = stringPreferencesKey("cartId")
 
@@ -57,9 +63,14 @@ class CartStore(
     suspend fun add(variantId: String, quantity: Int, sellingPlanId: String? = null) {
         lock.withLock {
             val lines = listOf(CartLineInput(variantId, quantity, sellingPlanId))
-            val create: suspend () -> Cart = { keep { api.cartCreate(CartInput(lines = lines, buyerIdentity = newCartBuyer())) } }
+            val create: suspend () -> Cart = {
+                // Only a new cart gets the attributes: sending them later would be one more cart mutation, and each one
+                // changes the checkout URL (see `attached`).
+                val attributes = cartAttributes().map { (key, value) -> Attribute(key, value) }.ifEmpty { null }
+                keep { api.cartCreate(CartInput(lines = lines, attributes = attributes, buyerIdentity = newCartBuyer())) }
+            }
             // a stored cart that has expired is replaced by a new one holding these lines
-            change({ api.addLines(it, lines) }, ifGone = create) ?: create()
+            reporting { change({ api.addLines(it, lines) }, ifGone = create) ?: create() }
         }
     }
 
@@ -98,16 +109,18 @@ class CartStore(
     /** Sets the quantity of a line; 0 (or less) removes it. */
     suspend fun update(lineId: String, quantity: Int) {
         lock.withLock {
-            if (quantity <= 0) {
-                removeLine(lineId)
-            } else {
-                change({ api.updateLines(it, listOf(CartLineUpdateInput(lineId, quantity))) })
+            reporting {
+                if (quantity <= 0) {
+                    removeLine(lineId)
+                } else {
+                    change({ api.updateLines(it, listOf(CartLineUpdateInput(lineId, quantity))) })
+                }
             }
         }
     }
 
     suspend fun remove(lineId: String) {
-        lock.withLock { removeLine(lineId) }
+        lock.withLock { reporting { removeLine(lineId) } }
     }
 
     /**
@@ -164,8 +177,24 @@ class CartStore(
         lock.withLock { forget() }
     }
 
-    private suspend fun removeLine(lineId: String) {
-        change({ api.removeLines(it, listOf(lineId)) })
+    private suspend fun removeLine(lineId: String): Cart? = change({ api.removeLines(it, listOf(lineId)) })
+
+    /**
+     * Runs a change of the cart's lines (with the lock held), then reports what it put in the cart and took out of it:
+     * the quantities Shopify answered with against those from before. So every caller is covered, and a load, a discount
+     * code or a buyer change reports nothing. A new cart had nothing before. A change Shopify refused threw, and reports
+     * nothing; nor does a change of a stored cart that was never loaded (an offline start): what it held isn't known.
+     */
+    private suspend fun reporting(mutation: suspend () -> Cart?) {
+        val id = currentId()
+        val before = state.value
+        val after = mutation() ?: return
+        val had = when {
+            after.id != id -> emptyList()
+            before != null -> before.lines
+            else -> return
+        }
+        cartLineEvents(had, after.lines).forEach(track)
     }
 
     private suspend fun currentId(): String? = state.value?.id ?: prefs.safeData().first()[idKey]

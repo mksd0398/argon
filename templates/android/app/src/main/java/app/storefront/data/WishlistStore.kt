@@ -12,9 +12,14 @@ import kotlinx.coroutines.flow.stateIn
 
 /**
  * Saved product ids, newest first, no duplicates, kept on the device. The DataStore is the source of truth; [ids]
- * follows it (empty for the first few milliseconds after launch, until the file is read).
+ * follows it (empty for the first few milliseconds after launch, until the file is read). [track] gets a product's
+ * `add_to_wishlist` once it is saved.
  */
-class WishlistStore(private val dataStore: DataStore<Preferences>, scope: CoroutineScope) {
+class WishlistStore(
+    private val dataStore: DataStore<Preferences>,
+    scope: CoroutineScope,
+    private val track: (AnalyticsEvent) -> Unit = {},
+) {
     private val key = stringPreferencesKey("ids")
 
     val ids: StateFlow<List<String>> =
@@ -22,11 +27,17 @@ class WishlistStore(private val dataStore: DataStore<Preferences>, scope: Corout
 
     fun contains(id: String) = id in ids.value
 
-    /** Adds [productId] as the newest, or removes it when saved. */
-    suspend fun toggle(productId: String) {
+    /**
+     * Adds [productId] as the newest, or removes it when saved. [added] is the event to report when this adds it: the
+     * store holds ids alone, so the caller, which has the product, describes it.
+     */
+    suspend fun toggle(productId: String, added: AnalyticsEvent.AddToWishlist? = null) {
+        var isNew = false
         dataStore.edit { prefs ->
             val saved = decodeIds(prefs[key])
-            prefs[key] = encodeIds(if (productId in saved) saved - productId else listOf(productId) + saved)
+            isNew = productId !in saved
+            prefs[key] = encodeIds(if (isNew) listOf(productId) + saved else saved - productId)
         }
+        if (isNew && added != null) track(added)
     }
 }

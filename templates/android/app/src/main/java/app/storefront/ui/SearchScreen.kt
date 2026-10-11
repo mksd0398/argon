@@ -31,9 +31,11 @@ import app.argon.ui.components.ArgonTopBar
 import app.argon.ui.components.ArgonTopBarAction
 import app.argon.ui.components.ArgonTopBarVariant
 import app.storefront.AppGraph
+import app.storefront.data.AnalyticsEvent
 import app.storefront.data.Page
 import app.storefront.data.ProductCard
 import app.storefront.data.Route
+import app.storefront.data.analyticsItem
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 
@@ -47,7 +49,10 @@ class SearchModel(initial: String) : ViewModel() {
 
     val listing = Listing(viewModelScope, SEARCH_SORTS) { after, sort, applied ->
         val page = AppGraph.storefront.search(submitted.orEmpty(), applied, sort.key, sort.reverse, after)
-        Page(page.items.filterIsInstance<ProductCard>(), page.endCursor, page.hasNextPage, page.filters)
+        val products = page.items.filterIsInstance<ProductCard>()
+        // analytics' `view_item_list`: the results as they open (their first page)
+        if (after == null) AppGraph.analytics.track(AnalyticsEvent.ViewItemList(null, "Search results", products.map { it.analyticsItem() }))
+        Page(products, page.endCursor, page.hasNextPage, page.filters)
     }
 
     init {
@@ -59,6 +64,7 @@ class SearchModel(initial: String) : ViewModel() {
         if (q.isEmpty()) return
         text = q
         submitted = q
+        AppGraph.analytics.track(AnalyticsEvent.Search(q))
         listing.reload(SEARCH_SORTS.first(), emptyList(), resetFilters = true)
     }
 }

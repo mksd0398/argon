@@ -435,4 +435,153 @@ class CartStoreTest {
         s.add("v2", 1)
         assertEquals(listOf("CartCreate", "CartLinesAdd"), names)
     }
+
+    // Analytics
+
+    private val events = mutableListOf<AnalyticsEvent>()
+    private val fixtureLine = cartJson.getValue("lines").jsonObject.getValue("nodes").jsonArray.single().jsonObject
+
+    /** The fixture cart holding [quantity] of its one line; an empty cart for 0. */
+    private fun holding(quantity: Int): JsonObject {
+        val lines = if (quantity == 0) emptyList() else listOf(JsonObject(fixtureLine + ("quantity" to JsonPrimitive(quantity))))
+        return JsonObject(cartJson + ("lines" to buildJsonObject { put("nodes", JsonArray(lines)) }))
+    }
+
+    /** [quantity] of the fixture line's variant, as analytics hears of it. */
+    private fun crewneck(quantity: Int) = AnalyticsItem(
+        productId = "7982905098262",
+        variantId = "43696905224214",
+        name = "Men's Crewneck",
+        variant = "Small / Green",
+        price = 120.0,
+        quantity = quantity,
+    )
+
+    /** A signed-in shopper's store that reports to [events] and gives a new cart [attributes]. */
+    private fun tracked(
+        prefs: DataStore<Preferences> = disk(),
+        attributes: suspend () -> Map<String, String> = { emptyMap() },
+        reply: suspend (String) -> JsonObject,
+    ) = CartStore(StorefrontApi({ name, vars -> calls += name to vars; reply(name) }), prefs, { "tok" }, { events += it }, attributes)
+
+    @Test
+    fun everyChangeOfTheLinesIsReportedByWhatShopifyAnswered() = runBlocking {
+        var held = 2
+        val s = tracked { answer(it, holding(held)) }
+        s.add("v1", 2) // a new cart with 2
+        held = 5
+        s.add("v1", 3)
+        held = 4
+        s.update(lineId, 4)
+        held = 6
+        s.update(lineId, 6)
+        held = 0
+        s.remove(lineId)
+        assertEquals(
+            listOf(
+                AnalyticsEvent.AddToCart(crewneck(2), "CAD"),
+                AnalyticsEvent.AddToCart(crewneck(3), "CAD"),
+                AnalyticsEvent.RemoveFromCart(crewneck(1), "CAD"),
+                AnalyticsEvent.AddToCart(crewneck(2), "CAD"),
+                AnalyticsEvent.RemoveFromCart(crewneck(6), "CAD"),
+            ),
+            events,
+        )
+
+        // a quantity of 0 removes the line, as the cart's bin does
+        held = 1
+        s.add("v1", 1)
+        events.clear()
+        held = 0
+        s.update(lineId, 0)
+        assertEquals(listOf<AnalyticsEvent>(AnalyticsEvent.RemoveFromCart(crewneck(1), "CAD")), events)
+    }
+
+    @Test
+    fun aLoadADiscountCodeABuyerChangeAndARefusedChangeReportNothing() = runBlocking {
+        var held = 1
+        var refused = false
+        val s = tracked { if (refused) answer(it, holding(held), "Not enough stock") else answer(it, holding(held)) }
+        s.add("v1", 1)
+        events.clear()
+
+        held = 3 // the cart grew somewhere else (the store's web site): seeing that here is not adding to it
+        s.load()
+        s.applyDiscount("WELCOME10")
+        s.removeDiscount("WELCOME10")
+        s.setBuyer(location)
+        s.checkoutUrl()
+        refused = true
+        held = 9
+        assertThrows(ArgonApiError.UserErrors::class.java) { runBlocking { s.update(lineId, 9) } }
+        assertEquals(emptyList<AnalyticsEvent>(), events)
+    }
+
+    @Test
+    fun aCartThatReplacesAnExpiredOneReportsOnlyWhatWasAdded() = runBlocking {
+        var gone = false
+        val fresh = JsonObject(holding(1) + ("id" to JsonPrimitive("gid://shopify/Cart/new")))
+        val s = tracked {
+            when {
+                !gone -> answer(it, holding(3))
+                it == "CartLinesAdd" -> answer(it, cart = null, "The specified cart does not exist")
+                it == "Cart" -> answer(it, cart = null)
+                else -> answer(it, fresh)
+            }
+        }
+        s.add("v1", 3)
+        events.clear()
+        gone = true
+        s.add("v1", 1)
+        assertEquals(listOf("CartCreate", "CartLinesAdd", "Cart", "CartCreate"), names)
+        assertEquals("the three that expired with the old cart were not taken out by the shopper", listOf<AnalyticsEvent>(AnalyticsEvent.AddToCart(crewneck(1), "CAD")), events)
+    }
+
+    @Test
+    fun aStoredCartThatWasNeverLoadedReportsNothingUntilItsLinesAreKnown() = runBlocking {
+        store().add("v1", 1)
+        var held = 4
+        // a cold start whose load() never ran (offline): the cart held 3 already, so the 4 it answers with says nothing
+        val s = tracked(restart()) { answer(it, holding(held)) }
+        s.add("v1", 1)
+        assertEquals(emptyList<AnalyticsEvent>(), events)
+        held = 5
+        s.add("v1", 1)
+        assertEquals(listOf<AnalyticsEvent>(AnalyticsEvent.AddToCart(crewneck(1), "CAD")), events)
+    }
+
+    @Test
+    fun onlyANewCartCarriesTheAnalyticsAttributes() = runBlocking {
+        var asked = 0
+        val attributes = mapOf("_ga_app_instance_id" to "abc", "_argon_platform" to "android")
+        val s = tracked(attributes = { asked++; attributes }) { answer(it) }
+        s.add("v1", 1)
+        s.add("v2", 1)
+        s.update(lineId, 2)
+        s.applyDiscount("WELCOME10")
+        s.checkoutUrl()
+        s.remove(lineId)
+
+        assertEquals("CartCreate", names.first())
+        assertEquals(
+            """[{"key":"_ga_app_instance_id","value":"abc"},{"key":"_argon_platform","value":"android"}]""",
+            calls[0].second.getValue("input").jsonObject.getValue("attributes").toString(),
+        )
+        // a cart mutation changes the checkout URL: nothing sends them again, least of all a mutation of their own
+        assertEquals("asked for once, for the one cart that was created", 1, asked)
+        assertEquals(emptyList<String>(), names.drop(1).filter { it == "CartCreate" || it == "CartAttributesUpdate" })
+        assertEquals(emptyList<String>(), calls.drop(1).map { it.second.toString() }.filter { "_argon_platform" in it })
+
+        // and the cart that follows a placed order is new: it carries them too
+        s.completed()
+        s.add("v1", 1)
+        assertEquals(2, asked)
+        assertNotNull(calls.last().second.getValue("input").jsonObject["attributes"])
+    }
+
+    @Test
+    fun withoutAnalyticsANewCartHasNoAttributes() = runBlocking {
+        store().add("v1", 1)
+        assertNull(calls[0].second.getValue("input").jsonObject["attributes"])
+    }
 }

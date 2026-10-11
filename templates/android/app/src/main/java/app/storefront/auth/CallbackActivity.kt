@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.util.Log
 import app.storefront.AppGraph
 import app.storefront.MainActivity
+import app.storefront.data.AnalyticsEvent
 import kotlinx.coroutines.launch
 
 /**
@@ -21,6 +22,7 @@ class CallbackActivity : Activity() {
             AppGraph.scope.launch {
                 try {
                     AppGraph.auth.handleCallback(uri)
+                    AppGraph.analytics.track(AnalyticsEvent.Login)
                 } catch (e: Exception) {
                     // AuthException messages are ours; any other message may quote the callback, code included
                     Log.w("CallbackActivity", "sign-in callback not accepted: ${if (e is AuthException) e.message else e.javaClass.name}")

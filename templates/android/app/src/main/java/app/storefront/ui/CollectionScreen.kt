@@ -19,7 +19,10 @@ import app.argon.ui.components.ArgonIconName
 import app.argon.ui.components.ArgonTopBar
 import app.argon.ui.components.ArgonTopBarAction
 import app.storefront.AppGraph
+import app.storefront.data.AnalyticsEvent
 import app.storefront.data.Route
+import app.storefront.data.analyticsItem
+import app.storefront.data.gidTail
 
 /**
  * One collection's products. Handle "all" is the whole catalogue: Storefront has no `collection(handle: "all")`, so it
@@ -37,14 +40,20 @@ class CollectionModel(private val handle: String) : ViewModel() {
 
     val listing = Listing(viewModelScope, if (all) CATALOG_SORTS else COLLECTION_SORTS) { after, sort, applied ->
         val api = AppGraph.storefront
-        if (all) {
+        // the collection's numeric id; the whole catalogue is a list without one
+        var listId: String? = null
+        val page = if (all) {
             api.products(sortKey = sort.key, reverse = sort.reverse, after = after)
         } else {
             val collection = api.collection(handle, applied, sort.key, sort.reverse, after) ?: error("Collection not found")
+            listId = gidTail(collection.id)
             title = collection.title
             description = withoutLeadingCss(collection.description)
             collection.products
         }
+        // analytics' `view_item_list`: the list as it opens (its first page), not each page scrolled to
+        if (after == null) AppGraph.analytics.track(AnalyticsEvent.ViewItemList(listId, title, page.items.map { it.analyticsItem() }))
+        page
     }
 
     init {
