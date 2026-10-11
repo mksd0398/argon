@@ -117,4 +117,18 @@ final class HomeContentTests: XCTestCase {
         XCTAssertEqual(heroBanners(Array(banners.prefix(1))), Array(banners.prefix(1)), "a lone banner is the hero")
         XCTAssertTrue(heroBanners([]).isEmpty)
     }
+
+    func testTheBarOverTheHeroTurnsSolidAsTheLastOfTheHeroScrollsOut() {
+        let hero: CGFloat = 1350
+        let bar: CGFloat = 200
+        XCTAssertEqual(heroSolid(scrolled: 0, heroHeight: hero, barHeight: bar), 0, "at the top")
+        XCTAssertEqual(heroSolid(scrolled: hero - 2 * bar, heroHeight: hero, barHeight: bar), 0, "two bar heights of the hero left: still clear")
+        XCTAssertEqual(heroSolid(scrolled: hero - 1.5 * bar, heroHeight: hero, barHeight: bar), 0.5, accuracy: 1e-6)
+        XCTAssertEqual(heroSolid(scrolled: hero - bar, heroHeight: hero, barHeight: bar), 1, "the hero ends where the bar does")
+        XCTAssertEqual(heroSolid(scrolled: hero + 500, heroHeight: hero, barHeight: bar), 1, "scrolled past")
+        XCTAssertEqual(heroSolid(scrolled: -80, heroHeight: hero, barHeight: bar), 0, "pulled down past the top")
+        // a bar whose height isn't known switches when the hero is gone
+        XCTAssertEqual(heroSolid(scrolled: hero - 1, heroHeight: hero, barHeight: 0), 0)
+        XCTAssertEqual(heroSolid(scrolled: hero, heroHeight: hero, barHeight: 0), 1)
+    }
 }

@@ -22,5 +22,16 @@
 	<string>$(JUDGEME_PUBLIC_TOKEN)</string>
 	<key>ShowVendor</key>
 	<string>$(SHOW_VENDOR)</string>
+	<key>Onboarding</key>
+	<string>$(ONBOARDING)</string>
+	<key>FreeShippingThreshold</key>
+	<string>$(FREE_SHIPPING_THRESHOLD)</string>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+		<key>UIImageName</key>
+		<string>LaunchLogo</string>
+	</dict>
 </dict>
 </plist>

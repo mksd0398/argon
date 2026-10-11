@@ -134,6 +134,51 @@ final class ArgonUITests: XCTestCase {
         XCTAssertEqual(ArgonBadge.text(100), "99+")
     }
 
+    // MARK: Top bar
+
+    /// `colour`'s red, green and blue against those of `hex`.
+    private func assertColour(_ colour: ArgonRGBA, is hex: String, _ message: String = "", line: UInt = #line) throws {
+        let expected = try XCTUnwrap(ArgonTheme.rgb(hex: hex), line: line)
+        XCTAssertEqual([colour.red, colour.green, colour.blue], [expected.red, expected.green, expected.blue], message, line: line)
+    }
+
+    func testOverThePictureTheOverlayBarIsClearWithLightContentOnADarkShade() throws {
+        for dark in [false, true] {
+            let bar = overlayBarColors(solid: 0, dark: dark)
+            XCTAssertEqual(bar.container.opacity, 0, "no background")
+            try assertColour(bar.content, is: ArgonPalette.dark.ink, "light content, whatever the appearance")
+            XCTAssertEqual(bar.content.opacity, 1)
+            try assertColour(bar.shade, is: ArgonPalette.dark.paper)
+            XCTAssertEqual(bar.shade.opacity, overlayBarShade)
+        }
+    }
+
+    func testSolidTheOverlayBarIsTheThemesBar() throws {
+        for dark in [false, true] {
+            let theme = dark ? ArgonPalette.dark : ArgonPalette.light
+            let bar = overlayBarColors(solid: 1, dark: dark)
+            try assertColour(bar.container, is: theme.paper)
+            XCTAssertEqual(bar.container.opacity, 1)
+            try assertColour(bar.content, is: theme.ink)
+            XCTAssertEqual(bar.shade.opacity, 0, "no shade left")
+        }
+    }
+
+    func testInBetweenTheOverlayBarFadesIn() throws {
+        let bar = overlayBarColors(solid: 0.5, dark: false)
+        XCTAssertEqual(bar.container.opacity, 0.5, accuracy: 0.01)
+        XCTAssertEqual(bar.shade.opacity, overlayBarShade / 2, accuracy: 0.01)
+        // the content is on its way from light to the theme's dark ink
+        let light = try XCTUnwrap(ArgonTheme.rgb(hex: ArgonPalette.dark.ink))
+        let ink = try XCTUnwrap(ArgonTheme.rgb(hex: ArgonPalette.light.ink))
+        XCTAssertTrue(bar.content.red < light.red && bar.content.red > ink.red)
+    }
+
+    func testOverlayBarSolidIsClampedToItsRange() {
+        XCTAssertEqual(overlayBarColors(solid: -2, dark: false), overlayBarColors(solid: 0, dark: false))
+        XCTAssertEqual(overlayBarColors(solid: 7, dark: false), overlayBarColors(solid: 1, dark: false))
+    }
+
     // MARK: Theme
 
     func testAccentParsing() {

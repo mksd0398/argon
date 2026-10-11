@@ -3,7 +3,7 @@ import SwiftUI
 public enum ArgonTagStyle: Sendable {
     /// A toggle in a filter row: outlined, accent-filled with a check when selected.
     case filter
-    /// A value the user entered, usually removable.
+    /// A value the user entered, usually removable; filled when selected.
     case input
     /// A label: plain text on a quiet fill. A chip only when it has an `onClick`.
     case info
@@ -93,7 +93,7 @@ public struct ArgonTag: View {
     private var background: Color {
         switch style {
         case .filter: return isSelected ? theme.colors.accent : .clear
-        case .input: return theme.colors.surface
+        case .input: return isSelected ? theme.colors.border : theme.colors.surface
         case .info: return theme.colors.border
         }
     }

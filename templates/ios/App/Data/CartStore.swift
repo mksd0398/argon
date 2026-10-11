@@ -108,6 +108,38 @@ final class CartStore {
         try await removeLine(lineId)
     }
 
+    /// Adds the discount `code` to the cart's codes (Shopify takes the whole list each time). False when Shopify says it
+    /// can't be used on this cart (unknown, expired, or its conditions aren't met): the code is then taken off again, so
+    /// the cart only carries codes that count. False too without a cart or a code.
+    func applyDiscount(_ code: String) async throws -> Bool {
+        await lock.lock()
+        defer { lock.unlock() }
+        let entered = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !entered.isEmpty, let current = cart else { return false }
+        // codes are not case-sensitive: entering one again replaces it instead of listing it twice
+        let others = current.discountCodes.map { $0.code }.filter { !Self.sameCode($0, entered) }
+        guard let updated = try await change({ try await self.api.updateDiscountCodes(cartId: $0, codes: others + [entered]) }) else {
+            return false
+        }
+        if updated.discountCodes.contains(where: { $0.applicable && Self.sameCode($0.code, entered) }) { return true }
+        _ = try await change { try await self.api.updateDiscountCodes(cartId: $0, codes: others) }
+        return false
+    }
+
+    /// Takes the discount `code` off the cart.
+    func removeDiscount(_ code: String) async throws {
+        await lock.lock()
+        defer { lock.unlock() }
+        // without the cart there is no list to send (an empty one would clear every code)
+        guard let current = cart else { return }
+        let others = current.discountCodes.map { $0.code }.filter { !Self.sameCode($0, code) }
+        _ = try await change { try await self.api.updateDiscountCodes(cartId: $0, codes: others) }
+    }
+
+    private static func sameCode(_ a: String, _ b: String) -> Bool {
+        a.caseInsensitiveCompare(b) == .orderedSame
+    }
+
     /// The URL to hand to Checkout Kit, with the signed-in customer attached to the cart first. Nil without a cart.
     /// Attaching the customer never blocks checkout: if it fails, the shopper checks out as a guest. A buyer the cart
     /// already has is not attached again, so asking twice gives the same URL and leaves the cart as it is.

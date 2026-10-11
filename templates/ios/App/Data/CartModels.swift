@@ -2,7 +2,7 @@ import Foundation
 
 // The `Cart` and `CartDeliveryGroups` fragments, the cart mutations' inputs, and what they return.
 
-/// A line of the cart: one variant (lines of other merchandise are left out), with its quantity and line total.
+/// A line of the cart: one variant (lines of other merchandise are left out), with its quantity and what it costs.
 struct CartLine: Equatable, Sendable {
     let id: String
     let quantity: Int
@@ -12,10 +12,19 @@ struct CartLine: Equatable, Sendable {
     let productTitle: String
     let image: Img?
     let price: Money
+    /// What the line costs after its discounts.
     let total: Money
+    /// What the line costs before its discounts.
+    let subtotal: Money
+    /// One item's price on this line.
+    let unitPrice: Money
+    /// One item's compare-at price; nil when the variant has none.
+    var compareAtUnitPrice: Money? = nil
+    /// The product's id (what recommendations are asked for); empty only for a response without it.
+    var productId = ""
     var attributes: [CartAttribute] = []
-    /// The discounts on this line, as amounts taken off.
-    var discounts: [Money] = []
+    /// Every discount on the line, a code's and an automatic one's alike, each with what it takes off.
+    var discounts: [CartDiscount] = []
     var sku: String? = nil
     /// The variant's quantity rule: what the line's stepper moves by, and between.
     var quantityRule: QuantityRule? = nil
@@ -36,10 +45,16 @@ extension CartLine: Decodable {
 
     private struct LineCost: Decodable {
         let totalAmount: Money
+        let subtotalAmount: Money
+        let amountPerQuantity: Money
+        let compareAtAmountPerQuantity: Money?
     }
 
+    /// A discount's share on this line: `code` for a discount code, `title` for an automatic or a custom discount.
     private struct Allocation: Decodable {
         let discountedAmount: Money
+        let code: String?
+        let title: String?
     }
 
     private struct PlanAllocation: Decodable {
@@ -50,6 +65,7 @@ extension CartLine: Decodable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         let variant = try c.nestedContainer(keyedBy: MerchandiseKeys.self, forKey: .merchandise)
         let product = try variant.decode(ProductRef.self, forKey: .product)
+        let cost = try c.decode(LineCost.self, forKey: .cost)
         let allocations = try c.decodeIfPresent([Allocation].self, forKey: .discountAllocations) ?? []
         // only a bundle's line (ComponentizableCartLine) has components
         let components = try c.decodeIfPresent([VariantLine<CartLineComponent>].self, forKey: .lineComponents) ?? []
@@ -62,15 +78,25 @@ extension CartLine: Decodable {
             productTitle: product.title,
             image: variant.decodeIfPresent(Img.self, forKey: .image),
             price: variant.decode(Money.self, forKey: .price),
-            total: c.decode(LineCost.self, forKey: .cost).totalAmount,
+            total: cost.totalAmount,
+            subtotal: cost.subtotalAmount,
+            unitPrice: cost.amountPerQuantity,
+            compareAtUnitPrice: cost.compareAtAmountPerQuantity,
+            productId: product.id ?? "",
             attributes: c.decodeIfPresent([CartAttribute].self, forKey: .attributes) ?? [],
-            discounts: allocations.map { $0.discountedAmount },
+            discounts: allocations.map { CartDiscount(amount: $0.discountedAmount, label: $0.code ?? $0.title ?? "Discount") },
             sku: variant.decodeIfPresent(String.self, forKey: .sku),
             quantityRule: variant.decodeIfPresent(QuantityRule.self, forKey: .quantityRule),
             sellingPlanName: c.decodeIfPresent(PlanAllocation.self, forKey: .sellingPlanAllocation)?.sellingPlan.name,
             components: components.compactMap { $0.line }
         )
     }
+}
+
+/// A discount on a cart line: the `amount` it takes off, and its `label` (the code, or an automatic discount's title).
+struct CartDiscount: Equatable, Sendable {
+    let amount: Money
+    let label: String
 }
 
 /// A part of a bundle's cart line: `quantity` of a variant.

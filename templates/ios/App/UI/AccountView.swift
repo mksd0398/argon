@@ -92,7 +92,7 @@ private struct SignedOut: View {
                 ArgonDivider()
                 VStack(spacing: 0) {
                     StoreRows(policies: policies)
-                    ComponentsRow()
+                    DebugRows()
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, theme.spacing.l)
@@ -131,14 +131,18 @@ private struct StoreRows: View {
     }
 }
 
-/// Debug builds only: the Argon UI gallery, to review every component on a device.
+/// Debug builds only: the Argon UI gallery, to review every component on a device, and (in an app with the welcome on)
+/// "Show onboarding", which runs it again.
 @MainActor
-private struct ComponentsRow: View {
+private struct DebugRows: View {
     @Environment(Router.self) private var router
 
     var body: some View {
         #if DEBUG
         ArgonListItem(title: "Components", trailing: .chevron) { router.path.append(.components) }
+        if AppGraph.onboarding {
+            ArgonListItem(title: "Show onboarding", trailing: .chevron) { AppGraph.onboardingStore.reset() }
+        }
         #endif
     }
 }
@@ -207,7 +211,7 @@ private struct SignedIn: View {
                         ArgonListItem(title: "Manage account on the web", trailing: .chevron) {
                             router.open(.web("https://shopify.com/\(AppGraph.shopId)/account"))
                         }
-                        ComponentsRow()
+                        DebugRows()
                     }
                     .buttonStyle(.plain)
                     VStack(spacing: spacing.s) {

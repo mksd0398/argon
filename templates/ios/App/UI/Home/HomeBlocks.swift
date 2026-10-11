@@ -40,18 +40,17 @@ func heroBanners(_ banners: [HomeContent.Banner]) -> [HomeContent.Banner] {
 
 // MARK: Views
 
-/// A home page: its blocks one under the other in one lazy list, `spacing.xl` apart. `top` leaves a small margin over the
-/// first block; without it that block touches the top bar (a hero that spans the screen).
+/// A home page: its blocks one under the other in one lazy list, `spacing.xl` apart, with a small margin over the first
+/// (the fashion home, whose hero lies under its bar, lays out its own).
 @MainActor
 struct HomeList<Content: View>: View {
-    var top = true
     @ViewBuilder let content: Content
     @Environment(\.argonTheme) private var theme
 
     var body: some View {
         ScrollView {
             LazyVStack(spacing: theme.spacing.xl) { content }
-                .padding(.top, top ? theme.spacing.s : 0)
+                .padding(.top, theme.spacing.s)
                 .padding(.bottom, theme.spacing.xl)
         }
     }

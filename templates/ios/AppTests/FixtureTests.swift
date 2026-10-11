@@ -441,7 +441,7 @@ final class FixtureTests: XCTestCase {
         XCTAssertEqual(cart.lines.count, 1)
         XCTAssertEqual(cart.lines.first?.productHandle, "men-crewneck")
         XCTAssertEqual(cart.lines.first?.variantTitle, "Small / Green")
-        XCTAssertEqual(cart.lines.first?.total, Money(amount: "360.0", currencyCode: "CAD"))
+        XCTAssertEqual(cart.total, Money(amount: "324.0", currencyCode: "CAD"))
         XCTAssertEqual(cart.note, "Gift wrap, please")
         XCTAssertEqual(cart.attributes, [CartAttribute(key: "source", value: "app")])
         XCTAssertEqual(cart.discountCodes, [CartDiscountCode(code: "WELCOME10", applicable: false)])
@@ -455,6 +455,13 @@ final class FixtureTests: XCTestCase {
         XCTAssertEqual(line.quantityRule, QuantityRule(minimum: 0, maximum: nil, increment: 0))
         XCTAssertNil(line.sellingPlanName, "a one-time purchase")
         XCTAssertEqual(line.components, [], "not a bundle")
+        // 3 × 120.00, 150.00 each before, and an automatic discount on the line
+        XCTAssertEqual(line.subtotal, Money(amount: "360.0", currencyCode: "CAD"))
+        XCTAssertEqual(line.total, Money(amount: "324.0", currencyCode: "CAD"))
+        XCTAssertEqual(line.unitPrice, Money(amount: "120.0", currencyCode: "CAD"))
+        XCTAssertEqual(line.compareAtUnitPrice, Money(amount: "150.0", currencyCode: "CAD"))
+        XCTAssertEqual(line.discounts, [CartDiscount(amount: Money(amount: "36.0", currencyCode: "CAD"), label: "Buy 3, save 10%")])
+        XCTAssertEqual(line.productId, "gid://shopify/Product/7982905098262")
     }
 
     @MainActor
@@ -506,6 +513,10 @@ final class FixtureTests: XCTestCase {
         let result = try await StubServer().storefront().updateDiscountCodes(cartId: Self.cartId, codes: ["WELCOME10"])
         XCTAssertEqual(result.discountCodes.map { $0.code }, ["WELCOME10"])
         XCTAssertEqual(result.warnings.first?.message, "Enter a valid discount code")
+        let line = try XCTUnwrap(result.lines.first)
+        XCTAssertNil(line.compareAtUnitPrice, "no compare-at price on this line")
+        XCTAssertEqual(line.discounts, [], "the code doesn't apply: no discount on the line")
+        XCTAssertEqual(line.subtotal, line.total)
     }
 
     @MainActor
