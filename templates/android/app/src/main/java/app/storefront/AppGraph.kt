@@ -25,6 +25,9 @@ import app.storefront.data.RecentlyViewedStore
 import app.storefront.data.Storefront
 import app.storefront.data.StorefrontApi
 import app.storefront.data.WishlistStore
+import app.storefront.data.firebaseSink
+import app.storefront.data.metaSink
+import app.storefront.data.moEngageSink
 import app.storefront.data.sampleTransport
 import app.storefront.data.toBrand
 import app.storefront.ui.TabState
@@ -57,10 +60,14 @@ class StorefrontApp : Application(), SingletonImageLoader.Factory {
         super.onCreate()
         AppGraph.assets = assets
         AppGraph.analyticsConsent = AnalyticsConsentStore(prefs("analytics"), AppGraph.scope)
-        // Every sink the app has. A provider's factory joins this list; it returns null when the provider isn't configured.
+        // Every sink the app has. A provider's factory starts its SDK and returns its sink; in an app without the
+        // provider it is a stub that returns null (app/build.gradle.kts picks which of the two is compiled in).
         AppGraph.analytics = Analytics(
             listOfNotNull(
                 if (BuildConfig.DEBUG) LogSink() else null,
+                firebaseSink(this),
+                metaSink(this),
+                moEngageSink(this),
             ),
             allowed = { AppGraph.analyticsConsent.allowed.value },
         )

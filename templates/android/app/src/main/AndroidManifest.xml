@@ -35,5 +35,11 @@
                 <data android:scheme="${authScheme}" android:host="callback" />
             </intent-filter>
         </activity>
+        <!-- Analytics. Where the Facebook SDK reads the app id and client token (META_APP_ID, META_CLIENT_TOKEN); read by
+             nothing in an app without Meta. "fb" keeps the id a text: as a bare number the SDK refuses it. -->
+        <meta-data android:name="com.facebook.sdk.ApplicationId" android:value="fb${metaAppId}" />
+        <meta-data android:name="com.facebook.sdk.ClientToken" android:value="${metaClientToken}" />
+        <!-- Firebase: the app reports each screen itself (ui/Nav.kt), so the SDK's own screen_view per activity is off. -->
+        <meta-data android:name="google_analytics_automatic_screen_reporting_enabled" android:value="false" />
     </application>
 </manifest>

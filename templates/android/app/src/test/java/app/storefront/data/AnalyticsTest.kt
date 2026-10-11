@@ -298,14 +298,20 @@ class AnalyticsTest {
     }
 
     @Test
-    fun aNewCartCarriesEverySinksAttributesAndThePlatform() = runBlocking {
+    fun aNewCartCarriesEverySinksAttributesAndWithThemThePlatform() = runBlocking {
         val both = Analytics(listOf(Recorder(mapOf("_ga_app_instance_id" to "abc")), Recorder(mapOf("_meta_anon_id" to "xyz", "_meta_tracking" to "1")))) { true }
         assertEquals(
             mapOf("_ga_app_instance_id" to "abc", "_meta_anon_id" to "xyz", "_meta_tracking" to "1", "_argon_platform" to "android"),
             both.cartAttributes(),
         )
-        assertEquals("a sink with none of its own", mapOf("_argon_platform" to "android"), Analytics(listOf(LogSink())) { true }.cartAttributes())
-        assertEquals("no sink: an order of the app's is nobody's to report", emptyMap<String, String>(), Analytics(emptyList()) { true }.cartAttributes())
+        assertEquals(
+            "one sink's are enough",
+            mapOf("_meta_anon_id" to "xyz", "_argon_platform" to "android"),
+            Analytics(listOf(LogSink(), Recorder(mapOf("_meta_anon_id" to "xyz")))) { true }.cartAttributes(),
+        )
+        // a debug build with only the log, or a provider the server has nothing to send to: the order is nobody's to report
+        assertEquals("sinks with none of their own", emptyMap<String, String>(), Analytics(listOf(LogSink(), Recorder())) { true }.cartAttributes())
+        assertEquals("no sink", emptyMap<String, String>(), Analytics(emptyList()) { true }.cartAttributes())
     }
 
     @Test
