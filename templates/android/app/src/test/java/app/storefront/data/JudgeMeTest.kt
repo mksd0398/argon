@@ -171,4 +171,21 @@ class JudgeMeTest {
         val shape = assertThrows(ArgonApiError.Decoding::class.java) { runBlocking { client(body = """{"error":"no widget"}""").reviews("gid://shopify/Product/1") } }
         assertEquals("no widget", shape.detail)
     }
+
+    @Test
+    fun theDemoStoresSampleIsOnePageAndSendsNothing() = runBlocking {
+        val http = OkHttpClient.Builder().addInterceptor { chain -> requests += chain.request(); error("the sample must not use the network") }.build()
+        val sample = JudgeMe("mock.shop", "", http, sample = { widget })
+        assertTrue(sample.isSample)
+        assertFalse(client(body = widgetJson).isSample)
+
+        val first = sample.reviews("gid://shopify/Product/1")
+        assertEquals(3, first.reviews.size)
+        assertEquals(12, first.summary?.count)
+        assertFalse("the sample has no second page to load", first.hasNextPage)
+        assertTrue(sample.reviews("gid://shopify/Product/1", page = 2).reviews.isEmpty())
+
+        sample.submit("gid://shopify/Product/1", "Ada", "ada@example.com", 5, "Lovely", "Soft")
+        assertTrue(requests.isEmpty())
+    }
 }

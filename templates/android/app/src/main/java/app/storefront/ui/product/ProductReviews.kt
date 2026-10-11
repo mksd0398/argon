@@ -116,10 +116,16 @@ internal const val REVIEW_NOT_SENT = "Your review couldn't be sent. Try again."
  * the same page again.
  */
 @Stable
-internal class ReviewsState(private val load: suspend (page: Int) -> ReviewPage, private val send: suspend (ReviewForm) -> Unit) {
+internal class ReviewsState(
+    private val load: suspend (page: Int) -> ReviewPage,
+    private val send: suspend (ReviewForm) -> Unit,
+    /** The demo store's bundled sample reviews: the block says so, and nothing a shopper writes is sent. */
+    val isSample: Boolean = false,
+) {
     constructor(judgeMe: JudgeMe, productId: String) : this(
         load = { page -> judgeMe.reviews(productId, page) },
         send = { form -> judgeMe.submit(productId, form.name.trim(), form.email.trim(), form.rating, form.title.trim(), form.body.trim()) },
+        isSample = judgeMe.isSample,
     )
 
     // java.util.logging: it reaches logcat on Android and also runs in JVM tests
@@ -188,6 +194,7 @@ internal fun ProductReviews(reviews: ReviewsState, modifier: Modifier = Modifier
         verticalArrangement = Arrangement.spacedBy(spacing.l),
     ) {
         SectionHeader("Reviews")
+        if (reviews.isSample) LabelTag("Sample reviews: nothing is sent")
         val summary = reviews.summary
         if (summary != null && summary.count > 0) {
             SummaryView(summary)

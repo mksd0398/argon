@@ -189,8 +189,19 @@ object AppGraph {
             .stateIn(scope, SharingStarted.Eagerly, auth.signedIn.value || sampleAccount.value)
     }
 
-    /** Product reviews (Judge.me); null without a [judgeMeToken]: the store then shows none. */
-    val judgeMe: JudgeMe? by lazy { if (judgeMeToken.isBlank()) null else JudgeMe(shopDomain, judgeMeToken, http) }
+    /**
+     * Product reviews (Judge.me); null without a [judgeMeToken]: the store then shows none. The demo store's app has
+     * bundled sample reviews instead (`assets/sample/JudgeMeWidget.sample.html`, which the CLI copies for mock.shop only).
+     */
+    val judgeMe: JudgeMe? by lazy {
+        val sample = "sample/JudgeMeWidget.sample.html"
+        when {
+            judgeMeToken.isNotBlank() -> JudgeMe(shopDomain, judgeMeToken, http)
+            runCatching { assets.open(sample).close() }.isSuccess ->
+                JudgeMe(shopDomain, "", http, sample = { assets.open(sample).bufferedReader().use { it.readText() } })
+            else -> null
+        }
+    }
 
     /** Sends the shopper to another tab from anywhere: `tabs.select(AppTab.Shop)`. */
     val tabs = TabState()

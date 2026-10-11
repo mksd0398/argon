@@ -37,10 +37,24 @@ data class ReviewPage(val summary: ReviewSummary?, val reviews: List<Review>, va
 /**
  * Product reviews from Judge.me, through its Widget API with the shop's public token ([token]; the private token must
  * never ship in an app). Failures are [ArgonApiError]s.
+ *
+ * [sample]: the demo store has no reviews app, so its app shows one bundled page of sample reviews instead ([sample]
+ * returns that widget's HTML, `sample/JudgeMeWidget.sample.html`). Nothing is then asked of Judge.me or sent to it.
  */
-class JudgeMe(private val shopDomain: String, private val token: String, private val http: OkHttpClient) {
+class JudgeMe(
+    private val shopDomain: String,
+    private val token: String,
+    private val http: OkHttpClient,
+    private val sample: (() -> String)? = null,
+) {
+    val isSample: Boolean get() = sample != null
+
     /** The reviews of product [productId] (its GID), [perPage] at a time from [page] 1. */
     suspend fun reviews(productId: String, page: Int = 1, perPage: Int = 5): ReviewPage {
+        if (sample != null) {
+            val only = withContext(Dispatchers.IO) { JudgeMeHtml.parse(sample(), page, perPage) }
+            return only.copy(reviews = if (page == 1) only.reviews else emptyList(), hasNextPage = false)
+        }
         val url = "https://api.judge.me/api/v1/widgets/product_review".toHttpUrl().newBuilder()
             .addQueryParameter("shop_domain", shopDomain)
             .addQueryParameter("external_id", numericId(productId))
@@ -55,6 +69,7 @@ class JudgeMe(private val shopDomain: String, private val token: String, private
 
     /** Sends a review; the store approves it before it shows. Judge.me needs no token for this call. */
     suspend fun submit(productId: String, name: String, email: String, rating: Int, title: String, body: String) {
+        if (sample != null) return
         val id = numericId(productId)
         val review = buildJsonObject {
             put("shop_domain", shopDomain)
