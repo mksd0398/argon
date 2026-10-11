@@ -344,7 +344,7 @@ const SDK_LINES = {
   meta: ['.package(url: "https://github.com/facebook/facebook-ios-sdk", from: "18.1.1"),', '.product(name: "FacebookCore", package: "facebook-ios-sdk"),'],
   moengage: ['.package(url: "https://github.com/moengage/apple-sdk", from: "11.3.0"),', '.product(name: "MoEngage-iOS-SDK", package: "apple-sdk"),'],
 };
-const FIREBASE_EXCLUDED = 'exclude: ["Resources", "PrivacyInfo.xcprivacy", "GoogleService-Info.plist"],';
+const FIREBASE_EXCLUDED = 'exclude: ["Resources", "PrivacyInfo.xcprivacy", "GoogleService-Info.plist", "Assets.xcassets"],';
 const config = (dir) => ({
   android: readFileSync(join(dir, "android/shopify.properties"), "utf8").split("\n"),
   ios: readFileSync(join(dir, "ios/Config.xcconfig"), "utf8").split("\n"),
@@ -502,8 +502,8 @@ test("packageSwift: each SDK's package and product go in below Checkout Kit's, i
   // a template that lost a line this builds on is an error, not an app without its SDKs
   assert.throws(() => packageSwift(TEMPLATE_PACKAGE.replace("Shopify/checkout-sheet-kit-swift", "Shopify/checkout-kit"), ["meta"]), /Package\.swift no longer has \.package\(url: "https:\/\/github\.com\/Shopify\/checkout-sheet-kit-swift"/);
   assert.throws(() => packageSwift(TEMPLATE_PACKAGE.replace("ShopifyCheckoutSheetKit", "CheckoutKit"), ["moengage"]), /Package\.swift no longer has \.product\(name: "ShopifyCheckoutSheetKit"/);
-  const noExclude = TEMPLATE_PACKAGE.replace('"PrivacyInfo.xcprivacy"]', '"PrivacyInfo.xcprivacy", "Other"]');
-  assert.throws(() => packageSwift(noExclude, ["firebase"]), /Package\.swift no longer has "PrivacyInfo\.xcprivacy"\]/);
+  const noExclude = TEMPLATE_PACKAGE.replace('"Resources", "PrivacyInfo.xcprivacy"', '"Resources", "Other", "PrivacyInfo.xcprivacy"');
+  assert.throws(() => packageSwift(noExclude, ["firebase"]), /Package\.swift no longer has exclude: \["Resources", "PrivacyInfo\.xcprivacy"/);
   assert.deepEqual(addedLines(packageSwift(noExclude, ["meta"])).slice(0, 2), SDK_LINES.meta, "only Firebase needs the exclude list");
 
   // the generated README names the same packages, for adding them in Xcode
