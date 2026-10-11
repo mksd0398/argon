@@ -93,8 +93,8 @@ const META_BODY = {
       value: 155.8,
       order_id: "6183412097110",
       content_type: "product",
-      content_ids: ["8123456789012", "8123456789099"],
-      contents: [{ id: "8123456789012", quantity: 2, item_price: 60 }, { id: "8123456789099", quantity: 1, item_price: 25 }],
+      content_ids: ["45123456789012", "45123456789099"],
+      contents: [{ id: "45123456789012", quantity: 2, item_price: 60 }, { id: "45123456789099", quantity: 1, item_price: 25 }],
     },
     app_data: {
       advertiser_tracking_enabled: 1,

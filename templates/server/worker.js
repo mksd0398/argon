@@ -37,6 +37,8 @@ const round = (value) => Math.round(value * 1000) / 1000; // no currency has mor
 const placed = (order) => Date.parse(order.created_at) || Date.now();
 // ponytail: a product id is a JSON number, exact up to 2^53; Shopify's are a thousand times smaller today
 const productId = (line) => (line.product_id == null ? undefined : String(line.product_id));
+// Meta matches a catalog Shopify syncs by variant, and the apps send it the same id: the variant's, else the product's
+const catalogId = (line) => String(line.variant_id ?? line.product_id);
 
 /**
  * The Measurement Protocol request ({ url, body }) for the order's `purchase`, or null when Google Analytics isn't
@@ -120,8 +122,8 @@ export async function metaPurchase(order, env) {
           value: amount(order.total_price),
           order_id: orderId(order),
           content_type: "product",
-          content_ids: lines.map(productId),
-          contents: lines.map((line) => ({ id: productId(line), quantity: line.quantity, item_price: amount(line.price) })),
+          content_ids: lines.map(catalogId),
+          contents: lines.map((line) => ({ id: catalogId(line), quantity: line.quantity, item_price: amount(line.price) })),
         },
         app_data: {
           // the device's own setting (iOS's tracking prompt, Android's ad id), as the app read it
