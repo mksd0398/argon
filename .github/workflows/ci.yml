@@ -130,6 +130,7 @@ jobs:
       # none: a second project with all three set up, built as a package like the one above, is what compiles them
       # against the real SDKs. On the one Xcode Firebase 13 resolves with (26.2 or later). The Firebase file is a dummy
       # for com.mockshop.analytics, the id a demo project named "analytics" gets; nothing here is run or sent.
+      # ARCHS=arm64: MoEngage's SDK refuses to compile for the Intel simulator (an #error in its kmm-apple-sdk).
       - name: Build the Swift package with the analytics SDKs
         if: matrix.xcode == 'latest-stable'
         run: |
@@ -139,5 +140,5 @@ jobs:
           mkdir analytics-package
           cp -R analytics/ios/Package.swift analytics/ios/App analytics/ios/ArgonUI analytics-package/
           cd analytics-package
-          xcodebuild -scheme ArgonStorefront -destination "generic/platform=iOS Simulator" \
+          xcodebuild -scheme ArgonStorefront -destination "generic/platform=iOS Simulator" ARCHS=arm64 \
             CODE_SIGNING_ALLOWED=NO -skipPackagePluginValidation -skipMacroValidation build

@@ -115,6 +115,8 @@ A Firebase file must be for this app's `BUNDLE_ID`: Google Analytics gets nothin
 
 Firebase 13 needs Xcode 26.2 or later (Swift 6.2.1 with xtool); with an older Xcode, use its 12.x releases.
 
+MoEngage's SDK does not build for the Intel (x86_64) simulator: with MoEngage in the app, run it on an Apple silicon Mac's simulator or on a device.
+
 ### What is reported
 
 Every screen and store reports to one hub, `Analytics`, and each provider plugs in behind it. The events, under Google Analytics' names: `screen_view`, `view_item_list`, `view_item`, `search`, `add_to_wishlist`, `add_to_cart`, `remove_from_cart`, `view_cart`, `begin_checkout`, `add_shipping_info`, `add_payment_info`, `purchase` and `login`. Meta gets its standard app events where it has one (product views, search, wishlist, cart, checkout, payment details, purchase), and MoEngage its own event names and the signed-in customer's id, email, phone and name. Product ids are Shopify's numeric ids, the ones Google's and Meta's catalogues use.
