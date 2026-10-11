@@ -67,10 +67,11 @@ final class CartStore {
         }
     }
 
-    func add(_ variantId: String, quantity: Int) async throws {
+    /// `sellingPlanId`: the subscription the line is bought on; nil for a one-time purchase.
+    func add(_ variantId: String, quantity: Int, sellingPlanId: String? = nil) async throws {
         await lock.lock()
         defer { lock.unlock() }
-        let lines = [CartLineInput(merchandiseId: variantId, quantity: quantity)]
+        let lines = [CartLineInput(merchandiseId: variantId, quantity: quantity, sellingPlanId: sellingPlanId)]
         // a stored cart that has expired is replaced by a new one holding these lines
         let added = try await change(
             { try await self.api.addLines(cartId: $0, lines: lines) },

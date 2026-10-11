@@ -86,6 +86,19 @@ final class CartStoreTests: XCTestCase {
     }
 
     @MainActor
+    func testAddOnASellingPlanNamesThePlanAndAOneTimePurchaseNamesNone() async throws {
+        let s = store()
+        try await s.add("v1", quantity: 1)
+        try await s.add("v2", quantity: 2, sellingPlanId: "gid://shopify/SellingPlan/1")
+        let created = lines((calls[0].variables["input"] as? [String: Any])?["lines"])
+        XCTAssertEqual(created.count, 1)
+        XCTAssertNil(created.first?["sellingPlanId"])
+        let added = lines(calls[1].variables["lines"])
+        XCTAssertEqual(added.count, 1)
+        XCTAssertEqual(added.first?["sellingPlanId"] as? String, "gid://shopify/SellingPlan/1")
+    }
+
+    @MainActor
     func testAnExpiredCartIsDroppedWithoutAnError() async throws {
         try await store().add("v1", quantity: 1)
         calls.removeAll()

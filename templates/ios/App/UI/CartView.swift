@@ -1,7 +1,17 @@
+import ArgonUI
 import ShopifyCheckoutSheetKit
 import SwiftUI
 
-// This file imports Checkout Kit, whose public `Image` would clash with SwiftUI's: icons here are `Label`s.
+// This file imports Checkout Kit, whose public `Image` would clash with SwiftUI's: no unqualified `Image` here.
+
+/// "Men's T-shirt · Small / Olive × 1": a bundle's part on a cart line (the variant left out when it is "Default Title").
+func componentLabel(_ part: CartLineComponent) -> String {
+    let product = part.productTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : part.productTitle
+    let variant = part.variantTitle == "Default Title" ? nil : part.variantTitle
+    return [product, variant].compactMap { $0 }.joined(separator: " · ") + " × \(part.quantity)"
+}
+
+// MARK: - Checkout
 
 /// What went wrong, in Checkout Kit's words.
 private func checkoutMessage(_ error: CheckoutError) -> String {
@@ -13,6 +23,52 @@ private func checkoutMessage(_ error: CheckoutError) -> String {
     return String(describing: error)
 }
 
+/// Shopify's checkout for `url` (`CartStore.checkoutUrl`) as a sheet: see `View.checkoutSheet`.
+private struct CheckoutPresenter: ViewModifier {
+    @Binding var isPresented: Bool
+    let url: URL?
+    let onDismiss: (_ failure: String?) -> Void
+    // A checkout failure, handed on once the sheet is gone: a message raised while it is still dismissing can be lost.
+    @State private var failure: String? = nil
+
+    func body(content: Content) -> some View {
+        content.sheet(isPresented: $isPresented, onDismiss: { dismissed() }) {
+            if let url = url {
+                CheckoutSheet(checkout: url)
+                    .onCancel { isPresented = false }
+                    // the sheet stays open on the order confirmation until the shopper closes it (onCancel)
+                    .onComplete { _ in Task { await AppGraph.cart.completed() } }
+                    .onFail { error in
+                        // the cart is kept; one Shopify no longer has (expired, already paid) is dropped by loading it again
+                        if case .checkoutExpired = error { Task { _ = try? await AppGraph.cart.load() } }
+                        failure = checkoutMessage(error)
+                        isPresented = false
+                    }
+                    .ignoresSafeArea()
+            }
+        }
+    }
+
+    /// Runs once the sheet has finished dismissing, whoever dismissed it (the shopper, the kit or `onFail`).
+    private func dismissed() {
+        let reason = failure
+        failure = nil
+        onDismiss(reason)
+    }
+}
+
+extension View {
+    /// Shows Shopify's checkout for `url` over this screen while `isPresented`: the cart screen's "Checkout" and the
+    /// product page's "Buy now". A placed order spends the cart. A checkout that fails keeps it; one Shopify no longer has
+    /// (expired, already paid) is dropped by loading the cart again. `onDismiss` runs once the sheet has gone, with the
+    /// reason when it failed: keep `url` set until then, so the sheet doesn't blank while it animates out.
+    func checkoutSheet(isPresented: Binding<Bool>, url: URL?, onDismiss: @escaping (_ failure: String?) -> Void) -> some View {
+        modifier(CheckoutPresenter(isPresented: isPresented, url: url, onDismiss: onDismiss))
+    }
+}
+
+// MARK: - Views
+
 @MainActor
 struct CartView: View {
     @State private var busy = false
@@ -23,8 +79,7 @@ struct CartView: View {
     // The URL stays set until the sheet has gone, so it doesn't blank while animating out; `checkingOut` drives it.
     @State private var checkout: URL? = nil
     @State private var checkingOut = false
-    // A checkout failure, shown once the sheet is gone: an alert raised while it is still dismissing can be lost.
-    @State private var checkoutFailure: String? = nil
+    @Environment(\.argonTheme) private var theme
 
     var body: some View {
         let cart = AppGraph.cart.cart
@@ -32,74 +87,55 @@ struct CartView: View {
             if let cart = cart, !cart.lines.isEmpty {
                 content(cart)
             } else if loading && cart == nil {
-                ProgressView()
+                ArgonSpinner()
             } else if let failure = failure, cart == nil {
                 ErrorView(message: failure) { attempt += 1 }
             } else {
-                Text("Your cart is empty")
+                Text("Your cart is empty").font(theme.type.body).foregroundStyle(theme.colors.muted)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .navigationTitle("Cart")
+        .background(theme.colors.paper)
+        .argonTopBar(title: "Cart")
         // The app loaded the cart at start; load again on each visit so the screen is current (and Retry has something to run).
         .task(id: attempt) { await load() }
         // Warm up checkout once the shopper is looking at a non-empty cart, and again after every change to it.
         .task(id: cart) { await preload(cart) }
-        .alert(message ?? "", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
-            Button("OK", role: .cancel) {}
+        .argonModal(
+            isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } }),
+            title: message ?? "",
+            message: "",
+            primaryAction: ArgonModalAction("OK")
+        )
+        .checkoutSheet(isPresented: $checkingOut, url: checkout) { failure in
+            checkout = nil
+            if let failure = failure { message = failure }
         }
-        .sheet(isPresented: $checkingOut, onDismiss: { checkoutDismissed() }) {
-            if let url = checkout {
-                CheckoutSheet(checkout: url)
-                    .onCancel { checkingOut = false }
-                    // the sheet stays open on the order confirmation until the shopper closes it (onCancel)
-                    .onComplete { _ in Task { await AppGraph.cart.completed() } }
-                    .onFail { error in
-                        // the cart is kept; one Shopify no longer has (expired, already paid) is dropped by loading it again
-                        if case .checkoutExpired = error { Task { _ = try? await AppGraph.cart.load() } }
-                        checkoutFailure = checkoutMessage(error)
-                        checkingOut = false
-                    }
-                    .ignoresSafeArea()
-            }
-        }
-    }
-
-    /// Runs once the checkout sheet has finished dismissing, whoever dismissed it (the shopper, the kit or `onFail`).
-    private func checkoutDismissed() {
-        checkout = nil
-        if let failure = checkoutFailure { message = failure }
-        checkoutFailure = nil
     }
 
     private func content(_ cart: Cart) -> some View {
         VStack(spacing: 0) {
             ScrollView {
-                LazyVStack(spacing: 16) {
+                LazyVStack(spacing: theme.spacing.l) {
                     ForEach(cart.lines, id: \.id) { line in
                         CartLineRow(line: line, busy: busy) { quantity in
                             act { try await AppGraph.cart.update(line.id, quantity: quantity) }
                         }
                     }
                 }
-                .padding(16)
+                .padding(theme.spacing.l)
             }
-            Divider()
-            VStack(spacing: 12) {
-                HStack {
-                    Text("Subtotal")
-                    Spacer()
+            ArgonDivider()
+            VStack(spacing: theme.spacing.m) {
+                HStack(spacing: theme.spacing.s) {
+                    Text("Subtotal").frame(maxWidth: .infinity, alignment: .leading)
                     Text(cart.subtotal.display())
                 }
-                .font(.headline)
-                Button { startCheckout() } label: {
-                    Text("Checkout").onBrand().frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(busy)
+                .font(theme.type.headline)
+                .foregroundStyle(theme.colors.ink)
+                ArgonButton(title: "Checkout", isEnabled: !busy, fullWidth: true) { startCheckout() }
             }
-            .padding(16)
+            .padding(theme.spacing.l)
         }
     }
 
@@ -144,7 +180,6 @@ struct CartView: View {
     }
 
     private func startCheckout() {
-        checkoutFailure = nil
         act {
             guard let link = await AppGraph.cart.checkoutUrl(), let url = URL(string: link) else { return }
             checkout = url
@@ -153,47 +188,59 @@ struct CartView: View {
     }
 }
 
+/// A cart line: image, product, variant, the selling plan it is bought on, a bundle's parts, then the quantity on the
+/// variant's quantity rule (its minimum, maximum and increments) with a bin beside it that removes the line.
+/// `onQuantity` gets the new quantity; 0 removes the line.
 @MainActor
 private struct CartLineRow: View {
     let line: CartLine
     let busy: Bool
     let onQuantity: (Int) -> Void
+    @Environment(\.argonTheme) private var theme
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            StoreImage(image: line.image)
+        let rule = line.quantityRule
+        HStack(alignment: .top, spacing: theme.spacing.m) {
+            StoreImage(url: line.image?.url, alt: line.image?.alt ?? line.productTitle)
                 .frame(width: 88, height: 88)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(line.productTitle).lineLimit(2)
-                // a product without options has Shopify's one "Default Title" variant; nothing worth showing
-                if line.variantTitle != "Default Title" {
-                    Text(line.variantTitle).font(.subheadline).foregroundStyle(.secondary)
+                .clipShape(RoundedRectangle(cornerRadius: theme.radius.m))
+            VStack(alignment: .leading, spacing: theme.spacing.xxs) {
+                HStack(alignment: .top, spacing: theme.spacing.s) {
+                    Text(line.productTitle).lineLimit(2).frame(maxWidth: .infinity, alignment: .leading)
+                    Text(line.total.display()).lineLimit(1).layoutPriority(1)
                 }
-                stepper
-            }
-            Spacer(minLength: 0)
-            Text(line.total.display())
-        }
-    }
-
-    /// − and +; at 1 the − becomes a bin, because it removes the line.
-    private var stepper: some View {
-        HStack(spacing: 4) {
-            Button { onQuantity(line.quantity - 1) } label: {
-                if line.quantity <= 1 {
-                    Label("Remove from cart", systemImage: "trash")
-                } else {
-                    Label("Decrease quantity", systemImage: "minus")
+                .font(theme.type.label)
+                .foregroundStyle(theme.colors.ink)
+                Group {
+                    // a product without options has Shopify's one "Default Title" variant; nothing worth showing
+                    if line.variantTitle != "Default Title" { Text(line.variantTitle) }
+                    if let plan = line.sellingPlanName { Text(plan) }
+                    ForEach(line.components, id: \.id) { part in Text(componentLabel(part)) }
                 }
-            }
-            Text(verbatim: "\(line.quantity)").frame(minWidth: 28)
-            Button { onQuantity(line.quantity + 1) } label: {
-                Label("Increase quantity", systemImage: "plus")
+                .font(theme.type.caption)
+                .foregroundStyle(theme.colors.muted)
+                HStack(spacing: theme.spacing.xs) {
+                    ArgonQuantityStepper(
+                        value: line.quantity,
+                        onChange: onQuantity,
+                        min: rule?.min ?? 1,
+                        max: rule?.maximum,
+                        step: rule?.step ?? 1,
+                        size: .s,
+                        isEnabled: !busy
+                    )
+                    Button { onQuantity(0) } label: {
+                        ArgonIcon(name: .trash, size: 20, tint: theme.colors.muted)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(busy)
+                    .opacity(busy ? 0.4 : 1)
+                    .accessibilityLabel("Remove from cart")
+                }
+                .padding(.top, theme.spacing.xs)
             }
         }
-        .labelStyle(.iconOnly)
-        .buttonStyle(.bordered)
-        .disabled(busy)
     }
 }
