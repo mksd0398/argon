@@ -70,6 +70,8 @@ private func loadProduct(_ handle: String) async throws -> Product {
     // The Product query loads variants(first: 250), the Storefront API's page ceiling. A selection past those is not in
     // the list: the page then goes by variantBySelectedOptions alone (ProductState.loadVariant).
     guard let product = try await AppGraph.storefront.product(handle) else { throw NotFound(what: "Product") }
+    // once per load: coming back to a page that is kept is not another view
+    AppGraph.analytics.track(.viewItem(product.analyticsItem(), currency: product.analyticsCurrency))
     return product
 }
 
@@ -323,7 +325,9 @@ struct ProductView: View {
                 icon: saved ? .heartFilled : .heart,
                 accessibilityLabel: saved ? "Remove from wishlist" : "Save to wishlist"
             ) {
-                Task { await AppGraph.wishlist.toggle(product.id) }
+                Task {
+                    await AppGraph.wishlist.toggle(product.id, added: .addToWishlist(product.analyticsItem(), currency: product.analyticsCurrency))
+                }
             })
         }
         let count = AppGraph.cart.cart?.totalQuantity ?? 0

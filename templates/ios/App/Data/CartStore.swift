@@ -33,6 +33,9 @@ private let cartLog = Logger(subsystem: "app.storefront", category: "CartStore")
 /// The shopper's cart through the Storefront Cart API. Only the cart id is kept on the device; `cart` is whatever the last
 /// response said. `accessToken` is the signed-in customer's token (nil when signed out), attached to the cart before checkout.
 /// A change Shopify refuses throws its `ArgonAPIError.userErrors` (Shopify's message, meant for the shopper).
+///
+/// Analytics: `track` gets what each change of the lines put in the cart and took out of it, once Shopify has accepted it,
+/// whoever asked for the change; `cartAttributes` are what a new cart carries (`Analytics.cartAttributes`).
 @MainActor
 @Observable
 final class CartStore {
@@ -42,6 +45,8 @@ final class CartStore {
     private let api: StorefrontAPI
     private let defaults: UserDefaults
     private let accessToken: () async throws -> String?
+    private let track: (AnalyticsEvent) -> Void
+    private let cartAttributes: () async -> [String: String]
     // One change at a time: two quick taps must not create two carts or interleave line updates.
     private let lock: AsyncLock
     /// The company location a B2B customer buys for (`setBuyer`); nil for anyone else.
@@ -58,10 +63,18 @@ final class CartStore {
         let companyLocationId: String?
     }
 
-    init(api: StorefrontAPI, defaults: UserDefaults, accessToken: @escaping () async throws -> String? = { nil }) {
+    init(
+        api: StorefrontAPI,
+        defaults: UserDefaults,
+        accessToken: @escaping () async throws -> String? = { nil },
+        track: @escaping (AnalyticsEvent) -> Void = { _ in },
+        cartAttributes: @escaping () async -> [String: String] = { [:] }
+    ) {
         self.api = api
         self.defaults = defaults
         self.accessToken = accessToken
+        self.track = track
+        self.cartAttributes = cartAttributes
         lock = AsyncLock()
     }
 
@@ -82,30 +95,32 @@ final class CartStore {
         await lock.lock()
         defer { lock.unlock() }
         let lines = [CartLineInput(merchandiseId: variantId, quantity: quantity, sellingPlanId: sellingPlanId)]
-        // a stored cart that has expired is replaced by a new one holding these lines
-        let added = try await change(
-            { try await self.api.addLines(cartId: $0, lines: lines) },
-            ifGone: { try await self.create(lines) }
-        )
-        if added == nil { _ = try await create(lines) }
+        try await reporting {
+            // a stored cart that has expired is replaced by a new one holding these lines
+            let added = try await self.change(
+                { try await self.api.addLines(cartId: $0, lines: lines) },
+                ifGone: { try await self.create(lines) }
+            )
+            if let added = added { return added }
+            return try await self.create(lines)
+        }
     }
 
     /// Sets the quantity of a line; 0 (or less) removes it.
     func update(_ lineId: String, quantity: Int) async throws {
         await lock.lock()
         defer { lock.unlock() }
-        if quantity <= 0 {
-            try await removeLine(lineId)
-        } else {
+        try await reporting {
+            if quantity <= 0 { return try await self.removeLine(lineId) }
             let lines = [CartLineUpdateInput(id: lineId, quantity: quantity)]
-            _ = try await change { try await self.api.updateLines(cartId: $0, lines: lines) }
+            return try await self.change { try await self.api.updateLines(cartId: $0, lines: lines) }
         }
     }
 
     func remove(_ lineId: String) async throws {
         await lock.lock()
         defer { lock.unlock() }
-        try await removeLine(lineId)
+        try await reporting { try await self.removeLine(lineId) }
     }
 
     /// Adds the discount `code` to the cart's codes (Shopify takes the whole list each time). False when Shopify says it
@@ -185,6 +200,10 @@ final class CartStore {
 
     private func create(_ lines: [CartLineInput]) async throws -> Cart {
         var input = CartInput(lines: lines)
+        // Only a new cart gets the attributes: sending them later would be one more cart mutation, and each one changes
+        // the checkout URL (see `attached`). Sorted, so the same attributes are always the same request.
+        let attributes = await cartAttributes().sorted { $0.key < $1.key }.map { CartAttribute(key: $0.key, value: $0.value) }
+        if !attributes.isEmpty { input.attributes = attributes }
         // a company's cart starts with its buyer, or its first lines would show retail prices; anyone else is attached at checkout
         if let location = companyLocationId, let token = try? await accessToken() {
             input.buyerIdentity = CartBuyerIdentityInput(customerAccessToken: token, companyLocationId: location)
@@ -193,8 +212,27 @@ final class CartStore {
         return try await send { try await self.api.cartCreate(created) }
     }
 
-    private func removeLine(_ lineId: String) async throws {
-        _ = try await change { try await self.api.removeLines(cartId: $0, lineIds: [lineId]) }
+    private func removeLine(_ lineId: String) async throws -> Cart? {
+        try await change { try await self.api.removeLines(cartId: $0, lineIds: [lineId]) }
+    }
+
+    /// Runs a change of the cart's lines (with the lock held), then reports what it put in the cart and took out of it:
+    /// the quantities Shopify answered with against those from before. So every caller is covered, and a load, a discount
+    /// code or a buyer change reports nothing. A new cart had nothing before. A change Shopify refused threw, and reports
+    /// nothing; nor does a change of a stored cart that was never loaded (an offline start): what it held isn't known.
+    private func reporting(_ mutation: () async throws -> Cart?) async throws {
+        let id = currentId()
+        let before = cart
+        guard let after = try await mutation() else { return }
+        let had: [CartLine]
+        if after.id != id {
+            had = []
+        } else if let before = before {
+            had = before.lines
+        } else {
+            return
+        }
+        cartLineEvents(before: had, after: after.lines).forEach(track)
     }
 
     private func currentId() -> String? {

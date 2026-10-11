@@ -29,11 +29,16 @@ final class CartStoreTests: XCTestCase {
         return try responseBody([payloadField(name): payload])
     }
 
-    /// A store on this test's defaults: a new one over the same defaults is the app after a restart.
+    /// What the store reported to analytics, in order.
+    private var events: [AnalyticsEvent] = []
+
+    /// A store on this test's defaults: a new one over the same defaults is the app after a restart. It reports to
+    /// `events` and gives a new cart `attributes`.
     @MainActor
     private func store(
         token: String? = nil,
         accessToken: (() async throws -> String?)? = nil,
+        attributes: @escaping () async -> [String: String] = { [:] },
         reply: ((String) async throws -> String)? = nil
     ) -> CartStore {
         let cart = cartJson
@@ -43,7 +48,13 @@ final class CartStoreTests: XCTestCase {
             self.calls.append((name: name, variables: variables))
             return Data(try await respond(name).utf8)
         })
-        return CartStore(api: api, defaults: UserDefaults(suiteName: suite)!, accessToken: tokenSource)
+        return CartStore(
+            api: api,
+            defaults: UserDefaults(suiteName: suite)!,
+            accessToken: tokenSource,
+            track: { self.events.append($0) },
+            cartAttributes: attributes
+        )
     }
 
     private func lines(_ value: Any?) -> [[String: Any]] { value as? [[String: Any]] ?? [] }
@@ -424,5 +435,161 @@ final class CartStoreTests: XCTestCase {
         XCTAssertNil(s.cart)
         try await s.add("v1", quantity: 1)
         XCTAssertEqual(names, ["CartCreate", "CartCreate"])
+    }
+
+    // MARK: Analytics
+
+    /// The fixture cart holding `quantity` of its one line; an empty cart for 0.
+    private func holding(_ quantity: Int) -> [String: Any] {
+        var line = ((cartJson["lines"] as? [String: Any])?["nodes"] as? [[String: Any]])?.first ?? [:]
+        line["quantity"] = quantity
+        var cart = cartJson
+        cart["lines"] = ["nodes": quantity == 0 ? [] : [line]]
+        return cart
+    }
+
+    /// `quantity` of the fixture line's variant, as analytics hears of it.
+    private func crewneck(_ quantity: Int) -> AnalyticsItem {
+        AnalyticsItem(
+            productId: "7982905098262",
+            variantId: "43696905224214",
+            name: "Men's Crewneck",
+            variant: "Small / Green",
+            price: 120.0,
+            quantity: quantity
+        )
+    }
+
+    @MainActor
+    func testEveryChangeOfTheLinesIsReportedByWhatShopifyAnswered() async throws {
+        var held = 2
+        let s = store(token: "tok", reply: { name in try self.answer(name, cart: self.holding(held)) })
+        try await s.add("v1", quantity: 2) // a new cart with 2
+        held = 5
+        try await s.add("v1", quantity: 3)
+        held = 4
+        try await s.update(lineId, quantity: 4)
+        held = 6
+        try await s.update(lineId, quantity: 6)
+        held = 0
+        try await s.remove(lineId)
+        XCTAssertEqual(events, [
+            .addToCart(crewneck(2), currency: "CAD"),
+            .addToCart(crewneck(3), currency: "CAD"),
+            .removeFromCart(crewneck(1), currency: "CAD"),
+            .addToCart(crewneck(2), currency: "CAD"),
+            .removeFromCart(crewneck(6), currency: "CAD"),
+        ])
+
+        // a quantity of 0 removes the line, as the cart's bin does
+        held = 1
+        try await s.add("v1", quantity: 1)
+        events.removeAll()
+        held = 0
+        try await s.update(lineId, quantity: 0)
+        XCTAssertEqual(events, [.removeFromCart(crewneck(1), currency: "CAD")])
+    }
+
+    @MainActor
+    func testALoadADiscountCodeABuyerChangeAndARefusedChangeReportNothing() async throws {
+        var held = 1
+        var refused = false
+        let s = store(token: "tok", reply: { name in
+            let cart = self.holding(held)
+            return try refused ? self.answer(name, cart: cart, "Not enough stock") : self.answer(name, cart: cart)
+        })
+        try await s.add("v1", quantity: 1)
+        events.removeAll()
+
+        held = 3 // the cart grew somewhere else (the store's web site): seeing that here is not adding to it
+        try await s.load()
+        _ = try await s.applyDiscount("WELCOME10")
+        try await s.removeDiscount("WELCOME10")
+        try await s.setBuyer("gid://shopify/CompanyLocation/1")
+        _ = await s.checkoutUrl()
+        refused = true
+        held = 9
+        let errors = await refusal { try await s.update(self.lineId, quantity: 9) }
+        XCTAssertEqual(errors?.first?.message, "Not enough stock")
+        XCTAssertEqual(events, [])
+    }
+
+    @MainActor
+    func testACartThatReplacesAnExpiredOneReportsOnlyWhatWasAdded() async throws {
+        var gone = false
+        var fresh = holding(1)
+        fresh["id"] = "gid://shopify/Cart/new"
+        let replacement = fresh
+        let s = store(token: "tok", reply: { name in
+            if !gone { return try self.answer(name, cart: self.holding(3)) }
+            switch name {
+            case "CartLinesAdd": return try self.answer(name, cart: nil, "The specified cart does not exist")
+            case "Cart": return try self.answer(name, cart: nil)
+            default: return try self.answer(name, cart: replacement)
+            }
+        })
+        try await s.add("v1", quantity: 3)
+        events.removeAll()
+        gone = true
+        try await s.add("v1", quantity: 1)
+        XCTAssertEqual(names, ["CartCreate", "CartLinesAdd", "Cart", "CartCreate"])
+        XCTAssertEqual(
+            events,
+            [.addToCart(crewneck(1), currency: "CAD")],
+            "the three that expired with the old cart were not taken out by the shopper"
+        )
+    }
+
+    @MainActor
+    func testAStoredCartThatWasNeverLoadedReportsNothingUntilItsLinesAreKnown() async throws {
+        try await store().add("v1", quantity: 1)
+        events.removeAll()
+        var held = 4
+        // a cold start whose load() never ran (offline): the cart held 3 already, so the 4 it answers with says nothing
+        let s = store(token: "tok", reply: { name in try self.answer(name, cart: self.holding(held)) })
+        try await s.add("v1", quantity: 1)
+        XCTAssertEqual(events, [])
+        held = 5
+        try await s.add("v1", quantity: 1)
+        XCTAssertEqual(events, [.addToCart(crewneck(1), currency: "CAD")])
+    }
+
+    @MainActor
+    func testOnlyANewCartCarriesTheAnalyticsAttributes() async throws {
+        var asked = 0
+        let s = store(token: "tok", attributes: {
+            asked += 1
+            return ["_ga_app_instance_id": "abc", "_argon_platform": "ios"]
+        })
+        try await s.add("v1", quantity: 1)
+        try await s.add("v2", quantity: 1)
+        try await s.update(lineId, quantity: 2)
+        _ = try await s.applyDiscount("WELCOME10")
+        _ = await s.checkoutUrl()
+        try await s.remove(lineId)
+
+        XCTAssertEqual(names.first, "CartCreate")
+        let input = calls[0].variables["input"] as? [String: Any]
+        XCTAssertEqual(
+            input?["attributes"] as? [[String: String]],
+            [["key": "_argon_platform", "value": "ios"], ["key": "_ga_app_instance_id", "value": "abc"]],
+            "in the order of their keys"
+        )
+        // a cart mutation changes the checkout URL: nothing sends them again, least of all a mutation of their own
+        XCTAssertEqual(asked, 1, "asked for once, for the one cart that was created")
+        XCTAssertEqual(names.dropFirst().filter { $0 == "CartCreate" || $0 == "CartAttributesUpdate" }, [])
+        XCTAssertEqual(calls.dropFirst().filter { "\($0.variables)".contains("_argon_platform") }.count, 0)
+
+        // and the cart that follows a placed order is new: it carries them too
+        await s.completed()
+        try await s.add("v1", quantity: 1)
+        XCTAssertEqual(asked, 2)
+        XCTAssertNotNil((calls.last?.variables["input"] as? [String: Any])?["attributes"])
+    }
+
+    @MainActor
+    func testWithoutAnalyticsAttributesANewCartHasNone() async throws {
+        try await store().add("v1", quantity: 1)
+        XCTAssertNil((calls[0].variables["input"] as? [String: Any])?["attributes"])
     }
 }

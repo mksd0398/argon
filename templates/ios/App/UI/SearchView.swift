@@ -19,7 +19,12 @@ final class SearchModel {
         listing = Listing(sorts: searchSorts) { [weak self] after, sort, applied in
             let query = self?.submitted ?? ""
             let results = try await AppGraph.storefront.search(query, filters: applied, sortKey: sort.key, reverse: sort.reverse, after: after)
-            return ProductPage(items: results.products, filters: results.filters, endCursor: results.endCursor, hasNext: results.hasNextPage)
+            let products = results.products
+            // analytics' `view_item_list`: the results as they open (their first page)
+            if after == nil {
+                AppGraph.analytics.track(.viewItemList(listId: nil, listName: "Search results", items: products.map { $0.analyticsItem() }))
+            }
+            return ProductPage(items: products, filters: results.filters, endCursor: results.endCursor, hasNext: results.hasNextPage)
         }
     }
 
@@ -35,6 +40,7 @@ final class SearchModel {
         if q.isEmpty { return }
         text = q
         submitted = q
+        AppGraph.analytics.track(.search(q))
         listing.reload(sort: searchSorts[0], applied: [], resetFilters: true)
     }
 }

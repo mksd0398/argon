@@ -18,15 +18,24 @@ final class CollectionModel {
         title = all ? "All products" : ""
         listing = Listing(sorts: all ? catalogSorts : collectionSorts) { [weak self] after, sort, applied in
             let api = AppGraph.storefront
+            // the collection's numeric id; the whole catalogue is a list without one
+            var listId: String? = nil
+            let page: Page<ProductCard>
             if all {
-                let page = try await api.products(sortKey: sort.key, reverse: sort.reverse, after: after)
-                return ProductPage(page)
+                page = try await api.products(sortKey: sort.key, reverse: sort.reverse, after: after)
+            } else {
+                let found = try await api.collection(handle, filters: applied, sortKey: sort.key, reverse: sort.reverse, after: after)
+                guard let collection = found else { throw NotFound(what: "Collection") }
+                listId = gidTail(collection.id)
+                self?.title = collection.title
+                self?.description = withoutLeadingCss(collection.description)
+                page = collection.products
             }
-            let found = try await api.collection(handle, filters: applied, sortKey: sort.key, reverse: sort.reverse, after: after)
-            guard let collection = found else { throw NotFound(what: "Collection") }
-            self?.title = collection.title
-            self?.description = withoutLeadingCss(collection.description)
-            return ProductPage(collection.products)
+            // analytics' `view_item_list`: the list as it opens (its first page), not each page scrolled to
+            if after == nil, let name = self?.title {
+                AppGraph.analytics.track(.viewItemList(listId: listId, listName: name, items: page.items.map { $0.analyticsItem() }))
+            }
+            return ProductPage(page)
         }
     }
 }
