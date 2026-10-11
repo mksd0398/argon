@@ -1,3 +1,4 @@
+import ArgonUI
 import Observation
 import SwiftUI
 
@@ -46,9 +47,12 @@ final class WishlistModel {
     func pending(_ ids: [String]) -> Bool { ids.contains { !asked.contains($0) } }
 }
 
+/// The Wishlist tab: the saved products as a grid of cards, newest first.
 @MainActor
 struct WishlistView: View {
     @State private var model = WishlistModel(fetch: fetchCards)
+    @Environment(Router.self) private var router
+    @Environment(\.argonTheme) private var theme
 
     var body: some View {
         let ids = AppGraph.wishlist.ids
@@ -56,17 +60,28 @@ struct WishlistView: View {
         VStack {
             if !saved.isEmpty {
                 // a failed fetch of a newly saved product shows as the grid's Retry footer
-                ProductGrid(items: saved, hasNext: model.error != nil, onLoadMore: { retry() }, error: model.error)
+                ProductGrid(
+                    items: saved,
+                    hasNext: model.error != nil,
+                    onLoadMore: { retry() },
+                    onOpen: { router.open(.product($0.handle)) },
+                    error: model.error
+                )
             } else if let error = model.error {
                 ErrorView(message: error) { retry() }
             } else if model.pending(ids) {
-                ProgressView()
+                ArgonSpinner()
             } else {
                 Text("Tap ♡ on a product to save it")
+                    .font(theme.type.body)
+                    .foregroundStyle(theme.colors.muted)
+                    .multilineTextAlignment(.center)
+                    .padding(theme.spacing.xl)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .navigationTitle("Wishlist")
+        .background(theme.colors.paper)
+        .argonTopBar(title: "Wishlist")
         .task(id: ids) { await model.sync(ids) }
     }
 

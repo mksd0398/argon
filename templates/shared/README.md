@@ -16,7 +16,7 @@ A SwiftUI iOS app (`ios/`, iOS 17+) and a Jetpack Compose Android app (`android/
 2. Connect the iPhone by USB, trust the computer, and turn on Developer Mode (Settings → Privacy & Security).
 3. Run `cd ios && xtool dev`.
 
-xtool has no build settings, so the app reads its per-store values from `ios/Config.xcconfig`, which `xtool.yml` copies into the app. `xtool.yml` also lists every GraphQL document: when you add a query, add its file there too. With a free Apple ID the installed app expires after 7 days and xtool prefixes the bundle ID.
+xtool has no build settings, so the app reads its per-store values from `ios/Config.xcconfig`, which `xtool.yml` copies into the app. `xtool.yml` also lists every file the app reads from its bundle (the GraphQL documents, the home banners): when you add one, add it there too. With a free Apple ID the installed app expires after 7 days and xtool prefixes the bundle ID.
 
 ## Configuration
 
@@ -32,15 +32,63 @@ One key list, two files with the same key names. Edit, then rebuild.
 | `APP_NAME` | Display name under the app icon |
 | `BUNDLE_ID` | iOS bundle ID / Android `applicationId` |
 | `PDP_METAFIELDS` | Product metafields to list on the product page, comma-separated `namespace.key` (e.g. `custom.material,custom.care`). Empty shows none |
+| `HOME_TEMPLATE` | Home screen layout: `fashion`, `beauty`, `grocery` or `b2b` |
+| `COLLECTION_TEMPLATE` | Collection layout: `top` (sticky sort and filter bar) or `bottom` (floating bar) |
+| `JUDGEME_PUBLIC_TOKEN` | Judge.me *public* API token, for product reviews. Empty hides reviews |
+| `SHOW_VENDOR` | `true` shows the vendor on product cards and the product page. `false` (the default) hides it, as Shopify's own themes do |
+| `ONBOARDING` | `true` (the default) shows a three-page welcome the first time the app opens. `false` skips it |
+| `FREE_SHIPPING_THRESHOLD` | The cart total from which shipping is free, as a number in the shop's currency (e.g. `150`). The cart shows the progress towards it. Empty hides the bar |
 
 - iOS: `ios/Config.xcconfig` (`KEY = value`)
 - Android: `android/shopify.properties` (`KEY=value`)
 
 With an empty `STOREFRONT_TOKEN` on any store other than `mock.shop`, the app shows a setup screen naming the missing key.
 
+## App icon and launch screen
+
+Argon made both from the store's logo (Shopify admin → Settings → Brand) when it generated this project. They are part of the app, so nothing changes them at run time. To change them, replace these files and rebuild, or set the logo in Shopify and generate the project again.
+
+| File | Content |
+|---|---|
+| `android/app/src/main/res/drawable-xxxhdpi/launcher_logo.png` | The logo in the Android icon and on its launch screen: at most 264×264 px, transparent background |
+| `android/app/src/main/res/values/launcher.xml` | `launcher_background`: the colour behind that logo |
+| `ios/App/Assets.xcassets/AppIcon.appiconset/AppIcon.png` | The iOS icon: 1024×1024 px, no transparency |
+| `ios/App/Assets.xcassets/LaunchLogo.imageset/LaunchLogo.png` | The logo on the iOS launch screen: at most 600×600 px, transparent background |
+| `ios/App/Assets.xcassets/LaunchBackground.colorset/Contents.json` | The iOS launch screen's background colour |
+
+The colour is the logo's own background where it has one, else white.
+
+If the store had no logo Argon could use, Android has its default mark instead of the first file (a vector, `res/drawable/launcher_logo.xml`; delete it when you add `launcher_logo.png`, because a resource can't be both), and iOS has a plain icon and an empty launch logo. With xtool the icon is the same `AppIcon.png` (`iconPath` in `ios/xtool.yml`) and the launch screen stays plain.
+
+## Page templates
+
+Both apps carry every template; `HOME_TEMPLATE` and `COLLECTION_TEMPLATE` pick the ones shown. Change the value in both config files and rebuild.
+
+- **Home**: `fashion` (editorial, image-led), `beauty` (soft cards, ratings, shop by routine), `grocery` (search first, dense rows, quick add), `b2b` (SKUs, trade prices, bulk quantities). Each lays out the store's banners, collections and product rows from [the home screen content](#edit-the-home-screen).
+- **Stock banners**: until the store has its own banners, each template shows three photos from Shopify's Burst library (`android/app/src/main/assets/home/`, `ios/App/Resources/home/`). Delete the ones of templates you don't use.
+- **Collection**: `top` keeps sort and filter chips in a sticky bar under the title; `bottom` puts Sort and Filter in a floating bar. Colour filters and product cards show swatches: Shopify's swatch data where the store has it, else a colour matched from the name.
+- **Product**: variants with swatches, bundles, unit prices, quantity rules and volume pricing, subscriptions, a sticky add-to-cart bar, recommendations, recently viewed, reviews.
+- **Orders and account**: order tracking and payments, a return or exchange request, profile, addresses, company, store credit.
+- **Onboarding**: with `ONBOARDING=true`, three welcome pages over the home template's stock banners, shown once before the tabs. Debug builds can run it again from Account → Show onboarding.
+- **Cart**: with `FREE_SHIPPING_THRESHOLD` set, a bar shows how much more the cart needs for free shipping. The app only shows the message: the free shipping rate itself is set in Shopify admin (Settings → Shipping and delivery), at the same amount. The cart also takes discount codes and shows the savings.
+
+### Reviews (Judge.me)
+
+Set `JUDGEME_PUBLIC_TOKEN` to the **public** token from Judge.me admin → Settings → Integrations → View API tokens. The product page then shows the rating summary and the reviews, and takes new ones. Never use the private token: anything in the config files ships inside the app.
+
+Rating stars on product cards come from the standard `reviews.rating` and `reviews.rating_count` product metafields, which Judge.me keeps up to date. They appear once those two definitions have **Storefront API access** on (Settings → Custom data → Products).
+
+### B2B
+
+When the signed-in customer is a contact of a company (Shopify B2B), the apps run every Storefront call as that company location: catalogue prices, quantity rules and volume pricing show on the product page, and checkout opens as the company. A contact with several locations switches between them on the Account screen.
+
+### Returns and exchanges
+
+The order page offers **Return or exchange items** when the store has self-serve returns on (Settings → Customer accounts) and something is returnable. Shopify's Customer Account API takes return requests only, so an exchange is sent as a return whose note names the wanted variant; complete it from the return in Shopify admin.
+
 ## Demo store (`mock.shop`)
 
-`mock.shop` has no metaobjects, so Home shows the fallback home. It also doesn't implement `nodes(ids:)`, so the Wishlist tab stays empty there. It works on real stores.
+`mock.shop` has no metaobjects, so Home shows the template's stock banners over the store's collections. It has no customer accounts or reviews app either: the Account tab offers **Preview with a sample account** (sample orders, a return, a company) and product pages show sample reviews, so those pages can be seen. It also doesn't implement `nodes(ids:)`, so the Wishlist tab and Recently viewed stay empty there. They work on real stores. The demo sets `FREE_SHIPPING_THRESHOLD=150` so its cart shows the free-shipping bar.
 
 ## Edit the home screen
 
@@ -52,6 +100,7 @@ In Shopify admin go to **Content → Metaobjects → Mobile screen → Home**. T
 - The **storefront password is off** (Online Store → Preferences), or Checkout Kit can't open checkout.
 - **Products and collections are available to the Headless storefront's sales channel**, and its Storefront API keeps the metaobject read permission, or the app shows an empty or fallback home.
 - **Collection and search filters** appear only after the Search & Discovery app has filters configured.
+- **Storefront API permissions** (Headless channel → Storefront API): the apps leave out what a permission you turn off would have fed. Without `unauthenticated_read_product_inventory`, for example, the product page shows no "Only 3 left".
 
 ## Publishing
 

@@ -1,0 +1,12 @@
+query ProductMetafields(
+  $handle: String!
+  $metafields: [HasMetafieldsIdentifier!]!
+  $country: CountryCode
+  $language: LanguageCode
+  $buyer: BuyerInput
+) @inContext(country: $country, language: $language, buyer: $buyer) {
+  product(handle: $handle) {
+    id
+    metafields(identifiers: $metafields) { namespace key type value }
+  }
+}

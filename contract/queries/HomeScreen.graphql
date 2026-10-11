@@ -2,7 +2,8 @@ query HomeScreen(
   $handle: String!
   $country: CountryCode
   $language: LanguageCode
-) @inContext(country: $country, language: $language) {
+  $buyer: BuyerInput
+) @inContext(country: $country, language: $language, buyer: $buyer) {
   metaobject(handle: { type: "mobile_screen", handle: $handle }) {
     field(key: "sections") {
       references(first: 20) {

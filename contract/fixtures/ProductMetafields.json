@@ -1,0 +1,14 @@
+{
+  "product": {
+    "id": "gid://shopify/Product/7982905098262",
+    "metafields": [
+      {
+        "namespace": "custom",
+        "key": "material",
+        "type": "single_line_text_field",
+        "value": "100% organic cotton"
+      },
+      null
+    ]
+  }
+}

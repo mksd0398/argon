@@ -19,22 +19,50 @@ struct ArgonApp: SwiftUI.App {
     }
 }
 
-/// The tabs in the shop's colour, or the setup screen when the app can't reach the store.
+/// The tabs in the shop's colour, after the welcome on a first launch; or the setup screen when the app can't reach the
+/// store.
 @MainActor
 struct AppRoot: View {
+    @Environment(\.scenePhase) private var scenePhase
+
     var body: some View {
         // the app can't reach a real store without its Storefront token (mock.shop needs none)
         if AppGraph.storefrontToken.trimmingCharacters(in: .whitespaces).isEmpty && AppGraph.shopDomain != "mock.shop" {
             SetupView()
+        } else if AppGraph.onboarding && !AppGraph.onboardingStore.done {
+            OnboardingView { signIn in
+                // the tabs open on Home, or on Account for the welcome's "Sign in"
+                AppGraph.tabs.selected = signIn ? .account : .home
+                AppGraph.onboardingStore.finish()
+            }
+            // Argon's own accent, not the shop's: over a photo the button is the light one
+            .argonTheme(accentHex: nil)
         } else {
             Tabs()
-                .tint(brandColor(AppGraph.brand.value?.accent) ?? .accentColor)
                 // A preloaded checkout shows the cart and the buyer as they were: a cart change (a product added, a stepper
                 // tap), a sign-in or a sign-out makes it stale.
                 .onChange(of: AppGraph.cart.cart) { ShopifyCheckoutSheetKit.invalidate() }
                 .onChange(of: AppGraph.auth.signedIn) { ShopifyCheckoutSheetKit.invalidate() }
-                // Argon components read the theme; the tint above stays closer, so today's screens look as they did
+                // The B2B buyer follows the session: looked up at start (when there is a session), after sign-in and each
+                // time the token changes (the Storefront API and the cart hold the token itself), dropped on sign-out.
+                // The sample account shows its company the same way.
+                .onChange(of: buyerSession, initial: true) { refreshBuyer() }
+                // back in the foreground the token may have run out meanwhile: the refresh asks for a valid one
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .active { refreshBuyer() }
+                }
+                // Argon components read the theme (the screens that still draw native controls are tinted in `Tabs`)
                 .argonTheme(accentHex: AppGraph.brand.value?.accent)
         }
+    }
+
+    /// Changes whenever the buyer may have: signed in or out, a new token, the sample account on or off.
+    private var buyerSession: [Int] {
+        [AppGraph.auth.signedIn ? 1 : 0, AppGraph.auth.tokenChanges, AppGraph.sampleAccount ? 1 : 0]
+    }
+
+    private func refreshBuyer() {
+        // not tied to a view: a refresh under way must finish, or the buyer would be left half applied
+        Task { await AppGraph.buyer.refresh() }
     }
 }

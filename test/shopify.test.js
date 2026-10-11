@@ -4,7 +4,9 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { buildClientSchema, NoDeprecatedCustomRule, parse, specifiedRules, validate } from "graphql";
 import { createShopify, defaultExec } from "../lib/shopify.js";
+import { decodePng } from "../lib/png.js";
 import { loadContract } from "../lib/contract.js";
 
 const STORE = "nalli.myshopify.com";
@@ -274,6 +276,72 @@ test("storefrontContent: a denied metaobject is false, a failed query is unknown
   assert.deepEqual(await answer(empty).storefrontContent("nalli.myshopify.com", "t"), { products: false, home: true });
   const failed = { data: null, errors: [{ message: "Internal error" }] };
   assert.deepEqual(await answer(failed).storefrontContent("nalli.myshopify.com", "t"), { products: null, home: null });
+});
+
+test("storefrontLogo: the two logos as PNG URLs and the primary colour, from one query the 2026-10 schema accepts", async (t) => {
+  const sent = [];
+  const answer = (body) => setup(t, undefined, { fetch: async (url, init) => (sent.push([url, init]), Response.json(body)) }).shopify;
+  const image = (name) => ({ image: { url: `https://cdn.shopify.com/s/files/1/${name}.png?width=1024&height=1024` } });
+  const brand = { squareLogo: image("square"), logo: image("logo"), colors: { primary: [{ background: "#1c6e4a" }, { background: "#000000" }] } };
+
+  assert.deepEqual(await answer({ data: { shop: { brand } } }).storefrontLogo("nalli.myshopify.com", "tok"), {
+    square: "https://cdn.shopify.com/s/files/1/square.png?width=1024&height=1024",
+    logo: "https://cdn.shopify.com/s/files/1/logo.png?width=1024&height=1024",
+    primary: "#1C6E4A",
+  });
+  const [url, init] = sent[0];
+  assert.equal(url, "https://nalli.myshopify.com/api/2026-10/graphql.json");
+  assert.equal(init.headers["X-Shopify-Storefront-Access-Token"], "tok");
+  const { query } = JSON.parse(init.body);
+  assert.equal(query.match(/url\(transform: \{ maxWidth: 1024, maxHeight: 1024, preferredContentType: PNG \}\)/g).length, 2);
+  const schema = buildClientSchema(JSON.parse(readFileSync(new URL("schema/storefront-2026-10.json", import.meta.url), "utf8")), { assumeValid: true });
+  assert.deepEqual(validate(schema, parse(query), [...specifiedRules, NoDeprecatedCustomRule]).map((e) => e.message), []);
+
+  // what mock.shop answers: no square logo, no colours
+  const none = { square: null, logo: null, primary: null };
+  assert.deepEqual(await answer({ data: { shop: { brand: { squareLogo: null, logo: image("logo"), colors: { primary: [] } } } } }).storefrontLogo("mock.shop", ""),
+    { ...none, logo: "https://cdn.shopify.com/s/files/1/logo.png?width=1024&height=1024" });
+  // no brand, a colour that isn't #RRGGBB, a failed query: nothing to use, and no throw
+  assert.deepEqual(await answer({ data: { shop: { brand: null } } }).storefrontLogo("nalli.myshopify.com", "t"), none);
+  assert.deepEqual(await answer({ data: { shop: { brand: { squareLogo: null, logo: null, colors: { primary: [{ background: "green" }] } } } } }).storefrontLogo("nalli.myshopify.com", "t"), none);
+  assert.deepEqual(await answer({ data: null, errors: [{ message: "Internal error" }] }).storefrontLogo("nalli.myshopify.com", "t"), none);
+});
+
+test("download: the body's bytes, with a timeout; an HTTP error, a body over the limit and a stalled server reject", async (t) => {
+  const asked = [];
+  const serve = (response) => setup(t, undefined, { fetch: async (url, init) => (asked.push([url, init]), response()) }).shopify;
+
+  const bytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 255]);
+  assert.deepEqual(await serve(() => new Response(bytes)).download("https://cdn.shopify.com/logo.png"), bytes);
+  assert.equal(asked[0][0], "https://cdn.shopify.com/logo.png");
+  assert.ok(asked[0][1].signal instanceof AbortSignal);
+  assert.deepEqual(await serve(() => new Response(null, { status: 200 })).download("https://cdn.shopify.com/empty"), Buffer.alloc(0));
+
+  await assert.rejects(serve(() => new Response("gone", { status: 404 })).download("https://cdn.shopify.com/logo.png"), /^Error: HTTP 404$/);
+
+  await assert.rejects(serve(() => new Response(Buffer.alloc(5))).download("https://cdn.shopify.com/logo.png", { maxBytes: 4 }), /larger than/);
+  await serve(() => new Response(Buffer.alloc(4))).download("https://cdn.shopify.com/logo.png", { maxBytes: 4 });
+  // a body that never ends is dropped at the limit, not read to the end
+  let cancelled = false;
+  const endless = () => new Response(new ReadableStream({ pull: (c) => c.enqueue(new Uint8Array(1024)), cancel: () => { cancelled = true; } }));
+  await assert.rejects(serve(endless).download("https://cdn.shopify.com/logo.png"), /^Error: larger than 8 MB$/);
+  assert.equal(cancelled, true);
+
+  // AbortSignal.timeout's timer doesn't keep Node running (a real fetch's socket does), so the stand-in holds the loop open
+  const stalled = (url, { signal }) => new Promise((_, reject) => {
+    const open = setInterval(() => {}, 1000);
+    signal.addEventListener("abort", () => (clearInterval(open), reject(signal.reason)));
+  });
+  await assert.rejects(setup(t, undefined, { fetch: stalled }).shopify.download("https://cdn.shopify.com/logo.png", { timeoutMs: 20 }), { name: "TimeoutError" });
+});
+
+// Live (ARGON_LIVE=1, see `npm run test:live`): the demo's icon is made from this
+test("live: mock.shop's logo is found, downloads and decodes", { skip: !process.env.ARGON_LIVE, timeout: 60_000 }, async (t) => {
+  const { shopify } = setup(t); // the real fetch
+  const { square, logo } = await shopify.storefrontLogo("mock.shop", "");
+  const image = decodePng(await shopify.download(square ?? logo));
+  assert.ok(image.width > 0 && image.height > 0);
+  assert.equal(image.data.length, image.width * image.height * 4);
 });
 
 test("defaultExec: runs through a shell and returns code, stdout and stderr; a path with spaces is one argument", async (t) => {

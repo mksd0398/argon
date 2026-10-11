@@ -86,6 +86,19 @@ final class CartStoreTests: XCTestCase {
     }
 
     @MainActor
+    func testAddOnASellingPlanNamesThePlanAndAOneTimePurchaseNamesNone() async throws {
+        let s = store()
+        try await s.add("v1", quantity: 1)
+        try await s.add("v2", quantity: 2, sellingPlanId: "gid://shopify/SellingPlan/1")
+        let created = lines((calls[0].variables["input"] as? [String: Any])?["lines"])
+        XCTAssertEqual(created.count, 1)
+        XCTAssertNil(created.first?["sellingPlanId"])
+        let added = lines(calls[1].variables["lines"])
+        XCTAssertEqual(added.count, 1)
+        XCTAssertEqual(added.first?["sellingPlanId"] as? String, "gid://shopify/SellingPlan/1")
+    }
+
+    @MainActor
     func testAnExpiredCartIsDroppedWithoutAnError() async throws {
         try await store().add("v1", quantity: 1)
         calls.removeAll()
@@ -121,6 +134,42 @@ final class CartStoreTests: XCTestCase {
         let variables = calls[1].variables
         XCTAssertEqual(variables["cartId"] as? String, cartId)
         XCTAssertEqual((variables["buyerIdentity"] as? [String: Any])?["customerAccessToken"] as? String, "tok")
+    }
+
+    // Shopify answers every buyer update with a checkout URL under a new key. Attaching the same customer to the same
+    // cart again would change the cart each time, and the cart screen, which prepares checkout whenever the cart
+    // changes, would reload checkout without end (seen on a phone with a signed-in customer).
+    @MainActor
+    func testCheckoutUrlAttachesTheSameBuyerToACartOnlyOnce() async throws {
+        var key = 0
+        var token = "tok"
+        let s = store(
+            accessToken: { token },
+            reply: { name in
+                guard name == "CartBuyerIdentityUpdate" else { return try self.answer(name, cart: self.cartJson) }
+                key += 1
+                var keyed = self.cartJson
+                keyed["checkoutUrl"] = "https://shop.test/checkout?key=\(key)"
+                return try self.answer(name, cart: keyed)
+            }
+        )
+        try await s.add("v1", quantity: 1)
+        let first = await s.checkoutUrl()
+        XCTAssertEqual(first, "https://shop.test/checkout?key=1")
+
+        let again = await s.checkoutUrl()
+        XCTAssertEqual(again, "https://shop.test/checkout?key=1", "asked again: the same URL")
+        XCTAssertEqual(s.cart?.checkoutUrl, "https://shop.test/checkout?key=1", "and the cart is as it was")
+        XCTAssertEqual(names, ["CartCreate", "CartBuyerIdentityUpdate"], "nothing more was sent")
+
+        // a refreshed token is attached once more
+        token = "tok2"
+        let refreshed = await s.checkoutUrl()
+        XCTAssertEqual(refreshed, "https://shop.test/checkout?key=2")
+        let refreshedAgain = await s.checkoutUrl()
+        XCTAssertEqual(refreshedAgain, "https://shop.test/checkout?key=2")
+        XCTAssertEqual(names, ["CartCreate", "CartBuyerIdentityUpdate", "CartBuyerIdentityUpdate"])
+        XCTAssertEqual((calls[2].variables["buyerIdentity"] as? [String: Any])?["customerAccessToken"] as? String, "tok2")
     }
 
     @MainActor
@@ -273,6 +322,83 @@ final class CartStoreTests: XCTestCase {
         XCTAssertEqual(calls[2].variables["lineIds"] as? [String], [lineId])
         try await s.remove(lineId)
         XCTAssertEqual(names.last, "CartLinesRemove")
+    }
+
+    // MARK: Discount codes
+
+    /// The fixture cart carrying `codes`, each with whether it counts.
+    private func withCodes(_ codes: [String], applicable: (String) -> Bool = { _ in true }) -> [String: Any] {
+        var cart = cartJson
+        cart["discountCodes"] = codes.map { ["code": $0, "applicable": applicable($0)] as [String: Any] }
+        return cart
+    }
+
+    /// The codes each `CartDiscountCodesUpdate` sent, in order.
+    private var sentCodes: [[String]] {
+        calls.filter { $0.name == "CartDiscountCodesUpdate" }.map { $0.variables["discountCodes"] as? [String] ?? [] }
+    }
+
+    /// A store whose cart starts with `carried` codes; Shopify counts the codes in `valid` and no others.
+    @MainActor
+    private func discountStore(_ carried: [String] = [], valid: Set<String>) -> CartStore {
+        store(reply: { name in
+            guard name == "CartDiscountCodesUpdate" else { return try self.answer(name, cart: self.withCodes(carried)) }
+            let sent = self.calls.last?.variables["discountCodes"] as? [String] ?? []
+            return try self.answer(name, cart: self.withCodes(sent) { valid.contains($0) })
+        })
+    }
+
+    @MainActor
+    func testApplyingADiscountSendsTheWholeListWithTheNewCode() async throws {
+        let s = discountStore(["VIP"], valid: ["VIP", "WELCOME10"])
+        try await s.add("v1", quantity: 1)
+        let applied = try await s.applyDiscount(" WELCOME10 ")
+        XCTAssertTrue(applied)
+        XCTAssertEqual(sentCodes, [["VIP", "WELCOME10"]])
+        XCTAssertEqual(calls.last?.variables["cartId"] as? String, cartId)
+        XCTAssertEqual(s.cart?.discountCodes.map { $0.code }, ["VIP", "WELCOME10"])
+    }
+
+    @MainActor
+    func testACodeThatDoesNotApplyIsTakenOffAgain() async throws {
+        let s = discountStore(["VIP"], valid: ["VIP"])
+        try await s.add("v1", quantity: 1)
+        let applied = try await s.applyDiscount("NOPE")
+        XCTAssertFalse(applied)
+        XCTAssertEqual(sentCodes, [["VIP", "NOPE"], ["VIP"]], "sent with the code, then without it")
+        XCTAssertEqual(s.cart?.discountCodes.map { $0.code }, ["VIP"])
+    }
+
+    @MainActor
+    func testEnteringACodeAgainDoesNotListItTwice() async throws {
+        let s = discountStore(["VIP"], valid: ["VIP", "vip"])
+        try await s.add("v1", quantity: 1)
+        let applied = try await s.applyDiscount("vip")
+        XCTAssertTrue(applied)
+        XCTAssertEqual(sentCodes, [["vip"]])
+    }
+
+    @MainActor
+    func testRemovingADiscountSendsTheListWithoutIt() async throws {
+        let s = discountStore(["VIP", "WELCOME10"], valid: ["VIP", "WELCOME10"])
+        try await s.add("v1", quantity: 1)
+        try await s.removeDiscount("welcome10")
+        XCTAssertEqual(sentCodes, [["VIP"]])
+        XCTAssertEqual(s.cart?.discountCodes.map { $0.code }, ["VIP"])
+        try await s.removeDiscount("VIP")
+        XCTAssertEqual(sentCodes.last, [], "the last one leaves an empty list")
+    }
+
+    @MainActor
+    func testADiscountNeedsACartAndACode() async throws {
+        let s = discountStore(valid: ["WELCOME10"])
+        let withoutCart = try await s.applyDiscount("WELCOME10")
+        XCTAssertFalse(withoutCart, "no cart")
+        try await s.removeDiscount("WELCOME10")
+        try await s.add("v1", quantity: 1)
+        let withoutCode = try await s.applyDiscount("  ")
+        XCTAssertFalse(withoutCode, "no code")
+        XCTAssertEqual(sentCodes, [])
     }
 
     @MainActor

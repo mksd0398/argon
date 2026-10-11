@@ -8,6 +8,11 @@
     "descriptionHtml": "<meta charset=\"utf-8\"><span data-mce-fragment=\"1\">This high-quality crewneck is perfect for your everyday look. Made with 100% cotton, it's soft, comfortable, and undeniably stylish. Full sleeved for a classic look and effortlessly versatile, this cotton crewneck is a must-have in any wardrobe.</spa…",
     "availableForSale": true,
     "isGiftCard": false,
+    "tags": [
+      "men",
+      "tops"
+    ],
+    "onlineStoreUrl": null,
     "requiresSellingPlan": false,
     "encodedVariantExistence": "v1_0:0-4,1:0-4,2:0-4,",
     "encodedVariantAvailability": "v1_0:0-4,1:0-4,2:0-4,",
@@ -484,12 +489,7 @@
         }
       ]
     },
-    "sellingPlanGroups": {
-      "nodes": []
-    },
-    "metafields": [
-      null,
-      null
-    ]
+    "rating": null,
+    "ratingCount": null
   }
 }

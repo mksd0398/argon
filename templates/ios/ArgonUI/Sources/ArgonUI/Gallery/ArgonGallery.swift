@@ -61,6 +61,9 @@ private struct GalleryContent: View {
     @State private var sheet = false
     @State private var bottomBar = false
     @State private var menuOpen = false
+    @State private var quantity = 2
+    @State private var packs = 6
+    @State private var colour = 0
 
     init() {}
 
@@ -70,7 +73,7 @@ private struct GalleryContent: View {
             LazyVStack(alignment: .leading, spacing: theme.spacing.xxl) {
                 Group { tokens; icons; buttons; choices; fields }
                 Group { selection; pickers; tagSection; badges; containers }
-                Group { progress; list; navigation }
+                Group { commerce; progress; list; navigation }
             }
             .padding(theme.spacing.l)
         }
@@ -344,6 +347,48 @@ private struct GalleryContent: View {
         }
     }
 
+    private var commerce: some View {
+        let colours: [(name: String, hex: String?)] = [("Ivory", "#FFFFF0"), ("Rust", "#B7410E"), ("Navy", "#1F2A5C"), ("Print", nil)]
+        return VStack(alignment: .leading, spacing: theme.spacing.xxl) {
+            GallerySection("Rating") {
+                ArgonRating(value: 4.6, count: 128)
+                ArgonRating(value: 3.5, count: 12, size: .m)
+                ArgonRating(value: 5, size: .l)
+            }
+            GallerySection("QuantityStepper") {
+                HStack(spacing: theme.spacing.l) {
+                    ArgonQuantityStepper(value: quantity, onChange: { quantity = $0 }, size: .s)
+                    ArgonQuantityStepper(value: quantity, onChange: { quantity = $0 }, max: 5)
+                    ArgonQuantityStepper(value: 1, onChange: { _ in }, size: .l, isEnabled: false)
+                }
+                ArgonQuantityStepper(value: packs, onChange: { packs = $0 }, min: 6, max: 48, step: 6)
+                caption("Sold in sixes: 6 to 48")
+            }
+            GallerySection("Swatch") {
+                HStack(spacing: theme.spacing.s) {
+                    ForEach(colours.indices, id: \.self) { index in
+                        ArgonSwatch(colorHex: colours[index].hex, label: colours[index].name, size: .s)
+                    }
+                }
+                HStack(spacing: theme.spacing.s) {
+                    ForEach(colours.indices, id: \.self) { index in
+                        ArgonSwatch(colorHex: colours[index].hex, label: colours[index].name, isSelected: colour == index) { colour = index }
+                    }
+                    ArgonSwatch(colorHex: nil, imageUrl: sampleImage, label: "Floral")
+                    ArgonSwatch(colorHex: "#2E7D4F", label: "Forest", isAvailable: false)
+                }
+                HStack(alignment: .top, spacing: theme.spacing.s) {
+                    ForEach(colours.indices, id: \.self) { index in
+                        ArgonSwatch(
+                            colorHex: colours[index].hex, label: colours[index].name, isSelected: colour == index,
+                            isAvailable: index != 2, size: .l
+                        ) { colour = index }
+                    }
+                }
+            }
+        }
+    }
+
     private var progress: some View {
         GallerySection("ProgressBar, Spinner") {
             ArgonProgressBar(value: 0.35)
@@ -383,7 +428,7 @@ private struct GalleryContent: View {
                 ArgonButton(title: "Bottom bar", style: .secondary, size: .s) { bottomBar = true }
                     .argonFullScreenModal(isPresented: $bottomBar, title: "BottomBar") { BottomBarDemo() }
             }
-            ForEach([ArgonTopBarVariant.standard, .largeTitle, .centeredLogo, .search], id: \.self) { variant in
+            ForEach([ArgonTopBarVariant.standard, .largeTitle, .centeredLogo, .search, .overlay], id: \.self) { variant in
                 NavigationLink {
                     TopBarDemo(variant: variant)
                 } label: {
@@ -423,14 +468,40 @@ private struct GallerySection<Content: View>: View {
 private struct TopBarDemo: View {
     let variant: ArgonTopBarVariant
     @State private var search = ""
+    @State private var solid = false
 
     init(variant: ArgonTopBarVariant) {
         self.variant = variant
     }
 
     var body: some View {
-        List(1...30, id: \.self) { row in
-            Text("Row \(row)")
+        Group {
+            if variant == .overlay {
+                // Overlay: over a picture, then solid as the picture scrolls away
+                VStack(spacing: 0) {
+                    Color.clear
+                        .frame(height: 160)
+                        .background {
+                            // up to the top edge of the screen, under the bar and the status bar
+                            Color.gray
+                                .overlay {
+                                    AsyncImage(url: sampleImage) { image in
+                                        image.resizable().scaledToFill()
+                                    } placeholder: {
+                                        Color.clear
+                                    }
+                                }
+                                .clipped()
+                                .ignoresSafeArea(edges: .top)
+                        }
+                    ArgonSwitch(isOn: solid, label: "Solid") { solid = $0 }.padding()
+                    Spacer()
+                }
+            } else {
+                List(1...30, id: \.self) { row in
+                    Text("Row \(row)")
+                }
+            }
         }
         .argonTopBar(
             variant: variant,
@@ -440,7 +511,8 @@ private struct TopBarDemo: View {
                 ArgonTopBarAction(icon: .search, accessibilityLabel: "Search") {},
                 ArgonTopBarAction(icon: .bag, accessibilityLabel: "Bag", badge: 2) {},
             ],
-            searchText: $search
+            searchText: $search,
+            solid: solid ? 1 : 0
         )
     }
 }

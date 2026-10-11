@@ -35,9 +35,9 @@ test("resolveDocument: omits unused fragments and leaves inline fragments alone"
   assert.doesNotMatch(doc, /fragment (Image|ProductCard|CollectionCard|Unused) on/);
 });
 
-test("loadContract: 52 documents, operation name equals key, fragments resolved from the document's own API", async () => {
+test("loadContract: 55 documents, operation name equals key, fragments resolved from the document's own API", async () => {
   const contract = await loadContract();
-  assert.equal(contract.size, 52);
+  assert.equal(contract.size, 55);
   const customer = new Set(readdirSync(join(CONTRACT, "customer")).map((f) => f.replace(/\.graphql$/, "")));
   const definedIn = (file) => new Set([...readFileSync(join(CONTRACT, file), "utf8").matchAll(/^fragment (\w+) on /gm)].map((m) => m[1]));
   const fragments = { storefront: definedIn("fragments.graphql"), customer: definedIn("customer/fragments.graphql") };
@@ -108,16 +108,19 @@ test("live: Storefront documents run against mock.shop", { skip: !process.env.AR
   const products = home.collections.nodes.flatMap((c) => c.products.nodes);
   assert.ok(products.length > 0);
   await call("Collections", { first: 3 });
-  await call("Collection", { handle: "men", first: 4 });
+  // hand-written from here on where mock.shop has no data for what the apps decode: filters with swatches, a card with
+  // swatches and a rating, a bundle variant with volume pricing
+  await call("Collection", { handle: "men", first: 4 }, { record: false });
   await call("Catalog", { first: 4, query: "shirt", sortKey: "PRICE", reverse: true });
   await call("Search", { query: "shirt", first: 4, types: ["PRODUCT", "ARTICLE", "PAGE"] });
   await call("PredictiveSearch", { query: "shirt" });
-  await call("Products", { ids: products.slice(0, 3).map((p) => p.id) });
+  await call("Products", { ids: products.slice(0, 3).map((p) => p.id) }, { record: false });
   // men-crewneck: the product the v0.1 app tests expect (Size and Color, first variant Small / Green); both metafields unset
   const metafields = [{ namespace: "custom", key: "material" }, { namespace: "custom", key: "care" }];
-  const { product } = await call("Product", { handle: "men-crewneck", metafields });
+  const { product } = await call("Product", { handle: "men-crewneck" });
+  await call("ProductMetafields", { handle: product.handle, metafields }, { record: false }); // mock.shop has neither set
   const [variant, other] = product.variants.nodes;
-  await call("VariantBySelectedOptions", { handle: product.handle, selectedOptions: other.selectedOptions });
+  await call("VariantBySelectedOptions", { handle: product.handle, selectedOptions: other.selectedOptions }, { record: false });
   await call("ProductRecommendations", { productId: product.id, intent: "RELATED" });
   await call("StoreAvailability", { variantId: variant.id, first: 2 }, { record: false });
 
@@ -139,7 +142,8 @@ test("live: Storefront documents run against mock.shop", { skip: !process.env.AR
   await call("CartAttributesUpdate", { cartId, attributes: [{ key: "source", value: "app" }] });
   await call("CartDiscountCodesUpdate", { cartId, discountCodes: ["WELCOME10"] }); // unknown code: a cart warning
   await call("CartBuyerIdentityUpdate", { cartId, buyerIdentity: { countryCode: "CA" } });
-  assert.equal((await call("Cart", { id: cartId })).cart.totalQuantity, 3);
+  // not recorded: the fixture also carries an automatic discount and a compare-at price, which mock.shop has no data for
+  assert.equal((await call("Cart", { id: cartId }, { record: false })).cart.totalQuantity, 3);
   await call("CartGiftCardCodesAdd", { cartId, giftCardCodes: ["ABCD1234EFGH5678"] });
   await call("CartGiftCardCodesRemove", { cartId, appliedGiftCardIds: ["gid://shopify/AppliedGiftCard/1"] });
   // mock.shop answers the delivery mutations with a "not supported" user error (its carts never reach checkout)

@@ -77,9 +77,16 @@ class AuthStore(
 
     private val signedInState = MutableStateFlow(false)
     private val signInErrorState = MutableStateFlow<String?>(null)
+    private val tokenChangesState = MutableStateFlow(0)
 
     /** False until [load] (or any other call) has read the stored session. */
     val signedIn: StateFlow<Boolean> = signedInState
+
+    /**
+     * Counts the times the access token changed (signed in, refreshed, signed out): whatever holds the token itself, as
+     * the B2B buyer does, follows it.
+     */
+    val tokenChanges: StateFlow<Int> = tokenChangesState
 
     /** Why the last sign-in failed once the browser came back (cancelled, refused); cleared by the next [signIn]. */
     val signInError: StateFlow<String?> = signInErrorState
@@ -255,6 +262,7 @@ class AuthStore(
 
     /** Sets the session and returns its access token (null: signed out). */
     private suspend fun setTokens(value: Tokens?): String? {
+        if (value?.access != tokens?.access) tokenChangesState.value++
         tokens = value
         signedInState.value = value != null
         save(

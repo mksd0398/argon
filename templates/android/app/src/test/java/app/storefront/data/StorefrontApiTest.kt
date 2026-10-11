@@ -107,16 +107,60 @@ class StorefrontApiTest {
     }
 
     @Test
-    fun productVariablesCarryMetafieldsAndTheSelection() = runBlocking {
+    fun productVariablesCarryTheSelection() = runBlocking {
         val s = api()
-        s.product("men-crewneck", mapOf("Size" to "Small"), listOf(MetafieldIdentifier("custom", "care")))
-        val vars = calls.single().second
-        assertEquals("""[{"namespace":"custom","key":"care"}]""", vars["metafields"].toString())
-        assertEquals("""[{"name":"Size","value":"Small"}]""", vars["selectedOptions"].toString())
+        s.product("men-crewneck", mapOf("Size" to "Small"))
+        assertEquals("""[{"name":"Size","value":"Small"}]""", calls.single().second["selectedOptions"].toString())
 
         s.product("men-crewneck")
-        assertEquals("the identifiers are required, even none", "[]", calls.last().second["metafields"].toString())
-        assertNull(calls.last().second["selectedOptions"])
+        assertEquals("only the handle", setOf("handle"), calls.last().second.keys)
+    }
+
+    @Test
+    fun productMetafieldsAreTheirOwnQuery() = runBlocking {
+        val s = api()
+        assertEquals("nothing to ask for: no request", emptyList<Metafield>(), s.productMetafields("men-crewneck", emptyList()))
+        assertTrue(calls.isEmpty())
+
+        s.productMetafields("men-crewneck", listOf(MetafieldIdentifier("custom", "care")))
+        assertEquals("ProductMetafields", names.single())
+        assertEquals("men-crewneck", calls.single().second.string("handle"))
+        assertEquals("""[{"namespace":"custom","key":"care"}]""", calls.single().second["metafields"].toString())
+
+        val gone = api { json("""{"product":null}""") }.productMetafields("gone", listOf(MetafieldIdentifier("custom", "care")))
+        assertEquals("no such product: none", emptyList<Metafield>(), gone)
+    }
+
+    // Buyer
+
+    @Test
+    fun theBuyerGoesWithEveryCallAndSettingItDropsTheCache() = runBlocking {
+        val s = api()
+        s.shop()
+        assertNull("retail: no buyer", calls[0].second["buyer"])
+
+        s.buyer = Buyer("tok", "gid://shopify/CompanyLocation/1")
+        s.shop()
+        s.products()
+        s.localization()
+        s.cartCreate()
+        assertEquals("the shop is asked again for the buyer", listOf("Shop", "Shop", "Catalog", "Localization", "CartCreate"), names)
+        for ((name, vars) in calls.drop(1)) {
+            assertEquals(name, """{"customerAccessToken":"tok","companyLocationId":"gid://shopify/CompanyLocation/1"}""", vars["buyer"].toString())
+        }
+
+        s.buyer = null
+        s.shop()
+        assertNull("back to retail", calls.last().second["buyer"])
+        assertEquals(6, calls.size)
+    }
+
+    @Test
+    fun aBuyerWithoutACompanyIsJustTheirToken() = runBlocking {
+        val s = api()
+        s.buyer = Buyer("tok")
+        s.shop()
+        assertEquals("""{"customerAccessToken":"tok"}""", calls.single().second["buyer"].toString())
     }
 
     @Test
@@ -126,6 +170,105 @@ class StorefrontApiTest {
         assertEquals("""{"lines":[{"merchandiseId":"v1","quantity":2}]}""", calls.single().second["input"].toString())
         s.updateBuyerIdentity("c", CartBuyerIdentityInput(customerAccessToken = "tok"))
         assertEquals("""{"customerAccessToken":"tok"}""", calls.last().second["buyerIdentity"].toString())
+        s.updateBuyerIdentity("c", CartBuyerIdentityInput(customerAccessToken = "tok", companyLocationId = "gid://shopify/CompanyLocation/1"))
+        assertEquals(
+            """{"customerAccessToken":"tok","companyLocationId":"gid://shopify/CompanyLocation/1"}""",
+            calls.last().second["buyerIdentity"].toString(),
+        )
+    }
+
+    // Models
+
+    @Test
+    fun aRatingMetafieldIsStarsOutOfFive() {
+        assertEquals(4.6, Ratings.parse("""{"value":"4.6","scale_min":"1.0","scale_max":"5.0"}""")!!, 1e-9)
+        assertEquals("a plain number", 4.5, Ratings.parse("4.5")!!, 1e-9)
+        assertEquals(3.0, Ratings.parse(" 3 ")!!, 1e-9)
+        assertEquals("numbers as JSON numbers", 4.0, Ratings.parse("""{"value":4,"scale_max":5}""")!!, 1e-9)
+        assertEquals("another scale is brought to 5", 4.0, Ratings.parse("""{"value":"8.0","scale_min":"1.0","scale_max":"10.0"}""")!!, 1e-9)
+        assertEquals("no scale: out of 5", 2.5, Ratings.parse("""{"value":"2.5"}""")!!, 1e-9)
+        assertEquals("kept to 0...5", 5.0, Ratings.parse("7")!!, 1e-9)
+        assertEquals(0.0, Ratings.parse("-1")!!, 1e-9)
+        for (unreadable in listOf(null, "", "  ", "great", "{}", """{"value":"n/a"}""", """{"value":"4","scale_max":"0"}""", "[4.6]", "NaN", "4.6 stars")) {
+            assertNull("$unreadable", Ratings.parse(unreadable))
+        }
+    }
+
+    @Test
+    fun aQuantityRuleNeverGoesBelowOne() {
+        assertEquals("a store without rules sends 0", 1 to 1, QuantityRule(0, null, 0).let { it.min to it.step })
+        assertEquals(2 to 6, QuantityRule(2, 40, 6).let { it.min to it.step })
+        assertEquals("the defaults: any quantity", Triple(1, null, 1), QuantityRule().let { Triple(it.min, it.maximum, it.step) })
+        assertEquals(1 to 1, QuantityRule(-3, null, -1).let { it.min to it.step })
+    }
+
+    private fun card(vararg options: ProductOption, available: Boolean = true, max: String? = null) = ProductCard(
+        "p", "tee", "Tee",
+        priceRange = PriceRange(Money("40.0", "USD"), max?.let { Money(it, "USD") }),
+        options = options.toList(),
+        firstVariant = CardVariant("v1", available = available),
+    )
+
+    private fun option(name: String, vararg values: String) = ProductOption(name = name, optionValues = values.map { ProductOptionValue(name = it) })
+
+    @Test
+    fun aCardsColoursAreItsColourOptionsValues() {
+        assertEquals(listOf("Red", "Blue"), card(option("Size", "S"), option("Colour", "Red", "Blue")).colors.map { it.name })
+        assertEquals(listOf("Red"), card(option("color", "Red")).colors.map { it.name })
+        assertEquals(listOf("Nude"), card(option("SHADE", "Nude"), option("Color", "Red")).colors.map { it.name })
+        assertTrue("no colour option", card(option("Size", "S", "M")).colors.isEmpty())
+        assertTrue("the name has to be the whole word", card(option("Colourway", "Red")).colors.isEmpty())
+    }
+
+    @Test
+    fun aCardQuickAddsOnlyWhenThereIsNothingToChoose() {
+        assertEquals("v1", card(option("Title", "Default Title")).quickAddVariantId)
+        assertEquals("v1", card(option("Size", "One size"), option("Color", "Red")).quickAddVariantId)
+        assertEquals("no options at all", "v1", card().quickAddVariantId)
+        assertNull("a size to choose", card(option("Size", "S", "M")).quickAddVariantId)
+        assertNull("sold out", card(option("Title", "Default Title"), available = false).quickAddVariantId)
+        assertNull("no variant", card().copy(firstVariant = null).quickAddVariantId)
+    }
+
+    @Test
+    fun aCardHasAPriceRangeWhenTheDearestVariantCostsMore() {
+        assertTrue(card(max = "55.0").hasPriceRange)
+        assertFalse(card(max = "40.0").hasPriceRange)
+        assertFalse("40.00 is 40.0", card(max = "40.00").hasPriceRange)
+        assertFalse("no max selected", card().hasPriceRange)
+    }
+
+    @Test
+    fun anUnknownTemplateIsTheDefault() {
+        assertEquals(HomeTemplate.entries, listOf("fashion", "beauty", "grocery", "b2b").map { HomeTemplate.of(it) })
+        assertEquals(HomeTemplate.Fashion, HomeTemplate.of(""))
+        assertEquals(HomeTemplate.Fashion, HomeTemplate.of("luxury"))
+        assertEquals(HomeTemplate.B2B, HomeTemplate.of(" B2B "))
+        assertEquals(CollectionTemplate.entries, listOf("top", "bottom").map { CollectionTemplate.of(it) })
+        assertEquals(CollectionTemplate.Top, CollectionTemplate.of(""))
+        assertEquals(CollectionTemplate.Top, CollectionTemplate.of("side"))
+    }
+
+    @Test
+    fun aPolicyIsFoundByItsHandle() = runBlocking {
+        val policies = fixtureStorefront().policies()
+        assertEquals("Privacy Policy", policies.policy("privacy-policy")?.title)
+        assertEquals(policies.refundPolicy, policies.policy("refund-policy"))
+        assertNull(policies.policy("no-such-policy"))
+        assertTrue(policies.all.none { it.handle == "terms-of-sale" })
+    }
+
+    @Test
+    fun aCustomerOrderIsNotACompanyOrder() = runBlocking {
+        val order = CustomerAccountApi { _, _ ->
+            json(
+                """{"order":{"id":"o","name":"#1","processedAt":"2026-10-01T10:00:00Z","totalPrice":{"amount":"9.0","currencyCode":"CAD"},
+                "purchasingEntity":{"__typename":"Customer"},"returnInformation":{"returnableLineItems":{"nodes":[]}}}}""",
+            )
+        }.order("o")!!
+        assertNull(order.purchasingCompany)
+        assertFalse("nothing to return", order.hasReturnableItems)
+        assertTrue(order.transactions.isEmpty() && order.refunds.isEmpty() && order.returns.isEmpty())
     }
 
     // Pages
@@ -300,6 +443,30 @@ class StorefrontApiTest {
         }
         val e = assertThrows(ArgonApiError.UserErrors::class.java) { runBlocking { account.updateName("A".repeat(300), null) } }
         assertEquals("TOO_LONG", e.errors.single().code)
+    }
+
+    // Sample account
+
+    @Test
+    fun theSampleAccountAnswersEveryOperationFromItsFile() = runBlocking {
+        val read = mutableListOf<String>()
+        // the CLI copies each Customer Account fixture to assets/sample/<Operation>.sample.json
+        val account = CustomerAccountApi(
+            sampleTransport { path ->
+                read += path
+                StorefrontApiTest::class.java.getResource("/fixtures/" + path.removePrefix("sample/").replace(".sample.json", ".json"))!!.readText()
+            },
+        )
+        assertEquals("Ada Lovelace", account.customer().name)
+        assertEquals("mutations answer their sample too: nothing is saved", "Ada King", account.updateName("Zed", null).displayName)
+        assertEquals("Analytical Engines Ltd", account.companies().single().company.name)
+        assertEquals(listOf("sample/Customer.sample.json", "sample/CustomerUpdate.sample.json", "sample/CustomerCompanies.sample.json"), read)
+
+        val missing = assertThrows(ArgonApiError.Decoding::class.java) {
+            runBlocking { CustomerAccountApi(sampleTransport { throw java.io.FileNotFoundException(it) }).customer() }
+        }
+        assertEquals("Customer", missing.operation)
+        assertEquals("no sample", missing.detail)
     }
 
     @Test

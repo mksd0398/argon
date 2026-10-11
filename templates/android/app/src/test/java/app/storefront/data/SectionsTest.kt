@@ -47,6 +47,73 @@ class SectionsTest {
         assertTrue(sections.any { it is Section.Products && it.style == "carousel" && it.items.isNotEmpty() })
     }
 
+    // Home content
+
+    private val collections = runBlocking { api.fallbackHome() }
+
+    @Test
+    fun aStoreWithoutAHomeScreenGetsStockBannersAndItsCollections() {
+        val content = Sections.content(HomeTemplate.Grocery, brand, emptyList(), collections)
+        assertEquals(listOf("Fresh today", "Fill your basket", "Baked this morning"), content.banners.map { it.heading })
+        assertEquals(listOf("Shop now", "Start shopping", "Order now"), content.banners.map { it.buttonLabel })
+        assertEquals(
+            listOf(1, 2, 3).map { "file:///android_asset/home/home-grocery-$it.jpg" },
+            content.banners.map { it.image?.url },
+        )
+        assertTrue("each opens the first stocked collection", content.banners.all { it.link == Route.Collection("men") })
+        assertEquals(listOf("men", "women", "unisex"), content.categories.map { it.handle })
+        assertEquals(listOf("Men", "Women", "Unisex"), content.rails.map { it.heading })
+        assertEquals(collections[1].products, content.rails[1].items)
+    }
+
+    @Test
+    fun everyTemplateHasItsOwnThreeBanners() {
+        val first = HomeTemplate.entries.associateWith { Sections.content(it, brand, emptyList(), emptyList()).banners }
+        assertEquals(
+            mapOf(
+                HomeTemplate.Fashion to "The new season", HomeTemplate.Beauty to "Your daily ritual",
+                HomeTemplate.Grocery to "Fresh today", HomeTemplate.B2B to "Stocked and ready to ship",
+            ),
+            first.mapValues { it.value[0].heading },
+        )
+        assertEquals("View bulk pricing", first.getValue(HomeTemplate.B2B)[2].buttonLabel)
+        assertEquals("file:///android_asset/home/home-b2b-3.jpg", StockImages.url(HomeTemplate.B2B, 3))
+        assertTrue(first.values.all { it.size == 3 })
+        assertTrue("no stocked collection: the banners open nothing", first.values.flatten().all { it.link == null })
+    }
+
+    @Test
+    fun emptyCollectionsAreNotOffered() {
+        val empty = collections[0].copy(id = "empty", handle = "empty", products = emptyList())
+        val content = Sections.content(HomeTemplate.Fashion, brand, emptyList(), listOf(empty) + collections)
+        assertEquals(listOf("men", "women", "unisex"), content.categories.map { it.handle })
+        assertEquals(Route.Collection("men"), content.banners[0].link)
+        assertEquals(3, content.rails.size)
+
+        val nothing = Sections.content(HomeTemplate.Fashion, brand, emptyList(), listOf(empty))
+        assertEquals("the banners stay", 3, nothing.banners.size)
+        assertTrue(nothing.categories.isEmpty() && nothing.rails.isEmpty())
+    }
+
+    @Test
+    fun theStoresOwnSectionsWinPartByPart() {
+        val sections = Sections.fromHome(runBlocking { api.homeScreen() }, brand.hosts)
+        val content = Sections.content(HomeTemplate.Beauty, brand, sections, collections)
+        assertEquals("the store's banner, not the stock ones", listOf("New season"), content.banners.map { it.heading })
+        assertEquals(listOf("Featured"), content.rails.map { it.heading })
+        assertEquals(listOf("men", "women", "unisex"), content.categories.map { it.handle })
+
+        // a store with only a banner still gets categories and rails from its collections
+        val bannerOnly = Sections.content(HomeTemplate.Beauty, brand, sections.filterIsInstance<Section.Banner>(), collections.take(2))
+        assertEquals(listOf("New season"), bannerOnly.banners.map { it.heading })
+        assertEquals(listOf("men", "women"), bannerOnly.categories.map { it.handle })
+        assertEquals(listOf("Men", "Women"), bannerOnly.rails.map { it.heading })
+
+        // collection sections are merged, each collection once
+        val twice = sections.filterIsInstance<Section.Collections>().let { it + it }
+        assertEquals(3, Sections.content(HomeTemplate.Beauty, brand, twice, emptyList()).categories.size)
+    }
+
     private val cards = fixture("Catalog").getValue("products").jsonObject.getValue("nodes").jsonArray
         .map { JsonObject(it.jsonObject + ("__typename" to JsonPrimitive("Product"))) }
 

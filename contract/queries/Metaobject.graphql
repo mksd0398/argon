@@ -3,7 +3,8 @@ query Metaobject(
   $handle: String!
   $country: CountryCode
   $language: LanguageCode
-) @inContext(country: $country, language: $language) {
+  $buyer: BuyerInput
+) @inContext(country: $country, language: $language, buyer: $buyer) {
   metaobject(handle: { type: $type, handle: $handle }) {
     id
     type

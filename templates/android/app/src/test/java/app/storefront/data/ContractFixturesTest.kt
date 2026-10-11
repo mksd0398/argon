@@ -88,8 +88,23 @@ class ContractFixturesTest(private val operation: String) {
                 assertEquals(listOf(Cart.DiscountCode("WELCOME10", applicable = false)), it.discountCodes)
                 assertEquals(Money("360.0", "CAD"), it.subtotal)
                 assertEquals("CA", it.buyerIdentity?.countryCode)
+                assertNull("a retail cart", it.purchasingCompany)
                 assertTrue("the Cart query has no warnings", it.warnings.isEmpty())
                 assertTrue(it.deliveryGroups.isEmpty())
+                val line = it.lines.single()
+                assertNull("bought once, not on a selling plan", line.sellingPlanName)
+                assertTrue("not a bundle", line.components.isEmpty())
+                // mock.shop has no quantity rules: it sends 0 for the minimum and the increment
+                assertEquals(QuantityRule(minimum = 0, maximum = null, increment = 0), line.merchandise.quantityRule)
+                assertEquals(1, line.merchandise.quantityRule?.min)
+                assertEquals(1, line.merchandise.quantityRule?.step)
+                // 3 × 120.00, 150.00 each before, and an automatic discount on the line
+                assertEquals(Money("360.0", "CAD"), line.subtotal)
+                assertEquals(Money("324.0", "CAD"), line.total)
+                assertEquals(Money("120.0", "CAD"), line.unitPrice)
+                assertEquals(Money("150.0", "CAD"), line.compareAtUnitPrice)
+                assertEquals(listOf(CartDiscount(Money("36.0", "CAD"), "Buy 3, save 10%")), line.discounts)
+                assertEquals("gid://shopify/Product/7982905098262", line.productId)
             }
             "CartAttributesUpdate" -> assertEquals(listOf(Attribute("source", "app")), storefront.updateAttributes(cartId, listOf(Attribute("source", "app"))).attributes)
             "CartBuyerIdentityUpdate" -> storefront.updateBuyerIdentity(cartId, CartBuyerIdentityInput(countryCode = "CA")).let {
@@ -116,6 +131,10 @@ class ContractFixturesTest(private val operation: String) {
             "CartDiscountCodesUpdate" -> storefront.updateDiscountCodes(cartId, listOf("WELCOME10")).let {
                 assertEquals(listOf("WELCOME10"), it.discountCodes.map { d -> d.code })
                 assertEquals("Enter a valid discount code", it.warnings.single().message)
+                val line = it.lines.single()
+                assertNull("no compare-at price on this line", line.compareAtUnitPrice)
+                assertTrue("the code doesn't apply: no discount on the line", line.discounts.isEmpty())
+                assertEquals(line.subtotal, line.total)
             }
             "CartGiftCardCodesAdd" -> storefront.addGiftCards(cartId, listOf("GIFT")).let {
                 assertTrue(it.appliedGiftCards.isEmpty())
@@ -144,8 +163,20 @@ class ContractFixturesTest(private val operation: String) {
                 assertEquals(3, it.items.size)
                 assertTrue(it.hasNextPage)
                 assertEquals("eyJjIjoicHJpY2UiLCJ2IjoiMTIwLjAiLCJpIjoxMX0", it.endCursor)
-                assertEquals("gray-leather-sneakers", it.items[0].handle)
-                assertEquals(Money("1000.0", "CAD"), it.items[0].price)
+                val sneakers = it.items[0]
+                assertEquals("gray-leather-sneakers", sneakers.handle)
+                assertEquals(Money("1000.0", "CAD"), sneakers.price)
+                assertEquals("Mock.shop", sneakers.vendor)
+                assertFalse("every variant costs the same", sneakers.hasPriceRange)
+                assertEquals(listOf("Size"), sneakers.options.map { o -> o.name })
+                assertEquals(listOf("4", "5", "6"), sneakers.options[0].values)
+                assertEquals("gid://shopify/ProductVariant/43696961355798", sneakers.firstVariant?.id)
+                assertTrue(sneakers.firstVariant!!.available)
+                assertNull("a size has to be chosen first", sneakers.quickAddVariantId)
+                assertTrue("no colour option", sneakers.colors.isEmpty())
+                assertNull("no reviews metafields", sneakers.rating)
+                assertNull(sneakers.ratingCount)
+                assertEquals(listOf("Green", "Olive", "Ocean"), it.items[1].colors.map { c -> c.name })
                 assertTrue("a catalogue has no filters", it.filters.isEmpty())
             }
             "Collection" -> storefront.collection("men")!!.let {
@@ -156,7 +187,20 @@ class ContractFixturesTest(private val operation: String) {
                 assertEquals("eyJjIjoicG9zaXRpb24iLCJ2Ijo0LCJpIjo4MjYwfQ", it.products.endCursor)
                 assertEquals("hoodie-old", it.products.items[0].handle)
                 assertNull("a 0.0 compare-at is no discount", it.products.items[0].compareAt)
+                assertEquals("#81a69b", it.products.items[0].colors[0].swatch?.color)
                 assertEquals(1024, it.image?.width)
+                val filters = it.products.filters
+                assertEquals(listOf("Availability", "Price", "Color", "Size"), filters.map { f -> f.label })
+                assertEquals(listOf("LIST", "PRICE_RANGE", "LIST", "LIST"), filters.map { f -> f.type })
+                assertEquals(listOf("TEXT", "TEXT", "SWATCH", "TEXT"), filters.map { f -> f.presentation })
+                val (green, olive, ocean) = filters[2].values
+                assertEquals("#3F6B4F", green.swatch?.color)
+                assertEquals(9, green.count)
+                assertEquals("""{"variantOption":{"name":"color","value":"Green"}}""", green.input)
+                val pattern = olive.swatch!!
+                assertTrue("a pattern swatch is an image", pattern.image?.previewImage!!.url.endsWith(".jpg"))
+                assertNull(pattern.color)
+                assertNull(ocean.swatch)
             }
             "Collections" -> storefront.collections().let {
                 assertEquals(listOf("men", "women", "unisex"), it.items.map { c -> c.handle })
@@ -166,6 +210,10 @@ class ContractFixturesTest(private val operation: String) {
             "FallbackHome" -> storefront.fallbackHome().let {
                 assertEquals(listOf("men", "women", "unisex"), it.map { c -> c.handle })
                 assertTrue(it.all { c -> c.products.size == 3 })
+                val sweatpants = it[2].products[1]
+                assertEquals("sweatpants", sweatpants.handle)
+                assertTrue("35 to 42: a From price", sweatpants.hasPriceRange)
+                assertEquals(Money("42.0", "CAD"), sweatpants.priceRange.maxVariantPrice)
             }
             "HomeScreen" -> storefront.homeScreen().let {
                 assertEquals(listOf("mobile_banner", "mobile_products", "mobile_collections"), it.map { m -> m.type })
@@ -225,15 +273,33 @@ class ContractFixturesTest(private val operation: String) {
                 assertEquals(3, it.adjacentVariants.size)
                 assertTrue(it.media.all { m -> m is Media.Image })
                 assertEquals(3, it.images.size)
-                assertTrue("unset metafields come back null and are dropped", it.metafields.isEmpty())
                 assertEquals("v1_0:0-4,1:0-4,2:0-4,", it.encodedVariantExistence)
-                assertTrue(it.sellingPlanGroups.isEmpty())
+                assertEquals(listOf("men", "tops"), it.tags)
+                assertNull("not published on the web store", it.onlineStoreUrl)
+                assertNull("no reviews metafields", it.rating)
+                assertNull(it.ratingCount)
+                assertFalse(it.requiresSellingPlan)
+                assertTrue("a product's own variants carry no stock, rules or plans", it.variants.all { v -> v.quantityRule == null && v.sellingPlanAllocations.isEmpty() })
             }
+            "ProductMetafields" -> assertEquals(
+                "the one it has a value for: the null is dropped",
+                listOf(Metafield("custom", "material", "single_line_text_field", "100% organic cotton")),
+                storefront.productMetafields("men-crewneck", listOf(MetafieldIdentifier("custom", "material"), MetafieldIdentifier("custom", "care"))),
+            )
             "ProductRecommendations" -> storefront.recommendations("gid://shopify/Product/7982905098262").let {
                 assertEquals(listOf("hoodie-old", "men-t-shirt", "sweatpants"), it.map { p -> p.handle })
                 assertNull(it[0].compareAt)
             }
-            "Products" -> assertTrue(storefront.productsByIds(listOf("gid://shopify/Product/1")).isEmpty())
+            "Products" -> storefront.productsByIds(listOf("gid://shopify/Product/7982905098262", "gid://shopify/Product/1", "gid://shopify/Product/7982856273942")).let {
+                assertEquals("the id that is no product (a null node) is left out", listOf("men-crewneck", "sweatpants"), it.map { p -> p.handle })
+                val crewneck = it[0]
+                assertEquals(4.6, crewneck.rating!!, 0.0)
+                assertEquals(128, crewneck.ratingCount)
+                assertEquals(CardVariant("gid://shopify/ProductVariant/43696905224214", "CREW-S-GRN", true, QuantityRule(2, 40, 2)), crewneck.firstVariant)
+                assertEquals(listOf("#3F6B4F", "#6B6B3A", "#2F6F8F"), crewneck.colors.map { c -> c.swatch?.color })
+                assertNull("sizes and colours to choose from", crewneck.quickAddVariantId)
+                assertNull(it[1].rating)
+            }
             "Search" -> storefront.search("shirt").let {
                 assertEquals(3, it.items.size)
                 assertTrue(it.items.all { r -> r is ProductCard })
@@ -264,8 +330,28 @@ class ContractFixturesTest(private val operation: String) {
             "VariantBySelectedOptions" -> storefront.variantBySelectedOptions("men-crewneck", mapOf("Size" to "Small", "Color" to "Olive"))!!.let {
                 assertEquals("Small / Olive", it.title)
                 assertEquals(mapOf("Size" to "Small", "Color" to "Olive"), it.options)
-                assertNull(it.sku)
+                assertEquals("CREW-S-OLV", it.sku)
                 assertNull(it.compareAt)
+                assertEquals("0123456789012", it.barcode)
+                assertEquals(4, it.quantityAvailable)
+                assertFalse(it.currentlyNotInStock)
+                assertEquals(Money("60.0", "CAD"), it.unitPrice)
+                assertEquals(UnitPriceMeasurement("COUNT", "ITEM", 2.0, "ITEM", 1), it.unitPriceMeasurement)
+                assertEquals(QuantityRule(2, 40, 2), it.quantityRule)
+                assertEquals(listOf(10 to Money("108.0", "CAD"), 20 to Money("96.0", "CAD")), it.quantityPriceBreaks.map { b -> b.minimumQuantity to b.price })
+                assertTrue("a bundle", it.requiresComponents)
+                assertEquals(listOf("men-t-shirt", "sweatpants"), it.components.map { c -> c.variant.product.handle })
+                assertEquals(1, it.components[0].quantity)
+                assertEquals(Money("40.0", "CAD"), it.components[0].variant.price)
+                assertTrue(it.components[0].variant.image!!.url.endsWith(".jpg"))
+                val bundle = it.groupedBy.single()
+                assertEquals("Weekend set", bundle.title)
+                assertEquals("hoodie-old", bundle.product.handle)
+                assertTrue("a bundle is shown by its product's image", bundle.image!!.url.endsWith(".jpg"))
+                val plan = it.sellingPlanAllocations.single()
+                assertEquals(SellingPlan("gid://shopify/SellingPlan/4400001", "Deliver every month"), plan.sellingPlan)
+                assertEquals(Money("108.0", "CAD"), plan.priceAdjustments.single().price)
+                assertEquals(Money("120.0", "CAD"), plan.priceAdjustments.single().compareAtPrice)
             }
 
             // Customer Account API
@@ -297,41 +383,137 @@ class ContractFixturesTest(private val operation: String) {
                 assertFalse(it.hasNextPage)
                 assertEquals("eyJsYXN0X2lkIjo4MDAwMDAyfQ==", it.endCursor)
             }
+            "CustomerCompanies" -> account.companies().single().let {
+                assertEquals("gid://shopify/CompanyContact/9000001", it.id)
+                assertEquals("Purchasing lead", it.title)
+                assertEquals("Analytical Engines Ltd", it.company.name)
+                assertEquals(
+                    listOf(CompanyLocation("gid://shopify/CompanyLocation/9200001", "Ottawa head office"), CompanyLocation("gid://shopify/CompanyLocation/9200002", "Toronto warehouse")),
+                    it.company.locations,
+                )
+            }
+            "CustomerStoreCredit" -> assertEquals(
+                listOf(StoreCreditAccount("gid://shopify/StoreCreditAccount/9300001", Money("25.0", "CAD"))),
+                account.storeCredit(),
+            )
             "CustomerEmailMarketingSubscribe" -> assertEquals("SUBSCRIBED", account.subscribeEmailMarketing().marketingState)
             "CustomerEmailMarketingUnsubscribe" -> assertEquals("UNSUBSCRIBED", account.unsubscribeEmailMarketing().marketingState)
             "CustomerUpdate" -> assertEquals("Ada King", account.updateName("Ada", "King").displayName)
-            "Order" -> account.order("gid://shopify/Order/6000002")!!.let {
-                assertEquals("#1002", it.name)
-                assertEquals(Money("130.0", "CAD"), it.total)
-                assertEquals(Money("108.0", "CAD"), it.subtotal)
+            "Order" -> account.order("gid://shopify/Order/6001004")!!.let {
+                assertEquals("#1004", it.name)
+                assertEquals(Money("271.9", "CAD"), it.total)
+                assertEquals(Money("230.0", "CAD"), it.subtotal)
+                assertEquals(Money("35.0", "CAD"), it.totalRefunded)
+                assertEquals("PARTIALLY_REFUNDED", it.financialStatus)
                 assertEquals("FULFILLED", it.fulfillmentStatus)
+                assertFalse(it.edited)
+                assertTrue(it.requiresShipping)
+                assertEquals("Please leave the parcel at the front desk.", it.note)
                 assertEquals(PricingValue.Percentage(10.0), it.discountApplications.single().value)
-                val line = it.lines.single()
-                assertEquals("Men's Crewneck", line.title)
-                assertEquals(Money("108.0", "CAD"), line.total)
+                assertEquals("Ottawa", it.shippingAddress?.city)
+                assertEquals(OrderShippingLine("Standard shipping", Money("12.0", "CAD")), it.shippingLine)
+
+                // B2B
+                assertEquals("PO-2291", it.poNumber)
+                assertEquals("Analytical Engines Ltd", it.purchasingCompany?.company?.name)
+                assertEquals("Ottawa head office", it.purchasingCompany?.location?.name)
+
+                // payment
+                val payment = it.paymentInformation!!
+                assertEquals("PARTIALLY_REFUNDED", payment.paymentStatus)
+                assertEquals(Money("0.0", "CAD"), payment.totalOutstandingAmount)
+                assertNull("nothing left to pay", payment.paymentCollectionUrl)
+                assertEquals(PaymentTerms("Net 30", "2026-10-21T09:40:00Z", overdue = false), payment.paymentTerms)
+                assertEquals(listOf("SALE", "REFUND"), it.transactions.map { t -> t.kind })
+                assertEquals("visa", it.transactions[0].cardBrand)
+                assertEquals("4242", it.transactions[0].last4)
+                assertNull("paid by card, not with a gift card", it.transactions[0].giftCardLast4)
+                assertEquals(Money("271.9", "CAD"), it.transactions[0].amount)
+
+                assertEquals(listOf("Men's Crewneck", "Sweatpants", "Men's T-shirt"), it.lines.map { l -> l.title })
+                val line = it.lines[1]
+                assertEquals("SWEATPANTS-MG", line.sku)
+                assertEquals(2, line.quantity)
+                assertEquals("both were returned and refunded", 0, line.refundableQuantity)
+                assertEquals(Money("70.0", "CAD"), line.total)
+                assertEquals(Money("0.0", "CAD"), line.totalDiscount)
+
                 val fulfillment = it.fulfillments.single()
                 assertEquals("SUCCESS", fulfillment.status)
+                assertEquals("DELIVERED", fulfillment.latestShipmentStatus)
+                assertFalse(fulfillment.isPickedUp)
                 assertEquals("Canada Post", fulfillment.trackingInformation.single().company)
-                assertEquals(line.id, fulfillment.fulfillmentLineItems.single().lineItem.id)
-                assertEquals("Ottawa", it.shippingAddress?.city)
+                assertEquals(listOf("CONFIRMED", "IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED"), fulfillment.events.map { e -> e.status })
+                assertEquals("2026-09-25T13:05:00Z", fulfillment.events.last().happenedAt)
+                assertEquals(it.lines.map { l -> l.id }, fulfillment.fulfillmentLineItems.map { f -> f.lineItem.id })
+
+                // refunds and returns
+                assertEquals(OrderRefund("gid://shopify/Refund/7300001", "2026-10-02T10:15:00Z", "#1004-R1", Money("35.0", "CAD")), it.refunds.single())
+                val returned = it.returns.single()
+                assertEquals("#1004-R1", returned.name)
+                assertEquals("CLOSED", returned.status)
+                assertEquals("2026-10-02T10:15:00Z", returned.closedAt)
+                assertNull(returned.decline)
+                val returnedLine = returned.lines.single()
+                assertEquals(2, returnedLine.quantity)
+                assertEquals("Size was too small", returnedLine.reason)
+                assertEquals("Sweatpants", returnedLine.title)
+                assertEquals("Medium / Green", returnedLine.variantTitle)
+                assertEquals(line.id, returnedLine.lineItemId)
+                assertTrue(returnedLine.image!!.url.endsWith(".jpg"))
+                val exchange = returned.exchangeLines.single()
+                assertEquals("Sweatpants", exchange.title)
+                assertEquals("Large / Green", exchange.variantTitle)
+                assertEquals(1, exchange.quantity)
+                assertTrue("an item can still be returned", it.hasReturnableItems)
             }
-            "OrderRequestReturn" -> assertEquals(
-                "REQUESTED",
-                account.requestReturn("gid://shopify/Order/6000002", listOf(RequestedLineItemInput("gid://shopify/LineItem/5000001", 1))).status,
-            )
-            "OrderReturnOptions" -> account.returnOptions("gid://shopify/Order/6000002")!!.let {
-                val item = it.returnableLineItems.single()
+            "OrderRequestReturn" -> account.requestReturn("gid://shopify/Order/6001004", listOf(RequestedLineItemInput("gid://shopify/LineItem/5000001", 1))).let {
+                assertEquals("REQUESTED", it.status)
+                assertEquals("#1004-R2", it.name)
+            }
+            "OrderReturnOptions" -> account.returnOptions("gid://shopify/Order/6001004")!!.let {
+                assertEquals("#1004", it.orderName)
+                assertEquals(listOf("Men's Crewneck", "Men's T-shirt"), it.returnableLineItems.map { r -> r.lineItem.title })
+                val item = it.returnableLineItems[0]
                 assertEquals(1, item.quantity)
-                assertEquals(listOf("size-too-small", "not-as-described"), item.lineItem.suggestedReturnReasonDefinitions.map { r -> r.handle })
-                assertTrue(it.returns.isEmpty())
+                assertEquals("Medium / Olive", item.lineItem.variantTitle)
+                assertEquals("MENCREWNECK-MO", item.lineItem.sku)
+                assertEquals("gid://shopify/Product/7982905098262", item.lineItem.productId)
+                assertEquals("gid://shopify/ProductVariant/43696905224214", item.lineItem.variantId)
+                assertEquals(Money("120.0", "CAD"), item.lineItem.price)
+                assertEquals(
+                    listOf("size-too-small", "size-too-large", "not-as-described", "changed-my-mind", "damaged"),
+                    item.lineItem.suggestedReturnReasonDefinitions.map { r -> r.handle },
+                )
+                assertTrue(it.hasReturnShippingFee)
+                assertFalse(it.hasRestockingFee)
+                assertEquals(listOf("MERCHANT_PROVIDED_LABEL"), it.returnShippingMethods)
+                assertEquals("We email a prepaid label once the return is approved.", it.returnShippingMethodNote)
+                val fee = it.fees.single()
+                assertEquals("ReturnShippingFee", fee.kind)
+                assertEquals("Return shipping", fee.title)
+                assertEquals(Money("8.0", "CAD"), fee.amount)
+                assertEquals("Sweatpants were already returned.", it.nonReturnableSummary)
+                assertEquals("#1004-R1", it.returns.single().name)
+                assertTrue("the options' returns carry no lines", it.returns.single().lines.isEmpty())
             }
             "Orders" -> account.orders().let {
-                assertEquals(listOf("#1002", "#1001"), it.items.map { o -> o.name })
-                assertTrue(it.hasNextPage)
-                assertEquals("eyJsYXN0X2lkIjo2MDAwMDAxfQ==", it.endCursor)
-                assertEquals(Money("70.0", "CAD"), it.items[1].total)
-                assertEquals("2026-09-12T11:30:00Z", it.items[1].cancelledAt)
-                assertNull(it.items[1].lineItems.single().image)
+                assertEquals(listOf("#1005", "#1004", "#1003", "#1002"), it.items.map { o -> o.name })
+                assertFalse(it.hasNextPage)
+                assertEquals("eyJsYXN0X2lkIjoxMDAyfQ==", it.endCursor)
+                val shipping = it.items[0]
+                assertEquals(Money("158.9", "CAD"), shipping.total)
+                assertEquals(4, shipping.itemCount)
+                assertEquals(listOf("Half Zip", "Workout Shirt"), shipping.titles)
+                assertEquals(2, shipping.images.size)
+                assertTrue(shipping.images[0].url.endsWith(".jpg"))
+                assertEquals("IN_TRANSIT", shipping.latestShipmentStatus)
+                assertEquals("2026-10-14T18:00:00Z", shipping.estimatedDeliveryAt)
+                assertNull("not delivered yet", shipping.latestFulfillmentDeliveryDate)
+                assertEquals("2026-09-25T13:05:00Z", it.items[1].latestFulfillmentDeliveryDate)
+                assertEquals("DELIVERED", it.items[1].latestShipmentStatus)
+                assertNull("nothing shipped yet", it.items[2].latestShipmentStatus)
+                assertEquals("2026-07-14T16:00:00Z", it.items[3].cancelledAt)
             }
             else -> fail("No facade call decodes $operation: add a case to ContractFixturesTest")
         }

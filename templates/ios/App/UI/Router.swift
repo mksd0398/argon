@@ -12,6 +12,14 @@ enum Destination: Hashable {
     case collection(String)
     case search(String)
     case order(String)
+    /// The customer's orders.
+    case orders
+    /// The return and exchange flow of the order with this id.
+    case `return`(String)
+    case profile
+    case addresses
+    /// The shop policy with this handle: `privacy-policy`, `terms-of-service`, `refund-policy`, `shipping-policy`, ...
+    case policy(String)
     /// The ArgonUI gallery (linked from Account in debug builds only).
     case components
 }
@@ -29,6 +37,7 @@ final class Router {
         case let .product(handle): path.append(.product(handle))
         case let .collection(handle): path.append(.collection(handle))
         case let .search(query): path.append(.search(query))
+        case let .policy(handle): path.append(.policy(handle))
         case let .web(link):
             // SFSafariViewController takes only http(s) (anything else would crash it): nothing to open otherwise
             guard let url = URL(string: link), ["http", "https"].contains(url.scheme?.lowercased() ?? "") else { return }
@@ -51,6 +60,11 @@ struct TabStack<Root: View>: View {
                 case let .collection(handle): CollectionView(handle: handle)
                 case let .search(query): SearchView(initial: query)
                 case let .order(id): OrderView(id: id)
+                case .orders: OrdersView()
+                case let .return(orderId): ReturnView(orderId: orderId)
+                case .profile: ProfileView()
+                case .addresses: AddressesView()
+                case let .policy(handle): PolicyView(handle: handle)
                 case .components: ArgonGallery()
                 }
             }
@@ -70,18 +84,101 @@ struct SafariView: UIViewControllerRepresentable {
     func updateUIViewController(_ controller: SFSafariViewController, context: Context) {}
 }
 
+/// The app's five tabs.
+enum AppTab: String, CaseIterable {
+    case home, shop, wishlist, cart, account
+}
+
+/// The tab on show (`AppGraph.tabs`): a screen sets `selected` to send the shopper to another tab ("See all" to Shop,
+/// "Sign in" to Account).
+@MainActor
+@Observable
+final class TabState {
+    var selected = AppTab.home
+}
+
+/// A short message shown over the tabs for a few seconds (`AppGraph.toast`): iOS's stand-in for Android's snackbar.
+@MainActor
+@Observable
+final class ToastState {
+    private(set) var message: String? = nil
+    @ObservationIgnored private var hiding: Task<Void, Never>? = nil
+
+    /// How tall the product page's sticky add-to-cart bar is, for each bar on screen (by the bar's own id; a bar takes
+    /// itself out when its page is covered or left): the toast shows above the bar, not over its button.
+    var stickyBars: [UUID: CGFloat] = [:]
+
+    /// Shows `message`, in place of the one on show if any.
+    func show(_ message: String) {
+        self.message = message
+        // it comes and goes without taking focus: VoiceOver reads it out
+        UIAccessibility.post(notification: .announcement, argument: message)
+        hiding?.cancel()
+        hiding = Task {
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            if !Task.isCancelled { self.message = nil }
+        }
+    }
+}
+
+@MainActor
+private struct ToastView: View {
+    @Environment(\.argonTheme) private var theme
+
+    var body: some View {
+        VStack {
+            if let message = AppGraph.toast.message {
+                Text(message)
+                    .font(theme.type.label)
+                    .foregroundStyle(theme.colors.paper)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, theme.spacing.l)
+                    .padding(.vertical, theme.spacing.m)
+                    .background(theme.colors.ink, in: RoundedRectangle(cornerRadius: theme.radius.m))
+                    .padding(.horizontal, theme.spacing.l)
+                    // above the tab bar, and on a product page above its sticky add-to-cart bar too
+                    .padding(.bottom, 64 + (AppGraph.toast.stickyBars.values.max() ?? 0))
+                    .transition(.opacity)
+                    .accessibilityAddTraits(.isStaticText)
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: AppGraph.toast.message)
+        .allowsHitTesting(false)
+    }
+}
+
 @MainActor
 struct Tabs: View {
     var body: some View {
-        TabView {
-            TabStack(root: HomeView()).tabItem { Label("Home", systemImage: "house") }
-            TabStack(root: ShopView()).tabItem { Label("Shop", systemImage: "list.bullet") }
-            TabStack(root: WishlistView()).tabItem { Label("Wishlist", systemImage: "heart") }
-            // the Cart tab shows how many items are in the cart (no badge at 0)
-            TabStack(root: CartView()).tabItem { Label("Cart", systemImage: "cart") }
-                .badge(AppGraph.cart.cart?.totalQuantity ?? 0)
-            TabStack(root: AccountView()).tabItem { Label("Account", systemImage: "person") }
+        // the Cart tab shows how many items are in the cart (no badge at 0)
+        let items = [
+            ArgonBottomBarItem(id: AppTab.home.rawValue, title: "Home", icon: .home),
+            ArgonBottomBarItem(id: AppTab.shop.rawValue, title: "Shop", icon: .grid),
+            ArgonBottomBarItem(id: AppTab.wishlist.rawValue, title: "Wishlist", icon: .heart),
+            ArgonBottomBarItem(id: AppTab.cart.rawValue, title: "Cart", icon: .bag, badge: AppGraph.cart.cart?.totalQuantity),
+            ArgonBottomBarItem(id: AppTab.account.rawValue, title: "Account", icon: .person),
+        ]
+        ArgonBottomBar(
+            items: items,
+            selectedId: AppGraph.tabs.selected.rawValue,
+            onSelect: { id in
+                if let tab = AppTab(rawValue: id) { AppGraph.tabs.selected = tab }
+            }
+        ) { item in
+            Group {
+                switch AppTab(rawValue: item.id) ?? .home {
+                case .home: TabStack(root: HomeView())
+                case .shop: TabStack(root: ShopView())
+                case .wishlist: TabStack(root: WishlistView())
+                case .cart: TabStack(root: CartView())
+                case .account: TabStack(root: AccountView())
+                }
+            }
+            // The bar tints itself with the theme's accent; the screens that still draw native controls keep the tint
+            // they had (the brand colour, else the system's).
+            .tint(brandColor(AppGraph.brand.value?.accent) ?? .accentColor)
         }
+        .overlay(alignment: .bottom) { ToastView() }
         // the Cart tab's badge needs the stored cart before that tab is ever opened
         .task {
             do {

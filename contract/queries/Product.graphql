@@ -1,10 +1,10 @@
 query Product(
   $handle: String!
-  $metafields: [HasMetafieldsIdentifier!]!
   $selectedOptions: [SelectedOptionInput!]
   $country: CountryCode
   $language: LanguageCode
-) @inContext(country: $country, language: $language) {
+  $buyer: BuyerInput
+) @inContext(country: $country, language: $language, buyer: $buyer) {
   product(handle: $handle) {
     id
     handle
@@ -14,6 +14,8 @@ query Product(
     descriptionHtml
     availableForSale
     isGiftCard
+    tags
+    onlineStoreUrl
     requiresSellingPlan
     encodedVariantExistence
     encodedVariantAvailability
@@ -26,7 +28,7 @@ query Product(
       optionValues {
         id
         name
-        swatch { color image { __typename previewImage { ...Image } } }
+        swatch { ...Swatch }
         firstSelectableVariant { ...Variant }
       }
     }
@@ -35,14 +37,7 @@ query Product(
     }
     adjacentVariants(selectedOptions: $selectedOptions, ignoreUnknownOptions: true, caseInsensitiveMatch: true) { ...Variant }
     variants(first: 250) { nodes { ...Variant } }
-    sellingPlanGroups(first: 10) {
-      nodes {
-        name
-        appName
-        options { name values }
-        sellingPlans(first: 10) { nodes { id name description recurringDeliveries } }
-      }
-    }
-    metafields(identifiers: $metafields) { namespace key type value }
+    rating: metafield(namespace: "reviews", key: "rating") { value }
+    ratingCount: metafield(namespace: "reviews", key: "rating_count") { value }
   }
 }

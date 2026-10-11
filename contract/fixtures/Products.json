@@ -1,3 +1,183 @@
 {
-  "nodes": []
+  "nodes": [
+    {
+      "__typename": "Product",
+      "id": "gid://shopify/Product/7982905098262",
+      "handle": "men-crewneck",
+      "title": "Men's Crewneck",
+      "vendor": "Mock.shop",
+      "availableForSale": true,
+      "featuredImage": {
+        "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/4ecbbab490d5a90c04074428b4b0e09358c6895050db590ffbb84e1f8e05fbbc.jpg",
+        "altText": null,
+        "width": 4096,
+        "height": 4096
+      },
+      "priceRange": {
+        "minVariantPrice": {
+          "amount": "120.0",
+          "currencyCode": "CAD"
+        },
+        "maxVariantPrice": {
+          "amount": "120.0",
+          "currencyCode": "CAD"
+        }
+      },
+      "compareAtPriceRange": {
+        "minVariantPrice": {
+          "amount": "0.0",
+          "currencyCode": "CAD"
+        }
+      },
+      "options": [
+        {
+          "name": "Size",
+          "optionValues": [
+            {
+              "name": "Small",
+              "swatch": null
+            },
+            {
+              "name": "Medium",
+              "swatch": null
+            },
+            {
+              "name": "Large",
+              "swatch": null
+            }
+          ]
+        },
+        {
+          "name": "Color",
+          "optionValues": [
+            {
+              "name": "Green",
+              "swatch": {
+                "color": "#3F6B4F",
+                "image": null
+              }
+            },
+            {
+              "name": "Olive",
+              "swatch": {
+                "color": "#6B6B3A",
+                "image": null
+              }
+            },
+            {
+              "name": "Ocean",
+              "swatch": {
+                "color": "#2F6F8F",
+                "image": null
+              }
+            }
+          ]
+        }
+      ],
+      "firstVariant": {
+        "id": "gid://shopify/ProductVariant/43696905224214",
+        "sku": "CREW-S-GRN",
+        "availableForSale": true,
+        "quantityRule": {
+          "minimum": 2,
+          "maximum": 40,
+          "increment": 2
+        }
+      },
+      "rating": {
+        "value": "{\"scale_min\":\"1.0\",\"scale_max\":\"5.0\",\"value\":\"4.6\"}"
+      },
+      "ratingCount": {
+        "value": "128"
+      }
+    },
+    null,
+    {
+      "__typename": "Product",
+      "id": "gid://shopify/Product/7982856273942",
+      "handle": "sweatpants",
+      "title": "Sweatpants",
+      "vendor": "Mock.shop",
+      "availableForSale": true,
+      "featuredImage": {
+        "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/e4fe192f0e86ffc74d3b906f754119d4b5f4432cf01120d090ab7eb5182e8897.jpg",
+        "altText": null,
+        "width": 4096,
+        "height": 4096
+      },
+      "priceRange": {
+        "minVariantPrice": {
+          "amount": "35.0",
+          "currencyCode": "CAD"
+        },
+        "maxVariantPrice": {
+          "amount": "42.0",
+          "currencyCode": "CAD"
+        }
+      },
+      "compareAtPriceRange": {
+        "minVariantPrice": {
+          "amount": "0.0",
+          "currencyCode": "CAD"
+        }
+      },
+      "options": [
+        {
+          "name": "Size",
+          "optionValues": [
+            {
+              "name": "Small",
+              "swatch": null
+            },
+            {
+              "name": "Medium",
+              "swatch": null
+            },
+            {
+              "name": "Large",
+              "swatch": null
+            }
+          ]
+        },
+        {
+          "name": "Color",
+          "optionValues": [
+            {
+              "name": "Green",
+              "swatch": {
+                "color": "#81a69b",
+                "image": null
+              }
+            },
+            {
+              "name": "Olive",
+              "swatch": {
+                "color": "#7f8060",
+                "image": null
+              }
+            },
+            {
+              "name": "Ocean",
+              "swatch": {
+                "color": "#768da0",
+                "image": null
+              }
+            }
+          ]
+        }
+      ],
+      "firstVariant": {
+        "id": "gid://shopify/ProductVariant/43696926949398",
+        "sku": "",
+        "availableForSale": true,
+        "quantityRule": {
+          "minimum": 0,
+          "maximum": null,
+          "increment": 0
+        }
+      },
+      "rating": null,
+      "ratingCount": null
+    }
+  ]
 }

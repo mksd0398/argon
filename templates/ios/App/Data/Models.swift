@@ -72,17 +72,98 @@ struct SEO: Decodable, Equatable, Sendable {
     let description: String?
 }
 
+/// Whether amount `a` is more than amount `b` (false when either isn't a number).
+private func above(_ a: Money, _ b: Money) -> Bool {
+    guard let high = Decimal(string: a.amount), let low = Decimal(string: b.amount) else { return false }
+    return high > low
+}
+
 // Shopify reports "no compare-at price" as null or 0.0; only a higher one is a real discount.
 private func discounted(_ price: Money, _ compare: Money?) -> Money? {
-    guard let compare = compare,
-          let was = Decimal(string: compare.amount),
-          let now = Decimal(string: price.amount),
-          was > now else { return nil }
-    return compare
+    compare.flatMap { above($0, price) ? $0 : nil }
 }
 
 private struct MinPrice: Decodable {
     let minVariantPrice: Money
+    var maxVariantPrice: Money? = nil
+}
+
+/// A `metafield(namespace:key:)` read for its value.
+private struct MetafieldValue: Decodable {
+    let value: String?
+}
+
+/// How many of a variant one order can hold: at least `minimum`, at most `maximum` (nil: no limit), in multiples of
+/// `increment`. mock.shop sends 0 where a store sends 1: read `min` and `step`.
+struct QuantityRule: Decodable, Equatable, Sendable {
+    let minimum: Int
+    var maximum: Int? = nil
+    let increment: Int
+
+    /// The smallest quantity, never under 1.
+    var min: Int { Swift.max(1, minimum) }
+
+    /// What a plus or a minus changes the quantity by, never under 1.
+    var step: Int { Swift.max(1, increment) }
+}
+
+/// The `rating` and `rating_count` metafields of the `reviews` namespace (the standard ones; Judge.me fills them).
+enum Ratings {
+    /// A `rating` metafield's stars, 0...5: its value is JSON `{"value":"4.6","scale_min":"1.0","scale_max":"5.0"}` (brought to
+    /// a scale of 5 by `scale_max`) or a plain number. Nil when unreadable.
+    static func parse(_ value: String?) -> Double? {
+        guard let text = value?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else { return nil }
+        if let plain = Double(text) { return stars(plain, of: 5) }
+        guard let object = (try? JSONSerialization.jsonObject(with: Data(text.utf8))) as? [String: Any],
+              let rating = number(object["value"]) else { return nil }
+        return stars(rating, of: number(object["scale_max"]) ?? 5)
+    }
+
+    /// A `rating_count` metafield's whole number; nil when unreadable.
+    static func count(_ value: String?) -> Int? {
+        value.flatMap { Int($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
+    }
+
+    // the JSON's numbers come as strings ("4.6"), or as numbers from an app that writes them so
+    private static func number(_ value: Any?) -> Double? {
+        if let text = value as? String { return Double(text) }
+        return (value as? NSNumber)?.doubleValue
+    }
+
+    private static func stars(_ rating: Double, of top: Double) -> Double? {
+        guard rating.isFinite, top.isFinite, top > 0 else { return nil }
+        // a rating already out of 5 is kept as written (4.6 stays 4.6, with no rounding on the way)
+        return Swift.min(Swift.max(top == 5 ? rating : rating * 5 / top, 0), 5)
+    }
+}
+
+/// A product card's `firstVariant` (`selectedOrFirstAvailableVariant`): what a quick add puts in the cart.
+struct CardVariant: Equatable, Sendable {
+    let id: String
+    var sku: String? = nil
+    let available: Bool
+    var quantityRule: QuantityRule? = nil
+}
+
+extension CardVariant: Decodable {
+    private enum CodingKeys: String, CodingKey {
+        case id, sku, availableForSale, quantityRule
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        try self.init(
+            id: c.decode(String.self, forKey: .id),
+            sku: c.decodeIfPresent(String.self, forKey: .sku),
+            available: c.decode(Bool.self, forKey: .availableForSale),
+            quantityRule: c.decodeIfPresent(QuantityRule.self, forKey: .quantityRule)
+        )
+    }
+}
+
+/// Whether an option (or filter) named `name` chooses a colour: "Colour", "Color" or "Shade", in any case.
+func isColorName(_ name: String) -> Bool {
+    ["colour", "color", "shade"].contains(name.trimmingCharacters(in: .whitespaces).lowercased())
 }
 
 /// `ProductCard` fragment.
@@ -95,16 +176,39 @@ struct ProductCard: Equatable, Sendable {
     let price: Money
     /// Only when above `price`.
     let compareAt: Money?
+    var vendor: String = ""
+    /// The dearest variant's price.
+    var maxPrice: Money? = nil
+    /// The first three options, with their values' swatches (no ids, no variants).
+    var options: [ProductOption] = []
+    var firstVariant: CardVariant? = nil
+    /// Stars out of 5 and the number of reviews, when the store has them (`Ratings`).
+    var rating: Double? = nil
+    var ratingCount: Int? = nil
+
+    /// Variants at different prices: `price` is then "From".
+    var hasPriceRange: Bool { maxPrice.map { above($0, price) } ?? false }
+
+    /// The values of the first colour option (`isColorName`); empty without one.
+    var colors: [ProductOptionValue] { options.first { isColorName($0.name) }?.optionValues ?? [] }
+
+    /// The variant an "Add" button adds without opening the product: the first one, when it is available and no option
+    /// offers a choice. Nil otherwise.
+    var quickAddVariantId: String? {
+        guard let variant = firstVariant, variant.available, options.allSatisfy({ $0.optionValues.count == 1 }) else { return nil }
+        return variant.id
+    }
 }
 
 extension ProductCard: Decodable {
     private enum CodingKeys: String, CodingKey {
-        case id, handle, title, availableForSale, featuredImage, priceRange, compareAtPriceRange
+        case id, handle, title, vendor, availableForSale, featuredImage, priceRange, compareAtPriceRange, options, firstVariant
+        case rating, ratingCount
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        let price = try c.decode(MinPrice.self, forKey: .priceRange).minVariantPrice
+        let range = try c.decode(MinPrice.self, forKey: .priceRange)
         let compare = try c.decodeIfPresent(MinPrice.self, forKey: .compareAtPriceRange)?.minVariantPrice
         try self.init(
             id: c.decode(String.self, forKey: .id),
@@ -112,8 +216,14 @@ extension ProductCard: Decodable {
             title: c.decode(String.self, forKey: .title),
             available: c.decode(Bool.self, forKey: .availableForSale),
             image: c.decodeIfPresent(Img.self, forKey: .featuredImage),
-            price: price,
-            compareAt: discounted(price, compare)
+            price: range.minVariantPrice,
+            compareAt: discounted(range.minVariantPrice, compare),
+            vendor: c.decodeIfPresent(String.self, forKey: .vendor) ?? "",
+            maxPrice: range.maxVariantPrice,
+            options: c.decodeIfPresent([ProductOption].self, forKey: .options) ?? [],
+            firstVariant: c.decodeIfPresent(CardVariant.self, forKey: .firstVariant),
+            rating: Ratings.parse(c.decodeIfPresent(MetafieldValue.self, forKey: .rating)?.value),
+            ratingCount: Ratings.count(c.decodeIfPresent(MetafieldValue.self, forKey: .ratingCount)?.value)
         )
     }
 }
@@ -148,7 +258,8 @@ extension CollectionCard: Decodable {
     }
 }
 
-/// `Variant` fragment.
+/// `Variant` fragment. Everything from `barcode` on comes with `variantBySelectedOptions` only (the selected variant in
+/// full); it is nil, false or empty on the variants of a product's own list.
 struct Variant: Equatable, Sendable {
     let id: String
     let title: String
@@ -160,11 +271,30 @@ struct Variant: Equatable, Sendable {
     let compareAt: Money?
     let image: Img?
     var sku: String? = nil
+    var barcode: String? = nil
+    /// Nil when the store's token can't read inventory (`unauthenticated_read_product_inventory`).
+    var quantityAvailable: Int? = nil
+    /// Sold while out of stock: it ships when it is back.
+    var currentlyNotInStock = false
+    /// The price of one `unitPriceMeasurement` reference unit ("$6.00 / item").
+    var unitPrice: Money? = nil
+    var unitPriceMeasurement: UnitPriceMeasurement? = nil
+    var quantityRule: QuantityRule? = nil
+    /// Volume pricing: the price of each from `minimumQuantity` up, lowest quantity first.
+    var quantityPriceBreaks: [QuantityPriceBreak] = []
+    /// A bundle: it is bought as its `components`.
+    var requiresComponents = false
+    var components: [VariantComponent] = []
+    /// The bundles this variant is a part of.
+    var groupedBy: [ComponentVariant] = []
+    var sellingPlanAllocations: [SellingPlanAllocation] = []
 }
 
 extension Variant: Decodable {
     private enum CodingKeys: String, CodingKey {
         case id, title, availableForSale, selectedOptions, price, compareAtPrice, image, sku
+        case barcode, quantityAvailable, currentlyNotInStock, unitPrice, unitPriceMeasurement, quantityRule
+        case quantityPriceBreaks, requiresComponents, components, groupedBy, sellingPlanAllocations
     }
 
     private struct SelectedOption: Decodable {
@@ -187,9 +317,112 @@ extension Variant: Decodable {
             price: price,
             compareAt: discounted(price, c.decodeIfPresent(Money.self, forKey: .compareAtPrice)),
             image: c.decodeIfPresent(Img.self, forKey: .image),
-            sku: c.decodeIfPresent(String.self, forKey: .sku)
+            sku: c.decodeIfPresent(String.self, forKey: .sku),
+            barcode: c.decodeIfPresent(String.self, forKey: .barcode),
+            quantityAvailable: c.decodeIfPresent(Int.self, forKey: .quantityAvailable),
+            currentlyNotInStock: c.decodeIfPresent(Bool.self, forKey: .currentlyNotInStock) ?? false,
+            unitPrice: c.decodeIfPresent(Money.self, forKey: .unitPrice),
+            unitPriceMeasurement: c.decodeIfPresent(UnitPriceMeasurement.self, forKey: .unitPriceMeasurement),
+            quantityRule: c.decodeIfPresent(QuantityRule.self, forKey: .quantityRule),
+            quantityPriceBreaks: c.nodes(.quantityPriceBreaks),
+            requiresComponents: c.decodeIfPresent(Bool.self, forKey: .requiresComponents) ?? false,
+            components: c.nodes(.components),
+            groupedBy: c.nodes(.groupedBy),
+            sellingPlanAllocations: c.nodes(.sellingPlanAllocations)
         )
     }
+}
+
+/// What a unit price is for: `referenceValue` `referenceUnit`s (1 ITEM, 100 G), of the `quantityValue` `quantityUnit`s the
+/// variant holds. Units are Shopify's enum values (ITEM, G, KG, ML, L, ...).
+struct UnitPriceMeasurement: Decodable, Equatable, Sendable {
+    let measuredType: String?
+    let quantityUnit: String?
+    let quantityValue: Double
+    let referenceUnit: String?
+    let referenceValue: Int
+}
+
+/// From `minimumQuantity` up, each one costs `price`.
+struct QuantityPriceBreak: Decodable, Equatable, Sendable {
+    let minimumQuantity: Int
+    let price: Money
+}
+
+/// A product's handle and title, where a variant is shown apart from its product (a bundle's part, a cart line); its
+/// `id` too where the document selects it (a cart line).
+struct ProductRef: Decodable, Equatable, Sendable {
+    let handle: String
+    let title: String
+    var id: String? = nil
+}
+
+/// A variant named with its product: a part of a bundle, or the bundle a variant is part of. `image` is the variant's,
+/// else its product's.
+struct ComponentVariant: Equatable, Sendable {
+    let id: String
+    let title: String
+    let image: Img?
+    let price: Money
+    let product: ProductRef
+}
+
+extension ComponentVariant: Decodable {
+    private enum CodingKeys: String, CodingKey {
+        case id, title, image, price, product
+    }
+
+    private struct ProductImage: Decodable {
+        let featuredImage: Img?
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let image = try c.decodeIfPresent(Img.self, forKey: .image)
+        try self.init(
+            id: c.decode(String.self, forKey: .id),
+            title: c.decode(String.self, forKey: .title),
+            image: image ?? c.decode(ProductImage.self, forKey: .product).featuredImage,
+            price: c.decode(Money.self, forKey: .price),
+            product: c.decode(ProductRef.self, forKey: .product)
+        )
+    }
+}
+
+/// `quantity` of `variant` in a bundle.
+struct VariantComponent: Equatable, Sendable {
+    let quantity: Int
+    let variant: ComponentVariant
+}
+
+extension VariantComponent: Decodable {
+    private enum CodingKeys: String, CodingKey {
+        case quantity, productVariant
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        try self.init(quantity: c.decode(Int.self, forKey: .quantity), variant: c.decode(ComponentVariant.self, forKey: .productVariant))
+    }
+}
+
+/// A subscription or other purchase option (its `id` goes in a cart line's `sellingPlanId`).
+struct SellingPlan: Decodable, Equatable, Sendable {
+    let id: String
+    let name: String
+}
+
+/// What a variant costs on `sellingPlan`: the first of `priceAdjustments` applies at purchase (a second, when there is one,
+/// after a number of orders).
+struct SellingPlanAllocation: Decodable, Equatable, Sendable {
+    struct PriceAdjustment: Decodable, Equatable, Sendable {
+        let price: Money
+        let compareAtPrice: Money?
+        let perDeliveryPrice: Money?
+    }
+
+    let sellingPlan: SellingPlan
+    let priceAdjustments: [PriceAdjustment]
 }
 
 struct PriceRange: Decodable, Equatable, Sendable {
@@ -258,17 +491,19 @@ extension Media: Decodable {
     }
 }
 
+/// A product's option and its values. On a product card `id` and `firstSelectableVariant` are nil: its options carry
+/// names and swatches only.
 struct ProductOption: Decodable, Equatable, Sendable {
-    let id: String
+    var id: String? = nil
     let name: String
     let optionValues: [ProductOptionValue]
 }
 
 struct ProductOptionValue: Decodable, Equatable, Sendable {
-    let id: String
+    var id: String? = nil
     let name: String
-    let swatch: Swatch?
-    let firstSelectableVariant: Variant?
+    var swatch: Swatch? = nil
+    var firstSelectableVariant: Variant? = nil
 }
 
 /// A colour (`#RRGGBB`) and/or image for an option value.
@@ -295,41 +530,6 @@ extension Swatch: Decodable {
     }
 }
 
-struct SellingPlanGroup: Equatable, Sendable {
-    let name: String
-    let appName: String?
-    let options: [SellingPlanGroupOption]
-    let sellingPlans: [SellingPlan]
-}
-
-struct SellingPlanGroupOption: Decodable, Equatable, Sendable {
-    let name: String
-    let values: [String]
-}
-
-struct SellingPlan: Decodable, Equatable, Sendable {
-    let id: String
-    let name: String
-    let description: String?
-    let recurringDeliveries: Bool
-}
-
-extension SellingPlanGroup: Decodable {
-    private enum CodingKeys: String, CodingKey {
-        case name, appName, options, sellingPlans
-    }
-
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        try self.init(
-            name: c.decode(String.self, forKey: .name),
-            appName: c.decodeIfPresent(String.self, forKey: .appName),
-            options: c.decode([SellingPlanGroupOption].self, forKey: .options),
-            sellingPlans: c.nodes(.sellingPlans)
-        )
-    }
-}
-
 struct Metafield: Decodable, Equatable, Sendable {
     let namespace: String
     let key: String
@@ -343,7 +543,8 @@ struct MetafieldIdentifier: Encodable, Equatable, Sendable {
     let key: String
 }
 
-/// The Product query's product.
+/// The Product query's product. Its metafields come apart (`StorefrontAPI.productMetafields`): a token that can't read
+/// them would lose the whole product. Its selling plans come with the selected variant (`Variant.sellingPlanAllocations`).
 struct Product: Equatable, Sendable {
     let id: String
     let handle: String
@@ -353,6 +554,7 @@ struct Product: Equatable, Sendable {
     let descriptionHtml: String
     let available: Bool
     let isGiftCard: Bool
+    /// Sold on a selling plan only: no one-time purchase.
     let requiresSellingPlan: Bool
     let encodedVariantExistence: String?
     let encodedVariantAvailability: String?
@@ -364,9 +566,12 @@ struct Product: Equatable, Sendable {
     let adjacentVariants: [Variant]
     /// The first 250 variants.
     let variants: [Variant]
-    let sellingPlanGroups: [SellingPlanGroup]
-    /// The asked-for metafields this product has a value for.
-    let metafields: [Metafield]
+    var tags: [String] = []
+    /// The product's page on the online store, to share; nil when it isn't published there.
+    var onlineStoreUrl: String? = nil
+    /// Stars out of 5 and the number of reviews, when the store has them (`Ratings`).
+    var rating: Double? = nil
+    var ratingCount: Int? = nil
 
     /// The images among `media`, in order.
     var images: [Img] {
@@ -381,13 +586,11 @@ extension Product: Decodable {
     private enum CodingKeys: String, CodingKey {
         case id, handle, title, vendor, productType, descriptionHtml, availableForSale, isGiftCard, requiresSellingPlan
         case encodedVariantExistence, encodedVariantAvailability, seo, priceRange, media, options
-        case selectedOrFirstAvailableVariant, adjacentVariants, variants, sellingPlanGroups, metafields
+        case selectedOrFirstAvailableVariant, adjacentVariants, variants, tags, onlineStoreUrl, rating, ratingCount
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        // asked-for metafields the product has no value for come back as null entries
-        let metafields = try c.decodeIfPresent([Metafield?].self, forKey: .metafields) ?? []
         try self.init(
             id: c.decode(String.self, forKey: .id),
             handle: c.decode(String.self, forKey: .handle),
@@ -407,8 +610,10 @@ extension Product: Decodable {
             selectedOrFirstAvailableVariant: c.decodeIfPresent(Variant.self, forKey: .selectedOrFirstAvailableVariant),
             adjacentVariants: c.decodeIfPresent([Variant].self, forKey: .adjacentVariants) ?? [],
             variants: c.nodes(.variants),
-            sellingPlanGroups: c.nodes(.sellingPlanGroups),
-            metafields: metafields.compactMap { $0 }
+            tags: c.decodeIfPresent([String].self, forKey: .tags) ?? [],
+            onlineStoreUrl: c.decodeIfPresent(String.self, forKey: .onlineStoreUrl),
+            rating: Ratings.parse(c.decodeIfPresent(MetafieldValue.self, forKey: .rating)?.value),
+            ratingCount: Ratings.count(c.decodeIfPresent(MetafieldValue.self, forKey: .ratingCount)?.value)
         )
     }
 }
@@ -418,19 +623,23 @@ enum RecommendationIntent: String, Sendable {
     case complementary = "COMPLEMENTARY"
 }
 
-/// `Filter` fragment. `input` is the value to send back in `filters`: a ProductFilter as a JSON string.
+/// `Filter` fragment. `input` is the value to send back in `filters`: a ProductFilter as a JSON string. `swatch` is the
+/// colour or image the store gave the value.
 struct FilterValue: Decodable, Equatable, Sendable {
     let id: String
     let label: String
     let count: Int
     let input: String
+    var swatch: Swatch? = nil
 }
 
+/// `type` is LIST, PRICE_RANGE or BOOLEAN; `presentation` how the store shows it: IMAGE, SWATCH or TEXT.
 struct Filter: Decodable, Equatable, Sendable {
     let id: String
     let label: String
     let type: String
     let values: [FilterValue]
+    var presentation: String? = nil
 }
 
 /// The Collection query's collection, with one page of its products (and the filters they offer, `products.filters`).
@@ -752,6 +961,15 @@ struct ShopPolicies: Decodable, Equatable, Sendable {
     let legalNotice: ShopPolicy?
     let contactInformation: ShopPolicy?
     let subscriptionPolicy: ShopPolicy?
+
+    /// The policies the shop has, in the order a list shows them.
+    var all: [ShopPolicy] {
+        [privacyPolicy, termsOfService, refundPolicy, shippingPolicy, termsOfSale, legalNotice, contactInformation, subscriptionPolicy]
+            .compactMap { $0 }
+    }
+
+    /// The policy with `handle` (`privacy-policy`, `terms-of-service`, `refund-policy`, `shipping-policy`, ...).
+    func policy(_ handle: String) -> ShopPolicy? { all.first { $0.handle == handle } }
 }
 
 /// `Policy` fragment. `body` is HTML. The subscription policy has no `id`.
@@ -871,15 +1089,49 @@ struct StoreAvailability: Decodable, Equatable, Sendable {
     let location: Location
 }
 
+// MARK: - B2B
+
+struct CompanyLocation: Decodable, Equatable, Sendable {
+    let id: String
+    let name: String
+}
+
+/// A company that buys from the shop. `locations` come with the customer's company contacts only.
+struct Company: Equatable, Sendable {
+    let id: String
+    let name: String
+    var locations: [CompanyLocation] = []
+}
+
+extension Company: Decodable {
+    private enum CodingKeys: String, CodingKey {
+        case id, name, locations
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        try self.init(id: c.decode(String.self, forKey: .id), name: c.decode(String.self, forKey: .name), locations: c.nodes(.locations))
+    }
+}
+
+/// The company, and its location, a cart or an order is for.
+struct PurchasingCompany: Decodable, Equatable, Sendable {
+    let company: Company
+    let location: CompanyLocation
+}
+
 // MARK: - App types the screens build from the models above
 
-/// `hosts` is ordered: SHOP_DOMAIN first (relative links open against it), then the primary domain.
+/// `hosts` is ordered: SHOP_DOMAIN first (relative links open against it), then the primary domain. `shortDescription`
+/// and `slogan`: the brand's own words for itself (Shopify admin, Settings > Brand), nil when unset.
 struct Brand: Equatable {
     let name: String
     let logo: Img?
     let cover: Img?
     let accent: String?
     let hosts: [String]
+    var shortDescription: String? = nil
+    var slogan: String? = nil
 }
 
 extension Brand {
@@ -892,8 +1144,32 @@ extension Brand {
             logo: shop.brand?.logo,
             cover: shop.brand?.coverImage,
             accent: shop.brand?.primaryColors.first?.background,
-            hosts: hosts
+            hosts: hosts,
+            shortDescription: shop.brand?.shortDescription,
+            slogan: shop.brand?.slogan
         )
+    }
+}
+
+/// One page of the first-launch welcome: a full-screen `image` (a URL) with a `heading` and a line of `text` over it.
+struct OnboardingPage: Equatable {
+    let image: String?
+    let heading: String
+    let text: String
+}
+
+enum Onboarding {
+    /// The three welcome pages, over `template`'s three stock banners: the shop in its own words (its brand's short
+    /// description, else its slogan, else a line with its name), then what the app is good for.
+    static func pages(brand: Brand, template: HomeTemplate, image: (HomeTemplate, Int) -> String? = StockImages.url) -> [OnboardingPage] {
+        let own = [brand.shortDescription, brand.slogan]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first { !$0.isEmpty }
+        return [
+            ("Welcome to \(brand.name)", own ?? "Everything from \(brand.name), in one app."),
+            ("Find it fast", "Search, filter and save what you love."),
+            ("Checkout in a few taps", "Track your orders and returns from your account."),
+        ].enumerated().map { index, words in OnboardingPage(image: image(template, index + 1), heading: words.0, text: words.1) }
     }
 }
 
@@ -910,9 +1186,12 @@ enum Section: Equatable {
     case collections(heading: String?, items: [CollectionCard])
 }
 
+/// Where a tap leads: a pushed screen, or a web page (`web`, in the in-app browser).
 enum Route: Hashable {
     case product(String)
     case collection(String)
     case search(String)
+    /// A shop policy's page by its handle (`shipping-policy`, `refund-policy`, ...): the route `policy/<handle>`.
+    case policy(String)
     case web(String)
 }

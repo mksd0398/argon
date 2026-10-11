@@ -1,7 +1,7 @@
 {
   "cartLinesAdd": {
     "cart": {
-      "id": "gid://shopify/Cart/c1-7469366f149b403dafd17bc5a9dab879?key=9c19aa7d7298298cf1b25c5af5542807",
+      "id": "gid://shopify/Cart/c1-4c87091c818643b9a327512a0358dbc4?key=292130afc0a10e41c4b2cbd1a1b0ded3",
       "checkoutUrl": "https://demostore.hydrogen.mock.shop/checkout",
       "totalQuantity": 2,
       "note": "",
@@ -11,7 +11,8 @@
       "buyerIdentity": {
         "email": null,
         "phone": null,
-        "countryCode": "CA"
+        "countryCode": "CA",
+        "purchasingCompany": null
       },
       "delivery": {
         "addresses": []
@@ -30,20 +31,31 @@
         "nodes": [
           {
             "__typename": "CartLine",
-            "id": "gid://shopify/CartLine/49959",
+            "id": "gid://shopify/CartLine/54972",
             "quantity": 2,
             "attributes": [],
             "cost": {
               "totalAmount": {
                 "amount": "240.0",
                 "currencyCode": "CAD"
-              }
+              },
+              "subtotalAmount": {
+                "amount": "240.0",
+                "currencyCode": "CAD"
+              },
+              "amountPerQuantity": {
+                "amount": "120.0",
+                "currencyCode": "CAD"
+              },
+              "compareAtAmountPerQuantity": null
             },
             "discountAllocations": [],
+            "sellingPlanAllocation": null,
             "merchandise": {
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/43696905224214",
               "title": "Small / Green",
+              "sku": "",
               "image": {
                 "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/4ecbbab490d5a90c04074428b4b0e09358c6895050db590ffbb84e1f8e05fbbc.jpg",
                 "altText": null,
@@ -54,7 +66,13 @@
                 "amount": "120.0",
                 "currencyCode": "CAD"
               },
+              "quantityRule": {
+                "minimum": 0,
+                "maximum": null,
+                "increment": 0
+              },
               "product": {
+                "id": "gid://shopify/Product/7982905098262",
                 "handle": "men-crewneck",
                 "title": "Men's Crewneck"
               }

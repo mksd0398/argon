@@ -65,6 +65,10 @@ final class AuthStore {
     /// Why the last sign-in failed once the browser came back (cancelled, refused); cleared by the next sign-in.
     private(set) var signInError: String? = nil
 
+    /// Counts the times the access token changed (signed in, refreshed, signed out): whatever holds the token itself, as
+    /// the B2B buyer does, follows it.
+    private(set) var tokenChanges = 0
+
     private struct Tokens: Codable {
         let access: String
         let refresh: String?
@@ -339,6 +343,7 @@ final class AuthStore {
     }
 
     private func setTokens(_ value: Tokens?) async {
+        if value?.access != tokens?.access { tokenChanges += 1 }
         tokens = value
         signedIn = value != nil
         await write(Self.tokensKey, value.flatMap { try? JSONEncoder().encode($0) })

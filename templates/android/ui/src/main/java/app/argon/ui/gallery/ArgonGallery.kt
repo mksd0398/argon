@@ -1,5 +1,6 @@
 package app.argon.ui.gallery
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -69,12 +70,15 @@ import app.argon.ui.components.ArgonListTrailing
 import app.argon.ui.components.ArgonModal
 import app.argon.ui.components.ArgonModalAction
 import app.argon.ui.components.ArgonProgressBar
+import app.argon.ui.components.ArgonQuantityStepper
 import app.argon.ui.components.ArgonRadioGroup
 import app.argon.ui.components.ArgonRangeSlider
+import app.argon.ui.components.ArgonRating
 import app.argon.ui.components.ArgonSheetDetent
 import app.argon.ui.components.ArgonSideMenu
 import app.argon.ui.components.ArgonSideMenuItem
 import app.argon.ui.components.ArgonSpinner
+import app.argon.ui.components.ArgonSwatch
 import app.argon.ui.components.ArgonSwitch
 import app.argon.ui.components.ArgonTabs
 import app.argon.ui.components.ArgonTag
@@ -139,6 +143,7 @@ fun ArgonGallery(accentHex: String? = null, onBack: (() -> Unit)? = null) {
                     item { Buttons() }
                     item { Choices() }
                     item { Badges() }
+                    item { Commerce() }
                     item { Inputs() }
                     item { Selection() }
                     item { Sliders() }
@@ -256,6 +261,40 @@ private fun Badges() = Section("Badges and avatars") {
         ArgonAvatar(initials = "AB")
         ArgonAvatar(icon = ArgonIconName.Person, size = ArgonSize.L)
         ArgonAvatar(initials = "MK", size = ArgonSize.L)
+    }
+}
+
+@Composable
+private fun Commerce() = Section("Rating, quantity stepper, swatches") {
+    Row(horizontalArrangement = Arrangement.spacedBy(ArgonTheme.spacing.xl), verticalAlignment = Alignment.CenterVertically) {
+        ArgonRating(4.6, count = 128)
+        ArgonRating(3.5, size = ArgonSize.M)
+        ArgonRating(0.0, count = 0, size = ArgonSize.L)
+    }
+    var quantity by remember { mutableIntStateOf(1) }
+    var pack by remember { mutableIntStateOf(6) }
+    Caption("Quantity $quantity (1 or more); pack of $pack (multiples of 6, 6 to 24)")
+    Row(horizontalArrangement = Arrangement.spacedBy(ArgonTheme.spacing.m), verticalAlignment = Alignment.CenterVertically) {
+        ArgonQuantityStepper(quantity, { quantity = it }, size = ArgonSize.S)
+        ArgonQuantityStepper(pack, { pack = it }, min = 6, max = 24, step = 6)
+        ArgonQuantityStepper(2, {}, size = ArgonSize.L, isEnabled = false)
+    }
+    val shades = listOf("Sand" to "#D8C3A5", "Olive" to "#708238", "Navy" to "#1B2A49", "White" to "#FFFFFF")
+    var shade by remember { mutableStateOf("Olive") }
+    Caption("Colour: $shade")
+    Row(horizontalArrangement = Arrangement.spacedBy(ArgonTheme.spacing.s), verticalAlignment = Alignment.CenterVertically) {
+        shades.forEach { (name, hex) -> ArgonSwatch(hex, null, name, isSelected = name == shade, onClick = { shade = name }) }
+        ArgonSwatch("#B23A2E", null, "Rust, sold out", isAvailable = false, onClick = {})
+        ArgonSwatch(null, photos[1], "Print", onClick = {})
+        ArgonSwatch(null, null, "Unknown colour")
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(ArgonTheme.spacing.xs), verticalAlignment = Alignment.CenterVertically) {
+        shades.forEach { (name, hex) -> ArgonSwatch(hex, null, name, size = ArgonSize.S) }
+        Caption("+2")
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(ArgonTheme.spacing.m)) {
+        shades.take(3).forEach { (name, hex) -> ArgonSwatch(hex, null, name, isSelected = name == shade, size = ArgonSize.L, onClick = { shade = name }) }
+        ArgonSwatch("#B23A2E", null, "Rust", isAvailable = false, size = ArgonSize.L, onClick = {})
     }
 }
 
@@ -386,6 +425,14 @@ private fun Bars() = Section("Top and bottom bars") {
     Caption("Search")
     var query by remember { mutableStateOf("") }
     ArgonTopBar("Search products", variant = ArgonTopBarVariant.Search, searchText = query, onSearchTextChange = { query = it }, trailing = listOf(bag))
+    Caption("Overlay: over a picture, then solid as the picture scrolls away")
+    var solid by remember { mutableStateOf(false) }
+    val solidity by animateFloatAsState(if (solid) 1f else 0f, label = "solid")
+    Box(Modifier.fillMaxWidth().height(160.dp).clip(ArgonTheme.radius.m)) {
+        AsyncImage(photos[0], null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        ArgonTopBar("Maison", variant = ArgonTopBarVariant.Overlay, trailing = listOf(search, bag), solid = solidity)
+    }
+    ArgonSwitch(solid, { solid = it }, label = "Solid")
     var selected by remember { mutableStateOf("home") }
     ArgonBottomBar(
         listOf(

@@ -44,7 +44,19 @@ final class CartStore {
     private let accessToken: () async throws -> String?
     // One change at a time: two quick taps must not create two carts or interleave line updates.
     private let lock: AsyncLock
+    /// The company location a B2B customer buys for (`setBuyer`); nil for anyone else.
+    private var companyLocationId: String? = nil
+    /// The buyer Shopify last put on the cart: the cart's id, the customer's token and the company location. Shopify
+    /// answers every buyer update with a checkout URL under a new key, so attaching the same buyer again changes the
+    /// cart each time: a screen that prepares checkout whenever the cart changes would then reload it without end.
+    private var attached: AttachedBuyer? = nil
     private static let idKey = "cartId"
+
+    private struct AttachedBuyer: Equatable {
+        let cartId: String
+        let token: String
+        let companyLocationId: String?
+    }
 
     init(api: StorefrontAPI, defaults: UserDefaults, accessToken: @escaping () async throws -> String? = { nil }) {
         self.api = api
@@ -65,10 +77,11 @@ final class CartStore {
         }
     }
 
-    func add(_ variantId: String, quantity: Int) async throws {
+    /// `sellingPlanId`: the subscription the line is bought on; nil for a one-time purchase.
+    func add(_ variantId: String, quantity: Int, sellingPlanId: String? = nil) async throws {
         await lock.lock()
         defer { lock.unlock() }
-        let lines = [CartLineInput(merchandiseId: variantId, quantity: quantity)]
+        let lines = [CartLineInput(merchandiseId: variantId, quantity: quantity, sellingPlanId: sellingPlanId)]
         // a stored cart that has expired is replaced by a new one holding these lines
         let added = try await change(
             { try await self.api.addLines(cartId: $0, lines: lines) },
@@ -95,17 +108,53 @@ final class CartStore {
         try await removeLine(lineId)
     }
 
+    /// Adds the discount `code` to the cart's codes (Shopify takes the whole list each time). False when Shopify says it
+    /// can't be used on this cart (unknown, expired, or its conditions aren't met): the code is then taken off again, so
+    /// the cart only carries codes that count. False too without a cart or a code.
+    func applyDiscount(_ code: String) async throws -> Bool {
+        await lock.lock()
+        defer { lock.unlock() }
+        let entered = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !entered.isEmpty, let current = cart else { return false }
+        // codes are not case-sensitive: entering one again replaces it instead of listing it twice
+        let others = current.discountCodes.map { $0.code }.filter { !Self.sameCode($0, entered) }
+        guard let updated = try await change({ try await self.api.updateDiscountCodes(cartId: $0, codes: others + [entered]) }) else {
+            return false
+        }
+        if updated.discountCodes.contains(where: { $0.applicable && Self.sameCode($0.code, entered) }) { return true }
+        _ = try await change { try await self.api.updateDiscountCodes(cartId: $0, codes: others) }
+        return false
+    }
+
+    /// Takes the discount `code` off the cart.
+    func removeDiscount(_ code: String) async throws {
+        await lock.lock()
+        defer { lock.unlock() }
+        // without the cart there is no list to send (an empty one would clear every code)
+        guard let current = cart else { return }
+        let others = current.discountCodes.map { $0.code }.filter { !Self.sameCode($0, code) }
+        _ = try await change { try await self.api.updateDiscountCodes(cartId: $0, codes: others) }
+    }
+
+    private static func sameCode(_ a: String, _ b: String) -> Bool {
+        a.caseInsensitiveCompare(b) == .orderedSame
+    }
+
     /// The URL to hand to Checkout Kit, with the signed-in customer attached to the cart first. Nil without a cart.
-    /// Attaching the customer never blocks checkout: if it fails, the shopper checks out as a guest.
+    /// Attaching the customer never blocks checkout: if it fails, the shopper checks out as a guest. A buyer the cart
+    /// already has is not attached again, so asking twice gives the same URL and leaves the cart as it is.
     func checkoutUrl() async -> String? {
         await lock.lock()
         defer { lock.unlock() }
         guard let current = cart else { return nil }
         do {
             guard let token = try await accessToken() else { return current.checkoutUrl }
-            let identity = CartBuyerIdentityInput(customerAccessToken: token)
-            let attached = try await change({ try await self.api.updateBuyerIdentity(cartId: $0, buyerIdentity: identity) })
-            return attached?.checkoutUrl
+            let buyer = AttachedBuyer(cartId: current.id, token: token, companyLocationId: companyLocationId)
+            if buyer == attached { return current.checkoutUrl }
+            let identity = CartBuyerIdentityInput(customerAccessToken: token, companyLocationId: companyLocationId)
+            let updated = try await change({ try await self.api.updateBuyerIdentity(cartId: $0, buyerIdentity: identity) })
+            if updated != nil { attached = buyer }
+            return updated?.checkoutUrl
         } catch {
             // the token provider threw, Shopify refused the token (userErrors), or the request failed
             cartLog.warning("customer not attached to the cart; checking out as a guest: \(error.localizedDescription)")
@@ -120,8 +169,28 @@ final class CartStore {
         forget()
     }
 
+    /// The company location the signed-in customer buys for (`BuyerStore`), or nil for a retail shopper. It goes on the
+    /// cart with the customer's token, so its lines take the company's prices: now when there is a cart, with every new
+    /// cart, and before checkout. Nil only forgets the location (signing out drops the cart itself).
+    func setBuyer(_ companyLocationId: String?) async throws {
+        await lock.lock()
+        defer { lock.unlock() }
+        self.companyLocationId = companyLocationId
+        guard let location = companyLocationId, currentId() != nil, let token = try await accessToken() else { return }
+        let identity = CartBuyerIdentityInput(customerAccessToken: token, companyLocationId: location)
+        if let updated = try await change({ try await self.api.updateBuyerIdentity(cartId: $0, buyerIdentity: identity) }) {
+            attached = AttachedBuyer(cartId: updated.id, token: token, companyLocationId: location)
+        }
+    }
+
     private func create(_ lines: [CartLineInput]) async throws -> Cart {
-        try await send { try await self.api.cartCreate(CartInput(lines: lines)) }
+        var input = CartInput(lines: lines)
+        // a company's cart starts with its buyer, or its first lines would show retail prices; anyone else is attached at checkout
+        if let location = companyLocationId, let token = try? await accessToken() {
+            input.buyerIdentity = CartBuyerIdentityInput(customerAccessToken: token, companyLocationId: location)
+        }
+        let created = input
+        return try await send { try await self.api.cartCreate(created) }
     }
 
     private func removeLine(_ lineId: String) async throws {

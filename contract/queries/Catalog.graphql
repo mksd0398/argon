@@ -6,7 +6,8 @@ query Catalog(
   $reverse: Boolean
   $country: CountryCode
   $language: LanguageCode
-) @inContext(country: $country, language: $language) {
+  $buyer: BuyerInput
+) @inContext(country: $country, language: $language, buyer: $buyer) {
   products(first: $first, after: $after, query: $query, sortKey: $sortKey, reverse: $reverse) {
     pageInfo { hasNextPage endCursor }
     nodes { ...ProductCard }

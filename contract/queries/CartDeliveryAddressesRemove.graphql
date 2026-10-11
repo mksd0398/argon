@@ -3,7 +3,8 @@ mutation CartDeliveryAddressesRemove(
   $addressIds: [ID!]!
   $country: CountryCode
   $language: LanguageCode
-) @inContext(country: $country, language: $language) {
+  $buyer: BuyerInput
+) @inContext(country: $country, language: $language, buyer: $buyer) {
   cartDeliveryAddressesRemove(cartId: $cartId, addressIds: $addressIds) {
     cart { ...Cart }
     userErrors { ...CartUserError }

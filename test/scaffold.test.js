@@ -3,8 +3,10 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { run, configText, xtoolFiles } from "../lib/index.js";
+import { fileURLToPath } from "node:url";
+import { run, scaffold, writeAppIcon, configText, xtoolFiles } from "../lib/index.js";
 import { loadContract } from "../lib/contract.js";
+import { decodePng, encodePng } from "../lib/png.js";
 
 const WHICH = process.platform === "win32" ? "where" : "command";
 const flag = (args, name) => args[args.indexOf(name) + 1];
@@ -12,10 +14,12 @@ const flag = (args, name) => args[args.indexOf(name) + 1];
 /**
  * Fake exec/fetch. Records every call; `shopify store execute` answers from the query text (everything exists).
  * gitThrows: every `git -C <dir> ...` call throws, like defaultExec refusing an unsafe path.
+ * brand: what the Logo query answers for shop.brand (none: a brand without logos); files: { url: () => Response }
+ * for the logo downloads.
  */
 function fakes({
   git = true, gitThrows = false, shopify = true, shopName = "Mock.shop", password = false, passwordFails = false,
-  content = { products: true, home: true },
+  content = { products: true, home: true }, brand = { squareLogo: null, logo: null, colors: { primary: [] } }, files = {},
 } = {}) {
   const calls = [];
   const urls = [];
@@ -39,13 +43,18 @@ function fakes({
   };
   const fetch = async (url, init) => {
     urls.push(url);
+    if (url in files) return files[url]();
     if (init?.method !== "POST") {
       if (passwordFails) throw new Error("network down");
       return { status: password ? 302 : 200, headers: new Headers(password ? { location: "/password" } : {}) };
     }
-    const body = JSON.parse(init.body).query.startsWith("query Content")
+    const { query } = JSON.parse(init.body);
+    if (query.startsWith("query Logo") && brand === "fails") return { ok: false, status: 500 };
+    const body = query.startsWith("query Content")
       ? { data: { products: { nodes: content.products ? [{ id: "p" }] : [] }, metaobject: content.home ? { id: "m" } : null } }
-      : { data: { shop: { id: "gid://shopify/Shop/68817551382", name: shopName } } };
+      : query.startsWith("query Logo")
+        ? { data: { shop: { brand } } }
+        : { data: { shop: { id: "gid://shopify/Shop/68817551382", name: shopName } } };
     return { ok: true, status: 200, json: async () => body };
   };
   return { calls, urls, exec, fetch };
@@ -79,6 +88,76 @@ const filesUnder = (dir) =>
   readdirSync(dir, { recursive: true, withFileTypes: true }).filter((e) => e.isFile()).map((e) => join(e.parentPath ?? e.path, e.name));
 const queryFiles = (dir) => readdirSync(dir).filter((f) => f.endsWith(".graphql")).sort();
 
+// ─── App icon and launch screen: what the CLI writes, read back with its own PNG reader ───
+const ICON = "App/Assets.xcassets/AppIcon.appiconset/AppIcon.png";
+const RES = "android/app/src/main/res";
+const TEMPLATE_RES = fileURLToPath(new URL("../templates/android/app/src/main/res/", import.meta.url));
+const SQUARE_URL = "https://cdn.shopify.com/s/files/1/square.png?width=1024&height=1024";
+const LOGO_URL = "https://cdn.shopify.com/s/files/1/logo.png?width=1024&height=1024";
+const GREEN = [28, 110, 74], INK = [0x17, 0x15, 0x0f], PAPER = [0xf6, 0xf4, 0xf0], WHITE = [255, 255, 255];
+const WHITE_SET = { "color-space": "srgb", components: { alpha: "1.000", blue: "0xFF", green: "0xFF", red: "0xFF" } };
+const pixel = (image, x, y) => [...image.data.subarray((y * image.width + x) * 4, (y * image.width + x) * 4 + 4)];
+const listing = (dir) => new Set(existsSync(dir) ? readdirSync(dir, { recursive: true }).map((path) => path.replaceAll("\\", "/")) : []);
+
+/** A logo: transparent, with an opaque green block that leaves a margin of a tenth of each side. */
+function logoImage(width, height) {
+  const data = Buffer.alloc(width * height * 4);
+  const top = Math.round(height / 10), left = Math.round(width / 10);
+  for (let y = top; y < height - top; y++) {
+    for (let x = left; x < width - left; x++) data.set([...GREEN, 255], (y * width + x) * 4);
+  }
+  return { width, height, data };
+}
+
+function branding(dir) {
+  const read = (path) => (existsSync(join(dir, path)) ? readFileSync(join(dir, path)) : null);
+  const image = (path) => (read(path) ? decodePng(read(path)) : null);
+  const assets = "ios/App/Assets.xcassets";
+  return {
+    iconFile: read(`ios/${ICON}`),
+    icon: image(`ios/${ICON}`),
+    launch: image(`${assets}/LaunchLogo.imageset/LaunchLogo.png`),
+    launchBackground: JSON.parse(read(`${assets}/LaunchBackground.colorset/Contents.json`)).colors[0].color,
+    launcher: image(`${RES}/drawable-xxxhdpi/launcher_logo.png`),
+    launcherXml: read(`${RES}/values/launcher.xml`)?.toString() ?? null,
+  };
+}
+
+// The icon every case shares: 1024×1024, written as RGB (no alpha channel), in `corner` at its corners and `centre` in the middle
+function assertIcon({ iconFile, icon }, corner, centre) {
+  assert.deepEqual([icon.width, icon.height], [1024, 1024]);
+  assert.equal(iconFile[25], 2, "the icon's PNG colour type is RGB: no alpha channel");
+  for (const [x, y] of [[0, 0], [1023, 0], [0, 1023], [1023, 1023]]) assert.deepEqual(pixel(icon, x, y), [...corner, 255]);
+  assert.deepEqual(pixel(icon, 512, 512), [...centre, 255]);
+}
+
+/** A project made from the transparent green logo: the five files of the spec's table, and the template's vector mark gone. */
+function assertLogoBranding(dir, { launcher, launch }) {
+  const b = branding(dir);
+  assertIcon(b, WHITE, GREEN);
+  for (const [image, [width, height]] of [[b.launcher, launcher], [b.launch, launch]]) {
+    assert.deepEqual([image.width, image.height], [width, height]);
+    assert.deepEqual(pixel(image, width >> 1, height >> 1), [...GREEN, 255]);
+    assert.equal(pixel(image, 0, 0)[3], 0, "transparent as downloaded");
+  }
+  assert.equal(b.launcherXml, '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="launcher_background">#FFFFFF</color>\n</resources>\n');
+  assert.deepEqual(b.launchBackground, WHITE_SET);
+  const expected = listing(TEMPLATE_RES);
+  expected.delete("drawable/launcher_logo.xml");
+  for (const path of ["drawable-xxxhdpi", "drawable-xxxhdpi/launcher_logo.png", "values", "values/launcher.xml"]) expected.add(path);
+  assert.deepEqual(listing(join(dir, RES)), expected);
+}
+
+/** A project made without a logo: Android's resources are the template's, iOS has the plain icon and an empty launch logo. */
+function assertDefaultBranding(dir, background = INK, mark = PAPER) {
+  const b = branding(dir);
+  assertIcon(b, background, mark);
+  assert.deepEqual([b.launch.width, b.launch.height, [...b.launch.data]], [1, 1, [0, 0, 0, 0]]);
+  assert.deepEqual(b.launchBackground, WHITE_SET);
+  assert.equal(b.launcher, null);
+  assert.deepEqual(listing(join(dir, RES)), listing(TEMPLATE_RES));
+}
+
 test("--demo --yes scaffolds both apps against mock.shop", async () => {
   const f = fakes();
   const contract = await loadContract();
@@ -86,7 +165,8 @@ test("--demo --yes scaffolds both apps against mock.shop", async () => {
     const dir = join(cwd, "demo-app");
     const props = readFileSync(join(dir, "android/shopify.properties"), "utf8");
     for (const line of ["SHOP_DOMAIN=mock.shop", "SHOP_ID=68817551382", "STOREFRONT_TOKEN=", "CUSTOMER_CLIENT_ID=",
-      "API_VERSION=2026-10", "APP_NAME=Mock.shop", "BUNDLE_ID=com.mockshop.demoapp", "PDP_METAFIELDS="]) {
+      "API_VERSION=2026-10", "APP_NAME=Mock.shop", "BUNDLE_ID=com.mockshop.demoapp", "PDP_METAFIELDS=",
+      "HOME_TEMPLATE=fashion", "COLLECTION_TEMPLATE=top", "JUDGEME_PUBLIC_TOKEN=", "SHOW_VENDOR=false", "ONBOARDING=true", "FREE_SHIPPING_THRESHOLD=150"]) {
       assert.ok(props.split("\n").includes(line), `shopify.properties has ${line}`);
     }
     const xcconfig = readFileSync(join(dir, "ios/Config.xcconfig"), "utf8");
@@ -95,16 +175,30 @@ test("--demo --yes scaffolds both apps against mock.shop", async () => {
 
     const android = queryFiles(join(dir, "android/app/src/main/assets/queries"));
     const ios = queryFiles(join(dir, "ios/App/Resources/queries"));
-    assert.equal(android.length, 52);
+    assert.equal(android.length, 55);
     assert.deepEqual(ios, android);
 
     // xtool (iOS without a Mac): every file the app reads from its bundle is listed, and each exists
     const xtool = readFileSync(join(dir, "ios/xtool.yml"), "utf8").trimEnd().split("\n");
-    assert.deepEqual(xtool.slice(0, 4), ["version: 1", "bundleID: com.mockshop.demoapp", "infoPath: Xtool-Info.plist", "resources:"]);
-    const resources = xtool.slice(4).map((line) => line.replace(/^- /, ""));
+    assert.deepEqual(xtool.slice(0, 5), [
+      "version: 1", "bundleID: com.mockshop.demoapp", "infoPath: Xtool-Info.plist",
+      "iconPath: App/Assets.xcassets/AppIcon.appiconset/AppIcon.png", "resources:",
+    ]);
+    const resources = xtool.slice(5).map((line) => line.replace(/^- /, ""));
     assert.deepEqual(resources.slice(0, 2), ["Config.xcconfig", "App/PrivacyInfo.xcprivacy"]);
-    assert.deepEqual(resources.slice(2), ios.map((file) => `App/Resources/queries/${file}`));
-    for (const file of [...resources, "Xtool-Info.plist", "Package.swift"]) assert.ok(existsSync(join(dir, "ios", file)), file);
+    assert.deepEqual(resources.slice(2, 2 + ios.length), ios.map((file) => `App/Resources/queries/${file}`));
+    // the home templates' placeholder banners, and (demo store only) the sample account, in both apps
+    const images = readdirSync(new URL("../templates/images/", import.meta.url)).filter((file) => file.endsWith(".jpg")).sort();
+    assert.equal(images.length, 12);
+    assert.deepEqual(readdirSync(join(dir, "android/app/src/main/assets/home")).sort(), images);
+    const samples = readdirSync(join(dir, "android/app/src/main/assets/sample")).sort();
+    assert.equal(samples.length, 15); // the 14 Customer Account operations and the sample reviews
+    assert.ok(samples.includes("Orders.sample.json") && samples.includes("JudgeMeWidget.sample.html"));
+    const deleted = JSON.parse(readFileSync(join(dir, "android/app/src/main/assets/sample/CustomerAddressDelete.sample.json"), "utf8"));
+    assert.ok(deleted.customerAddressDelete.deletedAddressId, "the preview's address delete succeeds");
+    assert.deepEqual(readdirSync(join(dir, "ios/App/Resources/sample")).sort(), samples);
+    assert.deepEqual(resources.slice(2 + ios.length), [...images.map((file) => `App/Resources/home/${file}`), ...samples.map((file) => `App/Resources/sample/${file}`)]);
+    for (const file of [...resources, "Xtool-Info.plist", "Package.swift", ICON]) assert.ok(existsSync(join(dir, "ios", file)), file);
     assert.ok(readFileSync(join(dir, "ios/Xtool-Info.plist"), "utf8").includes("<string>Mock.shop</string>"));
     for (const folder of ["android/app/src/main/assets/queries", "ios/App/Resources/queries"]) {
       for (const [name, document] of contract) {
@@ -128,7 +222,8 @@ test("--demo --yes scaffolds both apps against mock.shop", async () => {
     for (const file of filesUnder(dir)) assert.ok(!readFileSync(file, "utf8").includes("__ARGON_"), `${file} has no placeholder`);
 
     assert.ok(f.calls.every(([cmd]) => cmd !== "shopify" && cmd !== WHICH), "demo never touches the Shopify CLI");
-    assert.deepEqual(f.urls, ["https://mock.shop/api/2026-10/graphql.json"]);
+    // the shop, then its logo
+    assert.deepEqual(f.urls, ["https://mock.shop/api/2026-10/graphql.json", "https://mock.shop/api/2026-10/graphql.json"]);
     const git = f.calls.filter(([cmd]) => cmd === "git");
     assert.deepEqual(git, [
       ["git", "--version"],
@@ -170,7 +265,7 @@ test("real store: auth, provision, password check, Headless steps, verify, confi
     assert.equal(cli[1], "shopify store auth");
     assert.ok(cli.slice(2).every((c) => c === "shopify store execute"));
     const graphql = "https://nalli.myshopify.com/api/2026-10/graphql.json";
-    assert.deepEqual(f.urls, ["https://nalli.myshopify.com/", graphql, graphql]);
+    assert.deepEqual(f.urls, ["https://nalli.myshopify.com/", graphql, graphql, graphql]); // password, shop, content, logo
     assert.ok(f.calls.every(([cmd]) => !["start", "open", "xdg-open"].includes(cmd)), "no browser without a terminal");
 
     assert.ok(out.includes("Store uses legacy customer accounts"), "provision warnings are printed");
@@ -210,6 +305,102 @@ test("--skip-content skips the Shopify CLI; a failed password check and a blank 
     assert.ok(out.includes("Login hidden until CUSTOMER_CLIENT_ID is set"));
     assert.ok(readFileSync(join(cwd, "store-app/android/shopify.properties"), "utf8").includes("CUSTOMER_CLIENT_ID=\n"));
   });
+});
+
+const withLogos = (files, primary = []) => ({
+  brand: { squareLogo: SQUARE_URL in files ? { image: { url: SQUARE_URL } } : null, logo: LOGO_URL in files ? { image: { url: LOGO_URL } } : null, colors: { primary } },
+  files,
+});
+const DEFAULTS = "Android keeps the default icon and iOS gets a plain one";
+
+test("the store's square logo becomes the app icon and the launch screen; the wide logo isn't fetched", async () => {
+  const square = () => new Response(encodePng(logoImage(1024, 1024)));
+  const f = fakes(withLogos({ [SQUARE_URL]: square, [LOGO_URL]: () => assert.fail("the square logo is preferred") }));
+  await withRun(["demo-app", "--demo", "--yes"], f, (cwd, out) => {
+    assertLogoBranding(join(cwd, "demo-app"), { launcher: [264, 264], launch: [600, 600] });
+    assert.equal(f.urls.at(-1), SQUARE_URL);
+    assert.ok(out.includes("App icon and launch screen: the store's square logo, on #FFFFFF"));
+    assert.ok(!out.includes(DEFAULTS));
+  });
+});
+
+test("a square logo that can't be read falls back to the wide logo, which is never enlarged for Android or the launch screen", async () => {
+  const f = fakes(withLogos({ [SQUARE_URL]: () => new Response("<svg xmlns='http://www.w3.org/2000/svg'/>"), [LOGO_URL]: () => new Response(encodePng(logoImage(200, 100))) }));
+  await withRun(["store-app", "--store", "nalli", "--token", "t", "--skip-content", "--yes"], f, (cwd, out) => {
+    assertLogoBranding(join(cwd, "store-app"), { launcher: [200, 100], launch: [200, 100] });
+    assert.deepEqual(f.urls.slice(-2), [SQUARE_URL, LOGO_URL]);
+    assert.ok(out.includes("App icon and launch screen: the store's logo, on #FFFFFF"));
+  });
+});
+
+test("a brand without a logo: one info line, and the default icon", async () => {
+  await withRun(["demo-app", "--demo", "--yes"], fakes(), (cwd, out) => {
+    assertDefaultBranding(join(cwd, "demo-app"));
+    assert.ok(out.includes(`The store's brand has no logo for the app icon. ${DEFAULTS}`));
+    assert.ok(!out.includes("Couldn't use the store's logo"));
+  });
+});
+
+test("a logo that can't be downloaded, or a logo query that fails, only warns: the apps get the default icon", async () => {
+  const gone = fakes(withLogos({ [LOGO_URL]: () => new Response("gone", { status: 404 }) }, [{ background: "#1c6e4a" }]));
+  await withRun(["demo-app", "--demo", "--yes"], gone, (cwd, out) => {
+    assertDefaultBranding(join(cwd, "demo-app"), GREEN); // on the brand's primary colour
+    assert.ok(out.includes(`Couldn't use the store's logo for the app icon (HTTP 404). ${DEFAULTS}`));
+    assert.ok(out.includes("Created demo-app/") && out.includes("Open android/ in Android Studio"), "the run still finishes");
+  });
+  await withRun(["demo-app", "--demo", "--yes"], fakes({ brand: "fails" }), (cwd, out) => {
+    assertDefaultBranding(join(cwd, "demo-app"));
+    assert.ok(out.includes(`Couldn't use the store's logo for the app icon (Storefront API returned HTTP 500 for mock.shop). ${DEFAULTS}`));
+    assert.ok(out.includes("Created demo-app/"));
+  });
+});
+
+test("scaffold: called without a logo it writes the defaults, with one the files made from it", async () => {
+  const cwd = mkdtempSync(join(tmpdir(), "argon-test-"));
+  try {
+    const project = { appName: "Nalli", bundleId: "com.nalli.app", shopDomain: "nalli.myshopify.com", token: "t", clientId: "", shopId: "1" };
+    await scaffold({ ...project, dir: join(cwd, "plain") });
+    assertDefaultBranding(join(cwd, "plain"));
+    await scaffold({ ...project, dir: join(cwd, "logo"), logo: logoImage(1000, 500), brandColor: "#1C6E4A" });
+    assertLogoBranding(join(cwd, "logo"), { launcher: [264, 132], launch: [600, 300] });
+    for (const dir of ["plain", "logo"]) {
+      assert.ok(readFileSync(join(cwd, dir, "ios/xtool.yml"), "utf8").includes(`\niconPath: ${ICON}\n`));
+      assert.ok(existsSync(join(cwd, dir, "ios", ICON)));
+    }
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("writeAppIcon: the template's vector mark goes only when the logo's PNG replaces it", () => {
+  const dir = mkdtempSync(join(tmpdir(), "argon-test-"));
+  try {
+    const vector = join(dir, RES, "drawable/launcher_logo.xml");
+    mkdirSync(join(dir, RES, "drawable"), { recursive: true });
+    writeFileSync(vector, "<vector/>");
+
+    writeAppIcon(dir);
+    assert.ok(existsSync(vector), "no logo: the vector stays");
+    assert.deepEqual(listing(join(dir, RES)), new Set(["drawable", "drawable/launcher_logo.xml"]));
+    assertIcon(branding(dir), INK, PAPER);
+    // the mark is whichever of paper and ink shows on the brand's colour
+    writeAppIcon(dir, { brandColor: "#1C6E4A" });
+    assertIcon(branding(dir), GREEN, PAPER);
+    writeAppIcon(dir, { brandColor: "#FFE14D" });
+    assertIcon(branding(dir), [255, 225, 77], INK);
+    assert.ok(existsSync(vector));
+
+    // a logo on its own opaque background: that colour is the icon's and the launch screen's background
+    writeAppIcon(dir, { logo: { width: 100, height: 100, data: Buffer.alloc(100 * 100 * 4, Buffer.from([...GREEN, 255])) }, brandColor: "#FFE14D" });
+    assert.ok(!existsSync(vector), "a resource can't be both a vector and a PNG");
+    const b = branding(dir);
+    assertIcon(b, GREEN, GREEN);
+    assert.ok(b.launcherXml.includes('<color name="launcher_background">#1C6E4A</color>'));
+    assert.deepEqual(b.launchBackground.components, { alpha: "1.000", blue: "0x4A", green: "0x6E", red: "0x1C" });
+    assert.deepEqual([b.launcher.width, b.launcher.height, b.launch.width, b.launch.height], [100, 100, 100, 100]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("a missing Shopify CLI stops the run before anything else happens", async () => {
@@ -264,4 +455,5 @@ test("xtoolFiles: the display name is XML-escaped", () => {
   const files = xtoolFiles({ appName: "Fish & <Chips>", bundleId: "com.x.y", operations: ["Shop"] });
   assert.ok(files["Xtool-Info.plist"].includes("<string>Fish &amp; &lt;Chips&gt;</string>"));
   assert.ok(files["xtool.yml"].endsWith("- App/Resources/queries/Shop.graphql\n"));
+  assert.ok(files["xtool.yml"].includes("\niconPath: App/Assets.xcassets/AppIcon.appiconset/AppIcon.png\n"));
 });

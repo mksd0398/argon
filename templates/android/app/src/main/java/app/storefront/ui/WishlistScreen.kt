@@ -3,10 +3,8 @@ package app.storefront.ui
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -18,11 +16,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.navigation.NavController
+import app.argon.ui.ArgonTheme
+import app.argon.ui.components.ArgonTopBar
 import app.storefront.AppGraph
 import app.storefront.data.ProductCard
 import app.storefront.data.Route
@@ -64,7 +65,7 @@ class WishlistModel(private val fetch: suspend (List<String>) -> List<ProductCar
     fun pending(ids: List<String>) = ids.any { it !in known }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** The Wishlist tab: the saved products as a grid of cards, newest first. */
 @Composable
 fun WishlistScreen(nav: NavController) {
     val model = viewModel<WishlistModel>(factory = viewModelFactory { initializer { WishlistModel(::fetchCards) } })
@@ -72,7 +73,7 @@ fun WishlistScreen(nav: NavController) {
     var attempt by remember { mutableIntStateOf(0) }
     LaunchedEffect(ids, attempt) { model.sync(ids) }
 
-    Scaffold(topBar = { TopAppBar(title = { Text("Wishlist") }) }) { padding ->
+    Scaffold(topBar = { ArgonTopBar("Wishlist") }) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             val cards = model.cards(ids)
             val error = model.error
@@ -82,7 +83,13 @@ fun WishlistScreen(nav: NavController) {
                     ProductGrid(cards, hasNext = error != null, onLoadMore = { attempt++ }, onOpen = { nav.open(Route.Product(it.handle)) }, error = error)
                 error != null -> ErrorView(error) { attempt++ }
                 model.pending(ids) -> Spinner()
-                else -> Text("Tap ♡ on a product to save it", Modifier.align(Alignment.Center))
+                else -> Text(
+                    "Tap ♡ on a product to save it",
+                    Modifier.align(Alignment.Center).padding(ArgonTheme.spacing.xl),
+                    style = ArgonTheme.type.body,
+                    color = ArgonTheme.colors.muted,
+                    textAlign = TextAlign.Center,
+                )
             }
         }
     }

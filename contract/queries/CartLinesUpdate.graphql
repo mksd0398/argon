@@ -3,7 +3,8 @@ mutation CartLinesUpdate(
   $lines: [CartLineUpdateInput!]!
   $country: CountryCode
   $language: LanguageCode
-) @inContext(country: $country, language: $language) {
+  $buyer: BuyerInput
+) @inContext(country: $country, language: $language, buyer: $buyer) {
   cartLinesUpdate(cartId: $cartId, lines: $lines) {
     cart { ...Cart }
     userErrors { ...CartUserError }

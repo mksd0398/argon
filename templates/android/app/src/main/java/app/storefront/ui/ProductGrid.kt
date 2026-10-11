@@ -1,7 +1,7 @@
 package app.storefront.ui
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -9,20 +9,24 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextAlign
+import app.argon.ui.ArgonSize
+import app.argon.ui.ArgonTheme
+import app.argon.ui.components.ArgonButton
+import app.argon.ui.components.ArgonButtonStyle
+import app.argon.ui.components.ArgonSpinner
 import app.storefront.data.ProductCard
 
 /**
- * Two-column grid of product cards. While [hasNext], a footer spinner calls [onLoadMore] as it scrolls into view;
- * if loading failed ([error]) the footer is a Retry button instead. [loadKey] must change whenever a page arrives, even
- * one that adds no items, or the footer would stall (the default, the item count, is enough for a list that only grows).
+ * Two-column grid of product cards, with [header] (when given) across both columns above them, scrolling with them.
+ * While [hasNext], a footer spinner calls [onLoadMore] as it scrolls into view; if loading failed ([error]) the footer
+ * is the message and a Retry button instead. [loadKey] must change whenever a page arrives, even one that adds no items,
+ * or the footer would stall (the default, the item count, is enough for a list that only grows).
  */
 @Composable
 fun ProductGrid(
@@ -33,23 +37,32 @@ fun ProductGrid(
     modifier: Modifier = Modifier,
     error: String? = null,
     loadKey: Any = items.size,
+    contentPadding: PaddingValues = PaddingValues(ArgonTheme.spacing.l),
+    header: (@Composable () -> Unit)? = null,
 ) {
+    val spacing = ArgonTheme.spacing
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         modifier = modifier,
-        contentPadding = PaddingValues(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = contentPadding,
+        horizontalArrangement = Arrangement.spacedBy(spacing.m),
+        verticalArrangement = Arrangement.spacedBy(spacing.l),
     ) {
-        items(items, key = { it.id }) { ProductCardView(it, onClick = { onOpen(it) }) }
+        if (header != null) item(key = "header", span = { GridItemSpan(maxLineSpan) }) { header() }
+        items(items, key = { it.id }) { ProductCardView(it, onOpen = { onOpen(it) }) }
         if (hasNext) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                Box(Modifier.fillMaxWidth().padding(8.dp), Alignment.Center) {
+            item(key = "footer", span = { GridItemSpan(maxLineSpan) }) {
+                Column(
+                    Modifier.fillMaxWidth().padding(spacing.s),
+                    verticalArrangement = Arrangement.spacedBy(spacing.s),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
                     if (error == null) {
                         LaunchedEffect(loadKey) { onLoadMore() }
-                        CircularProgressIndicator()
+                        ArgonSpinner()
                     } else {
-                        TextButton(onClick = onLoadMore) { Text("$error. Retry") }
+                        Text(error, style = ArgonTheme.type.label, color = ArgonTheme.colors.muted, textAlign = TextAlign.Center)
+                        ArgonButton("Retry", style = ArgonButtonStyle.Secondary, size = ArgonSize.S, action = onLoadMore)
                     }
                 }
             }

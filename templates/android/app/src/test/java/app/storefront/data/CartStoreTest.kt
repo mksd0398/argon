@@ -108,6 +108,15 @@ class CartStoreTest {
     }
 
     @Test
+    fun addOnASellingPlanNamesThePlanAndAOneTimePurchaseNamesNone() = runBlocking {
+        val s = store()
+        s.add("v1", 1)
+        s.add("v2", 2, sellingPlanId = "gid://shopify/SellingPlan/1")
+        assertNull(calls[0].second.getValue("input").jsonObject.lines.single()["sellingPlanId"])
+        assertEquals("gid://shopify/SellingPlan/1", calls[1].second.lines.single().getValue("sellingPlanId").jsonPrimitive.content)
+    }
+
+    @Test
     fun anExpiredCartIsDroppedWithoutAnError() = runBlocking {
         store().add("v1", 1)
         calls.clear()
@@ -140,6 +149,36 @@ class CartStoreTest {
         assertEquals("tok", vars.getValue("buyerIdentity").jsonObject.getValue("customerAccessToken").jsonPrimitive.content)
     }
 
+    // Shopify answers every buyer update with a checkout URL under a new key. Attaching the same customer to the same cart
+    // again would change the cart each time, and the cart screen, which prepares checkout whenever the cart changes, would
+    // reload checkout without end (seen on a phone with a signed-in customer).
+    @Test
+    fun checkoutUrlAttachesTheSameBuyerToACartOnlyOnce() = runBlocking {
+        var key = 0
+        var token = "tok"
+        val s = store(accessToken = { token }) {
+            if (it == "CartBuyerIdentityUpdate") {
+                answer(it, JsonObject(cartJson + ("checkoutUrl" to JsonPrimitive("https://shop.test/checkout?key=${++key}"))))
+            } else {
+                answer(it)
+            }
+        }
+        s.add("v1", 1)
+        assertEquals("https://shop.test/checkout?key=1", s.checkoutUrl())
+        val attached = s.cart.value
+
+        assertEquals("asked again: the same URL", "https://shop.test/checkout?key=1", s.checkoutUrl())
+        assertEquals("and the cart is as it was", attached, s.cart.value)
+        assertEquals("nothing more was sent", listOf("CartCreate", "CartBuyerIdentityUpdate"), names)
+
+        // a refreshed token is attached once more
+        token = "tok2"
+        assertEquals("https://shop.test/checkout?key=2", s.checkoutUrl())
+        assertEquals("https://shop.test/checkout?key=2", s.checkoutUrl())
+        assertEquals(listOf("CartCreate", "CartBuyerIdentityUpdate", "CartBuyerIdentityUpdate"), names)
+        assertEquals("tok2", calls[2].second.getValue("buyerIdentity").jsonObject.getValue("customerAccessToken").jsonPrimitive.content)
+    }
+
     @Test
     fun checkoutUrlSkipsTheBuyerWhenSignedOut() = runBlocking {
         val s = store(token = null)
@@ -170,6 +209,54 @@ class CartStoreTest {
         assertEquals(guest, s.checkoutUrl())
         assertEquals(listOf("CartCreate", "CartBuyerIdentityUpdate", "CartBuyerIdentityUpdate"), names)
         assertEquals("the cart is kept", cartId, s.cart.value?.id)
+    }
+
+    // B2B
+
+    private val location = "gid://shopify/CompanyLocation/1"
+    private val JsonObject.identity get() = getValue("buyerIdentity").toString()
+
+    @Test
+    fun aCompanysCartIsItsFromTheFirstLineToCheckout() = runBlocking {
+        val s = store(token = "tok")
+        s.setBuyer(location)
+        assertEquals("no cart yet: nothing to attach", emptyList<String>(), names)
+
+        s.add("v1", 1)
+        s.checkoutUrl()
+        assertEquals(listOf("CartCreate", "CartBuyerIdentityUpdate"), names)
+        val company = """{"customerAccessToken":"tok","companyLocationId":"$location"}"""
+        assertEquals(company, calls[0].second.getValue("input").jsonObject.identity)
+        assertEquals(company, calls[1].second.identity)
+    }
+
+    @Test
+    fun setBuyerAttachesTheCurrentCartToTheCompany() = runBlocking {
+        val s = store(token = "tok")
+        s.add("v1", 1)
+        assertNull("a retail cart is created without a buyer", calls[0].second.getValue("input").jsonObject["buyerIdentity"])
+
+        s.setBuyer(location)
+        assertEquals(listOf("CartCreate", "CartBuyerIdentityUpdate"), names)
+        assertEquals(cartId, calls[1].second.getValue("cartId").jsonPrimitive.content)
+        assertEquals("""{"customerAccessToken":"tok","companyLocationId":"$location"}""", calls[1].second.identity)
+
+        // back to retail: nothing is sent, and the customer alone is attached at checkout
+        s.setBuyer(null)
+        s.checkoutUrl()
+        assertEquals(listOf("CartCreate", "CartBuyerIdentityUpdate", "CartBuyerIdentityUpdate"), names)
+        assertEquals("""{"customerAccessToken":"tok"}""", calls[2].second.identity)
+    }
+
+    @Test
+    fun aSignedOutShopperHasNoCompanyCart() = runBlocking {
+        val s = store(token = null)
+        s.add("v1", 1)
+        s.setBuyer(location)
+        s.completed()
+        s.add("v1", 1)
+        assertEquals(listOf("CartCreate", "CartCreate"), names)
+        assertNull(calls[1].second.getValue("input").jsonObject["buyerIdentity"])
     }
 
     @Test
@@ -250,6 +337,75 @@ class CartStoreTest {
         assertEquals(listOf(lineId), calls[2].second.getValue("lineIds").jsonArray.map { it.jsonPrimitive.content })
         s.remove(lineId)
         assertEquals("CartLinesRemove", names.last())
+    }
+
+    // Discount codes
+
+    /** The fixture cart carrying [codes], each with whether it counts. */
+    private fun withCodes(vararg codes: Pair<String, Boolean>) = JsonObject(
+        cartJson + ("discountCodes" to JsonArray(codes.map { (code, applicable) -> buildJsonObject { put("code", code); put("applicable", applicable) } })),
+    )
+
+    /** The codes each `CartDiscountCodesUpdate` sent, in order. */
+    private val sentCodes get() = calls.filter { it.first == "CartDiscountCodesUpdate" }
+        .map { call -> call.second.getValue("discountCodes").jsonArray.map { it.jsonPrimitive.content } }
+
+    /** A store whose cart starts with [carried] codes; Shopify counts the codes in [valid] and no others. */
+    private fun discountStore(vararg carried: String, valid: Set<String>) = store {
+        if (it == "CartDiscountCodesUpdate") {
+            val sent = calls.last().second.getValue("discountCodes").jsonArray.map { code -> code.jsonPrimitive.content }
+            answer(it, withCodes(*sent.map { code -> code to (code in valid) }.toTypedArray()))
+        } else {
+            answer(it, withCodes(*carried.map { code -> code to true }.toTypedArray()))
+        }
+    }
+
+    @Test
+    fun applyingADiscountSendsTheWholeListWithTheNewCode() = runBlocking {
+        val s = discountStore("VIP", valid = setOf("VIP", "WELCOME10"))
+        s.add("v1", 1)
+        assertEquals(true, s.applyDiscount(" WELCOME10 "))
+        assertEquals(listOf(listOf("VIP", "WELCOME10")), sentCodes)
+        assertEquals(cartId, calls.last().second.getValue("cartId").jsonPrimitive.content)
+        assertEquals(listOf("VIP", "WELCOME10"), s.cart.value?.discountCodes?.map { it.code })
+    }
+
+    @Test
+    fun aCodeThatDoesNotApplyIsTakenOffAgain() = runBlocking {
+        val s = discountStore("VIP", valid = setOf("VIP"))
+        s.add("v1", 1)
+        assertEquals(false, s.applyDiscount("NOPE"))
+        assertEquals("sent with the code, then without it", listOf(listOf("VIP", "NOPE"), listOf("VIP")), sentCodes)
+        assertEquals(listOf("VIP"), s.cart.value?.discountCodes?.map { it.code })
+    }
+
+    @Test
+    fun enteringACodeAgainDoesNotListItTwice() = runBlocking {
+        val s = discountStore("VIP", valid = setOf("VIP", "vip"))
+        s.add("v1", 1)
+        assertEquals(true, s.applyDiscount("vip"))
+        assertEquals(listOf(listOf("vip")), sentCodes)
+    }
+
+    @Test
+    fun removingADiscountSendsTheListWithoutIt() = runBlocking {
+        val s = discountStore("VIP", "WELCOME10", valid = setOf("VIP", "WELCOME10"))
+        s.add("v1", 1)
+        s.removeDiscount("welcome10")
+        assertEquals(listOf(listOf("VIP")), sentCodes)
+        assertEquals(listOf("VIP"), s.cart.value?.discountCodes?.map { it.code })
+        s.removeDiscount("VIP")
+        assertEquals("the last one leaves an empty list", emptyList<String>(), sentCodes.last())
+    }
+
+    @Test
+    fun aDiscountNeedsACartAndACode() = runBlocking {
+        val s = discountStore(valid = setOf("WELCOME10"))
+        assertEquals("no cart", false, s.applyDiscount("WELCOME10"))
+        s.removeDiscount("WELCOME10")
+        s.add("v1", 1)
+        assertEquals("no code", false, s.applyDiscount("  "))
+        assertEquals(emptyList<List<String>>(), sentCodes)
     }
 
     @Test

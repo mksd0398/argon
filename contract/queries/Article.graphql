@@ -3,7 +3,8 @@ query Article(
   $articleHandle: String!
   $country: CountryCode
   $language: LanguageCode
-) @inContext(country: $country, language: $language) {
+  $buyer: BuyerInput
+) @inContext(country: $country, language: $language, buyer: $buyer) {
   blog(handle: $blogHandle) {
     articleByHandle(handle: $articleHandle) { ...ArticleCard contentHtml tags seo { title description } }
   }

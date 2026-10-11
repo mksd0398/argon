@@ -1,5 +1,6 @@
 package app.argon.ui.components
 
+import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.material3.RangeSlider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.runtime.Composable
@@ -47,7 +48,8 @@ fun ArgonRangeSlider(
     RangeSlider(
         value = lo..hi,
         onValueChange = { range -> clampRange(range.start, range.endInclusive, bounds, step).let { (l, u) -> onChange(l, u) } },
-        modifier = modifier,
+        // the thumbs rest at the screen's edges, where a sideways drag is the system's back gesture: here it is the slider's
+        modifier = modifier.systemGestureExclusion(),
         enabled = isEnabled,
         valueRange = bounds,
         steps = sliderSteps(bounds, step),

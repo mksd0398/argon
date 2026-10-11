@@ -57,7 +57,15 @@ class CustomerAccountApi(private val execute: suspend (String, JsonObject) -> Js
 
     suspend fun unsubscribeEmailMarketing(): CustomerEmailAddress = mutate("CustomerEmailMarketingUnsubscribe", vars(), "emailAddress")
 
-    /** What can be returned (with the reasons to offer), and the order's returns so far. */
+    /** The companies the customer buys for (B2B), each with its locations; none for a retail customer. */
+    suspend fun companies(): List<CompanyContact> =
+        run<List<CompanyContact>?>("CustomerCompanies", vars(), "customer", "companyContacts", "nodes").orEmpty()
+
+    /** The customer's store credit, one account per currency; none when they have no credit. */
+    suspend fun storeCredit(): List<StoreCreditAccount> =
+        run<List<StoreCreditAccount>?>("CustomerStoreCredit", vars(), "customer", "storeCreditAccounts", "nodes").orEmpty()
+
+    /** What can be returned (with the reasons to offer and the fees), and the order's returns so far. */
     suspend fun returnOptions(orderId: String): OrderReturnOptions? = run("OrderReturnOptions", vars("id" to orderId), "order")
 
     suspend fun requestReturn(orderId: String, lines: List<RequestedLineItemInput>): Return =

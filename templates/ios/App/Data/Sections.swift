@@ -1,7 +1,31 @@
 import Foundation
-import os
 
-private let homeLog = Logger(subsystem: "app.storefront", category: "HomeScreen")
+/// What a home template lays out (`Sections.content`): banners, the categories to shop by, and product rails.
+struct HomeContent: Equatable {
+    /// A `Section.banner`'s parts. `image.url` may be a bundled file (`StockImages`): show it with `StoreImage`.
+    struct Banner: Equatable {
+        var style: String
+        var image: Img?
+        var heading: String?
+        var text: String?
+        var buttonLabel: String?
+        var link: Route?
+    }
+
+    /// A `Section.products`' parts: a heading over a row or grid of products.
+    struct Rail: Equatable {
+        var heading: String?
+        var style: String
+        var items: [ProductCard]
+    }
+
+    let banners: [Banner]
+    let categories: [CollectionCard]
+    let rails: [Rail]
+
+    /// Nothing but banners: the page says "Nothing to show yet." under them.
+    var isEmpty: Bool { categories.isEmpty && rails.isEmpty }
+}
 
 enum Sections {
     /// The home sections from the `mobile_screen`'s section metaobjects (`StorefrontAPI.homeScreen`). Unknown types, broken
@@ -46,6 +70,48 @@ enum Sections {
         }
     }
 
+    /// What a home template shows, from the store's `sections` (`fromHome`; empty without a `mobile_screen`) and its first
+    /// `collections` (`StorefrontAPI.fallbackHome`), which fill in whatever the sections don't give:
+    /// - banners: the store's, else the template's three stock banners (`image(template, index)`, `StockImages.url` in the
+    ///   app) with the template's own heading and button, linking to the first collection that has products (nowhere
+    ///   without one);
+    /// - categories: the collections of the store's collection sections, else the collections that have products;
+    /// - rails: the store's product sections, else one per collection that has products, headed by its title.
+    /// `brand` isn't read yet: the content is the same whatever the shop's branding.
+    static func content(
+        _ template: HomeTemplate,
+        _ brand: Brand,
+        _ sections: [Section],
+        _ collections: [CollectionCard],
+        image: (HomeTemplate, Int) -> String? = StockImages.url
+    ) -> HomeContent {
+        let stocked = collections.filter { !$0.products.isEmpty }
+        var banners: [HomeContent.Banner] = []
+        var categories: [CollectionCard] = []
+        var rails: [HomeContent.Rail] = []
+        for section in sections {
+            switch section {
+            case let .banner(style, image, heading, text, buttonLabel, link):
+                banners.append(HomeContent.Banner(style: style, image: image, heading: heading, text: text, buttonLabel: buttonLabel, link: link))
+            case let .products(heading, style, items):
+                rails.append(HomeContent.Rail(heading: heading, style: style, items: items))
+            case let .collections(_, items):
+                // each collection once: a list keyed by id must not get one twice
+                for item in items where !categories.contains(where: { $0.id == item.id }) { categories.append(item) }
+            }
+        }
+        if banners.isEmpty {
+            let link = stocked.first.map { Route.collection($0.handle) }
+            banners = template.bannerCopy.enumerated().map { index, copy in
+                let stock = image(template, index + 1).map { Img(url: $0, alt: nil, width: nil, height: nil) }
+                return HomeContent.Banner(style: "hero", image: stock, heading: copy.heading, text: nil, buttonLabel: copy.button, link: link)
+            }
+        }
+        if categories.isEmpty { categories = stocked }
+        if rails.isEmpty { rails = stocked.map { HomeContent.Rail(heading: $0.title, style: "carousel", items: $0.products) } }
+        return HomeContent(banners: banners, categories: categories, rails: rails)
+    }
+
     /// The home screen built from the store's first collections (`StorefrontAPI.fallbackHome`) when it has no usable
     /// `mobile_screen`.
     static func fallback(_ brand: Brand, _ collections: [CollectionCard]) -> [Section] {
@@ -60,26 +126,4 @@ enum Sections {
         }
         return sections
     }
-}
-
-/// The sections of the `mobile_screen` "home" (`home` loads its section metaobjects); the fallback home (`fallback` loads the
-/// first collections) when it has none to render, or when the store refuses the metaobject query with GraphQL errors (a token
-/// without metaobject access). HTTP and response-shape failures are rethrown: the screen shows an error with Retry instead
-/// of caching a degraded home.
-func homeSections(
-    _ brand: Brand,
-    home: () async throws -> [Metaobject],
-    fallback: () async throws -> [CollectionCard]
-) async throws -> [Section] {
-    var sections: [Section] = []
-    do {
-        let nodes = try await home()
-        sections = Sections.fromHome(nodes, hosts: brand.hosts)
-    } catch ArgonAPIError.graphql(let messages) {
-        // GraphQL messages name fields and permissions, never a token: logged so a merchant can see why the home fell back
-        homeLog.warning("home screen query refused, showing the fallback home: \(messages.joined(separator: "; "), privacy: .public)")
-    }
-    if !sections.isEmpty { return sections }
-    let collections = try await fallback()
-    return Sections.fallback(brand, collections)
 }

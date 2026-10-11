@@ -1,0 +1,10 @@
+query CustomerStoreCredit {
+  customer {
+    storeCreditAccounts(first: 5) {
+      nodes {
+        id
+        balance { ...Money }
+      }
+    }
+  }
+}

@@ -19,6 +19,13 @@ struct StorefrontContext: Equatable, Sendable {
     }
 }
 
+/// The B2B buyer the Storefront API prices for (`@inContext(buyer:)`): the signed-in customer's Customer Account API access
+/// token and the company location they buy for. Catalogues, prices and quantity rules follow it.
+struct Buyer: Encodable, Equatable, Sendable {
+    let customerAccessToken: String
+    var companyLocationId: String? = nil
+}
+
 /// Every Storefront API operation in `queries/`, as typed calls. `transport` runs a named operation and returns the response
 /// body (`Storefront.query` in the app, canned answers in tests). Lists come back as `Page`s: pass `endCursor` as `after` for
 /// the next (Storefront lists come 24 to a page). `shop`, `localization`, `policies` and `menu` are kept for the session.
@@ -31,11 +38,19 @@ final class StorefrontAPI {
         didSet { if context != oldValue { forget() } }
     }
 
+    /// Sent with every operation as `$buyer` (nil: a retail shopper). `BuyerStore` sets it; a different one forgets what
+    /// was kept, like `context`.
+    var buyer: Buyer? = nil {
+        didSet { if buyer != oldValue { forget() } }
+    }
+
     private let transport: GraphQLTransport
     private var keptShop: Shop? = nil
     private var keptLocalization: Localization? = nil
     private var keptPolicies: ShopPolicies? = nil
     private var keptMenus: [String: StoreMenu?] = [:]
+    /// Counts the times the context or the buyer changed: an answer asked for before a change isn't kept.
+    private var changes = 0
 
     init(transport: @escaping GraphQLTransport) {
         self.transport = transport
@@ -45,9 +60,9 @@ final class StorefrontAPI {
 
     func shop() async throws -> Shop {
         if let kept = keptShop { return kept }
-        let asked = context
+        let asked = changes
         let shop: Shop = try await run("Shop", root: "shop")
-        if context == asked { keptShop = shop }
+        if changes == asked { keptShop = shop }
         return shop
     }
 
@@ -62,33 +77,47 @@ final class StorefrontAPI {
 
     func policies() async throws -> ShopPolicies {
         if let kept = keptPolicies { return kept }
-        let asked = context
+        let asked = changes
         let policies: ShopPolicies = try await run("ShopPolicies", root: "shop")
-        if context == asked { keptPolicies = policies }
+        if changes == asked { keptPolicies = policies }
         return policies
     }
 
     /// Menu `handle` (`main-menu` is the store's main navigation); nil when the store has none by that handle.
     func menu(_ handle: String) async throws -> StoreMenu? {
         if let kept = keptMenus[handle] { return kept }
-        let asked = context
+        let asked = changes
         let menu: StoreMenu? = try await run("Menu", ["handle": handle], root: "menu")
-        if context == asked { keptMenus[handle] = .some(menu) }
+        if changes == asked { keptMenus[handle] = .some(menu) }
         return menu
     }
 
     // MARK: Products
 
-    /// The product page's product; nil when there is none by `handle`. `metafields` are the ones to read (PDP_METAFIELDS);
-    /// `selectedOptions` (option name to value) picks `selectedOrFirstAvailableVariant` and `adjacentVariants`.
-    func product(_ handle: String, metafields: [MetafieldIdentifier] = [], selectedOptions: [String: String] = [:]) async throws -> Product? {
-        let identifiers = try jsonValue(metafields)
-        var variables: [String: Any] = ["handle": handle, "metafields": identifiers]
+    /// The product page's product; nil when there is none by `handle`. `selectedOptions` (option name to value) picks
+    /// `selectedOrFirstAvailableVariant` and `adjacentVariants`.
+    func product(_ handle: String, selectedOptions: [String: String] = [:]) async throws -> Product? {
+        var variables: [String: Any] = ["handle": handle]
         if !selectedOptions.isEmpty { variables["selectedOptions"] = selected(selectedOptions) }
         return try await run("Product", variables, root: "product")
     }
 
-    /// The variant with exactly these options (option name to value); nil when there is none.
+    /// The metafields `identifiers` (PDP_METAFIELDS) that product `handle` has a value for; none are asked for, or there is
+    /// no such product: empty. Apart from `product`, because a token without `unauthenticated_read_metafields` is refused
+    /// the whole product they are selected on: this call then throws, and the page goes without them.
+    func productMetafields(handle: String, identifiers: [MetafieldIdentifier]) async throws -> [Metafield] {
+        if identifiers.isEmpty { return [] }
+        let product: MetafieldsLookup? = try await run(
+            "ProductMetafields",
+            ["handle": handle, "metafields": jsonValue(identifiers)],
+            root: "product"
+        )
+        // asked-for metafields the product has no value for come back as null entries
+        return (product?.metafields ?? []).compactMap { $0 }
+    }
+
+    /// The variant with exactly these options (option name to value), in full (stock, unit price, quantity rule and price
+    /// breaks, bundle components, selling plans); nil when there is none.
     func variantBySelectedOptions(productHandle: String, options: [String: String]) async throws -> Variant? {
         let product: VariantLookup? = try await run(
             "VariantBySelectedOptions",
@@ -283,11 +312,12 @@ final class StorefrontAPI {
 
     // MARK: Plumbing
 
-    /// Runs operation `name` in this context and returns its `root` field.
+    /// Runs operation `name` in this context, for this buyer, and returns its `root` field.
     private func run<T: Decodable>(_ name: String, _ variables: [String: Any] = [:], root: String) async throws -> T {
         var variables = variables
         if let country = context.country { variables["country"] = country }
         if let language = context.language { variables["language"] = language }
+        if let buyer = buyer { variables["buyer"] = try jsonValue(buyer) }
         return try await fetchField(transport, name, variables, root: root)
     }
 
@@ -323,6 +353,7 @@ final class StorefrontAPI {
     }
 
     private func forget() {
+        changes += 1
         keptShop = nil
         keptLocalization = nil
         keptPolicies = nil
@@ -342,6 +373,10 @@ private struct VariantLookup: Decodable {
 
 private struct ArticleLookup: Decodable {
     let articleByHandle: Article?
+}
+
+private struct MetafieldsLookup: Decodable {
+    let metafields: [Metafield?]
 }
 
 /// A `node(id:)` that is a variant has its store availability; any other node has none.

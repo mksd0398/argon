@@ -4,6 +4,7 @@ query ProductRecommendations(
   $intent: ProductRecommendationIntent
   $country: CountryCode
   $language: LanguageCode
-) @inContext(country: $country, language: $language) {
+  $buyer: BuyerInput
+) @inContext(country: $country, language: $language, buyer: $buyer) {
   productRecommendations(productId: $productId, productHandle: $productHandle, intent: $intent) { ...ProductCard }
 }

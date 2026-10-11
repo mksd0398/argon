@@ -14,5 +14,24 @@
 	<string>$(API_VERSION)</string>
 	<key>PdpMetafields</key>
 	<string>$(PDP_METAFIELDS)</string>
+	<key>HomeTemplate</key>
+	<string>$(HOME_TEMPLATE)</string>
+	<key>CollectionTemplate</key>
+	<string>$(COLLECTION_TEMPLATE)</string>
+	<key>JudgemePublicToken</key>
+	<string>$(JUDGEME_PUBLIC_TOKEN)</string>
+	<key>ShowVendor</key>
+	<string>$(SHOW_VENDOR)</string>
+	<key>Onboarding</key>
+	<string>$(ONBOARDING)</string>
+	<key>FreeShippingThreshold</key>
+	<string>$(FREE_SHIPPING_THRESHOLD)</string>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+		<key>UIImageName</key>
+		<string>LaunchLogo</string>
+	</dict>
 </dict>
 </plist>

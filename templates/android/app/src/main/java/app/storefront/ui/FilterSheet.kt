@@ -1,135 +1,271 @@
 package app.storefront.ui
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
+import app.argon.ui.ArgonSize
+import app.argon.ui.ArgonTheme
+import app.argon.ui.components.ArgonBottomSheet
+import app.argon.ui.components.ArgonButton
+import app.argon.ui.components.ArgonButtonStyle
+import app.argon.ui.components.ArgonCheckbox
+import app.argon.ui.components.ArgonRadioGroup
+import app.argon.ui.components.ArgonRangeSlider
+import app.argon.ui.components.ArgonSheetDetent
+import app.argon.ui.components.ArgonSwatch
+import app.argon.ui.components.ArgonSwitch
 import app.storefront.data.Filter
+import app.storefront.data.FilterValue
+import app.storefront.data.Money
+import app.storefront.data.isColorName
+import kotlin.math.ceil
+import kotlin.math.floor
+import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.floatOrNull
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
-/** `{"price":{"min":x,"max":y}}` for the min/max fields (either may be empty); null when neither is a number. */
-internal fun priceFilter(min: String, max: String): String? {
-    // the decimal keyboard types "," in comma-decimal locales; NaN and Infinity aren't JSON numbers
-    fun number(text: String) = text.trim().replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() }
-    val low = number(min)
-    val high = number(max)
-    if (low == null && high == null) return null
-    return buildJsonObject {
-        put("price", buildJsonObject {
-            low?.let { put("min", it) }
-            high?.let { put("max", it) }
-        })
-    }.toString()
+/** How the filter sheet shows a filter. */
+internal enum class FilterControl { Slider, Switch, Swatches, Checkboxes }
+
+/**
+ * The control for [filter]: a slider for a price range, a switch for a boolean, and for a list checkboxes, or swatches
+ * when it is a colour filter (the store presents it as swatches, a value has a swatch, or it is named colour, color or
+ * shade). Null when it has nothing to choose: no values, or a price range without bounds.
+ */
+internal fun filterControl(filter: Filter): FilterControl? = when {
+    filter.type == "PRICE_RANGE" -> FilterControl.Slider.takeIf { priceSlider(filter) != null }
+    filter.values.isEmpty() -> null
+    filter.type == "BOOLEAN" -> FilterControl.Switch
+    filter.presentation == "SWATCH" || filter.values.any { it.swatch != null } || isColorName(filter.label) -> FilterControl.Swatches
+    else -> FilterControl.Checkboxes
 }
 
-private fun priceObject(input: String) = runCatching { Json.parseToJsonElement(input).jsonObject["price"]?.jsonObject }.getOrNull()
+/** The value a BOOLEAN [filter]'s switch turns on: the one whose input says true, else its first. */
+internal fun booleanValue(filter: Filter): FilterValue? =
+    filter.values.firstOrNull { "true" in it.input.lowercase() } ?: filter.values.firstOrNull()
 
-/** The Sort menu and, when the response has filters (or some are applied), the Filter button with its sheet. */
+// Price. A price filter is one entry of the selection, Shopify's `ProductFilter` `{"price":{"min":10.0,"max":50.0}}`.
+
+/** The `min` and `max` of a `{"price":{...}}` filter input (either may be missing); null for any other input. */
+internal fun priceRange(input: String): Pair<Float?, Float?>? {
+    val price = runCatching { Json.parseToJsonElement(input).jsonObject["price"]?.jsonObject }.getOrNull() ?: return null
+    fun bound(key: String) = (price[key] as? JsonPrimitive)?.floatOrNull?.takeIf { it.isFinite() }
+    return bound("min") to bound("max")
+}
+
+/** The price range selected in [applied]; null when there is none. */
+internal fun priceSelection(applied: List<String>): Pair<Float?, Float?>? = applied.firstNotNullOfOrNull(::priceRange)
+
+/** `{"price":{"min":10.0,"max":50.0}}`: the filter input for the prices from [lower] to [upper]. */
+internal fun priceInput(lower: Float, upper: Float): String = buildJsonObject {
+    put("price", buildJsonObject {
+        put("min", lower)
+        put("max", upper)
+    })
+}.toString()
+
+/**
+ * [applied] with [lower]...[upper] as its one price entry; with no price entry when that is the whole of [bounds] (all
+ * prices: nothing to filter).
+ */
+internal fun withPrice(applied: List<String>, lower: Float, upper: Float, bounds: ClosedFloatingPointRange<Float>): List<String> {
+    val others = applied.filter { priceRange(it) == null }
+    return if (lower <= bounds.start && upper >= bounds.endInclusive) others else others + priceInput(lower, upper)
+}
+
+/** A price filter's slider: the [bounds] its two thumbs move in, and the [step] they move by. */
+internal data class PriceSlider(val bounds: ClosedFloatingPointRange<Float>, val step: Float)
+
+/**
+ * The slider of a PRICE_RANGE [filter]. Its bounds are the `min` and `max` of the filter value's own `input`
+ * (`{"price":{"min":0,"max":120}}`: the list's lowest and highest price), widened to whole steps so the highest price
+ * stays inside. Null when there is no range to choose in.
+ */
+internal fun priceSlider(filter: Filter): PriceSlider? {
+    val (min, max) = filter.values.firstNotNullOfOrNull { priceRange(it.input) } ?: return null
+    val low = min ?: 0f
+    if (max == null || max <= low) return null
+    val step = priceStep(max - low)
+    return PriceSlider(floor(low / step) * step..ceil(max / step) * step, step)
+}
+
+/** The smallest of 1, 2, 5, 10, 20, 50, ... that crosses [span] in 100 steps or fewer. */
+internal fun priceStep(span: Float): Float =
+    generateSequence(1f) { it * 10 }.flatMap { magnitude -> sequenceOf(1f, 2f, 5f).map { it * magnitude } }.first { span / it <= 100 }
+
+/** A price at a slider's end or on a tag: in [currencyCode] when the list has shown one, else the bare number. */
+internal fun priceText(value: Float, currencyCode: String?): String =
+    if (currencyCode != null) Money(value.toString(), currencyCode).display() else value.roundToInt().toString()
+
+/** The sorts of a product list to choose from; choosing one applies it ([onSelect] closes the sheet). */
 @Composable
-fun ListingBar(l: Listing) {
-    var menu by remember { mutableStateOf(false) }
-    var sheet by remember { mutableStateOf(false) }
-    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box {
-            TextButton(onClick = { menu = true }) {
-                Text("Sort: ${l.sort.label}")
-                Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
-            }
-            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                for (s in l.sorts) DropdownMenuItem(text = { Text(s.label) }, onClick = { menu = false; l.reload(sort = s) })
-            }
-        }
-        Spacer(Modifier.weight(1f))
-        if (l.filters.isNotEmpty() || l.applied.isNotEmpty()) {
-            TextButton(onClick = { sheet = true }) { Text(if (l.applied.isEmpty()) "Filter" else "Filter (${l.applied.size})") }
+fun SortSheet(isPresented: Boolean, sorts: List<Sort>, selected: Sort, onSelect: (Sort) -> Unit, onDismiss: () -> Unit) =
+    ArgonBottomSheet(isPresented, onDismiss, detents = setOf(ArgonSheetDetent.Medium)) {
+        val spacing = ArgonTheme.spacing
+        SheetTitle("Sort", Modifier.padding(horizontal = spacing.l))
+        ArgonRadioGroup(
+            sorts.map { it.label },
+            sorts.indexOf(selected).takeIf { it >= 0 },
+            { onSelect(sorts[it]) },
+            Modifier.padding(start = spacing.l, end = spacing.l, bottom = spacing.xl),
+        )
+    }
+
+/**
+ * The filters of a product list, one section each ([filterControl] says which control a filter gets). A change applies
+ * at once: [onChange] gets the new selection (the selected values' `input` JSON, a price range as one
+ * `{"price":{...}}`), the list reloads behind the sheet, and the button that closes it says what is left ([results],
+ * "14 products"; null while that loads). "Clear" takes every filter off. [scrollTo] is the id of the filter to open at.
+ */
+@Composable
+fun FilterSheet(
+    isPresented: Boolean,
+    filters: List<Filter>,
+    applied: List<String>,
+    onChange: (List<String>) -> Unit,
+    onDismiss: () -> Unit,
+    results: String? = null,
+    currencyCode: String? = null,
+    scrollTo: String? = null,
+) = ArgonBottomSheet(isPresented, onDismiss, detents = setOf(ArgonSheetDetent.Large)) {
+    val spacing = ArgonTheme.spacing
+    val list = rememberLazyListState(filters.indexOfFirst { it.id == scrollTo }.coerceAtLeast(0))
+    // A change reloads the filters, and a section above the one just used can come back shorter (fewer values are left):
+    // the section that was used (its id, and how far down the list's window it sat) is put back where it was, so it
+    // doesn't jump from under the finger.
+    var anchor by remember { mutableStateOf<Pair<String, Int>?>(null) }
+    LaunchedEffect(filters) {
+        val (id, offset) = anchor ?: return@LaunchedEffect
+        anchor = null
+        val index = filters.indexOfFirst { it.id == id }
+        if (index >= 0) list.scrollToItem(index, -offset)
+    }
+    SheetTitle("Filters", Modifier.padding(horizontal = spacing.l))
+    LazyColumn(
+        Modifier.weight(1f, fill = false),
+        state = list,
+        contentPadding = PaddingValues(horizontal = spacing.l, vertical = spacing.m),
+        verticalArrangement = Arrangement.spacedBy(spacing.l),
+    ) {
+        itemsIndexed(filters) { index, filter ->
+            FilterSection(
+                filter,
+                applied,
+                onChange = { next ->
+                    anchor = list.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }?.let { filter.id to it.offset }
+                    onChange(next)
+                },
+                currencyCode,
+            )
         }
     }
-    if (sheet) {
-        FilterSheet(l.filters, l.applied, onApply = { sheet = false; l.reload(applied = it) }, onDismiss = { sheet = false })
+    Row(Modifier.fillMaxWidth().padding(spacing.l), horizontalArrangement = Arrangement.spacedBy(spacing.m)) {
+        ArgonButton("Clear", style = ArgonButtonStyle.Tertiary, isEnabled = applied.isNotEmpty()) {
+            anchor = null
+            onChange(emptyList())
+        }
+        ArgonButton(if (results != null) "Show $results" else "Show products", Modifier.weight(1f), action = onDismiss)
+    }
+}
+
+/** A sheet's title; with [section], the smaller heading of one of its sections. */
+@Composable
+private fun SheetTitle(text: String, modifier: Modifier = Modifier, section: Boolean = false) = Text(
+    text,
+    modifier.semantics { heading() },
+    style = if (section) ArgonTheme.type.headline else ArgonTheme.type.title,
+    color = ArgonTheme.colors.ink,
+    maxLines = 1,
+    overflow = TextOverflow.Ellipsis,
+)
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FilterSection(filter: Filter, applied: List<String>, onChange: (List<String>) -> Unit, currencyCode: String?) {
+    val spacing = ArgonTheme.spacing
+    val control = filterControl(filter)
+    // a switch carries the filter's name itself
+    if (control == FilterControl.Switch) {
+        val value = booleanValue(filter) ?: return
+        ArgonSwitch(value.input in applied, { onChange(toggled(applied, value.input)) }, label = filter.label)
+        return
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
+        SheetTitle(filter.label, section = true)
+        when (control) {
+            FilterControl.Slider -> priceSlider(filter)?.let { PriceRange(it, applied, onChange, currencyCode) }
+            FilterControl.Swatches -> FlowRow(
+                Modifier.padding(top = spacing.s),
+                horizontalArrangement = Arrangement.spacedBy(spacing.s),
+                verticalArrangement = Arrangement.spacedBy(spacing.m),
+            ) {
+                for (value in filter.values) {
+                    val on = value.input in applied
+                    val fill = swatch(value)
+                    // a colour no product in the list has is struck through (it can still be tapped)
+                    ArgonSwatch(fill.colorHex, fill.imageUrl, value.label, isSelected = on, isAvailable = value.count > 0 || on, size = ArgonSize.L) {
+                        onChange(toggled(applied, value.input))
+                    }
+                }
+            }
+            else -> {
+                for (value in filter.values) {
+                    val on = value.input in applied
+                    // a value no product in the list has can't be ticked (but one that is ticked can be unticked)
+                    ArgonCheckbox(on, { onChange(toggled(applied, value.input)) }, label = "${value.label} (${value.count})", isEnabled = value.count > 0 || on)
+                }
+            }
+        }
     }
 }
 
 /**
- * One section per [Filter]: checkboxes for a list, min/max fields for a price range. [applied] and [onApply] are the
- * selected values' `input` JSON strings (the price range as `{"price":{...}}`).
+ * The price slider with its two prices under it. The thumbs follow the finger; the selection changes once they have
+ * rested for a moment, so a drag is one reload of the list, not one per step.
+ * ponytail: a drag in the last moments before the sheet closes is dropped; apply on release if ArgonRangeSlider gets one.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FilterSheet(filters: List<Filter>, applied: List<String>, onApply: (List<String>) -> Unit, onDismiss: () -> Unit) {
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        var picked by remember { mutableStateOf(applied.filter { priceObject(it) == null }.toSet()) }
-        fun bound(key: String) = applied.firstNotNullOfOrNull { priceObject(it)?.get(key)?.jsonPrimitive?.content }.orEmpty()
-        var min by remember { mutableStateOf(bound("min")) }
-        var max by remember { mutableStateOf(bound("max")) }
-        Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-            for (filter in filters) {
-                Text(filter.label, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 16.dp, bottom = 4.dp))
-                if (filter.type == "PRICE_RANGE") {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        PriceField("Min", min, { min = it }, Modifier.weight(1f))
-                        PriceField("Max", max, { max = it }, Modifier.weight(1f))
-                    }
-                } else {
-                    for (v in filter.values) {
-                        val on = v.input in picked
-                        Row(
-                            Modifier.fillMaxWidth().clickable { picked = if (on) picked - v.input else picked + v.input },
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Checkbox(checked = on, onCheckedChange = null)
-                            Text("${v.label} (${v.count})", Modifier.padding(start = 12.dp, top = 8.dp, bottom = 8.dp))
-                        }
-                    }
-                }
-            }
-        }
-        Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            TextButton(onClick = { onApply(emptyList()) }, Modifier.weight(1f)) { Text("Clear") }
-            Button(onClick = { onApply(picked.toList() + listOfNotNull(priceFilter(min, max))) }, Modifier.weight(1f)) { Text("Apply") }
+private fun PriceRange(slider: PriceSlider, applied: List<String>, onChange: (List<String>) -> Unit, currencyCode: String?) {
+    val bounds = slider.bounds
+    val selected = priceSelection(applied)
+    var range by remember(selected, bounds) { mutableStateOf((selected?.first ?: bounds.start) to (selected?.second ?: bounds.endInclusive)) }
+    val current by rememberUpdatedState(applied)
+    val apply by rememberUpdatedState(onChange)
+    LaunchedEffect(range) {
+        delay(400)
+        val next = withPrice(current, range.first, range.second, bounds)
+        if (next != current) apply(next)
+    }
+    Column {
+        ArgonRangeSlider(range.first, range.second, bounds, { lower, upper -> range = lower to upper }, step = slider.step)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(priceText(range.first, currencyCode), style = ArgonTheme.type.label, color = ArgonTheme.colors.ink)
+            Text(priceText(range.second, currencyCode), style = ArgonTheme.type.label, color = ArgonTheme.colors.ink)
         }
     }
 }
-
-@Composable
-private fun PriceField(label: String, value: String, onChange: (String) -> Unit, modifier: Modifier) = OutlinedTextField(
-    value = value,
-    onValueChange = onChange,
-    label = { Text(label) },
-    singleLine = true,
-    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-    modifier = modifier,
-)

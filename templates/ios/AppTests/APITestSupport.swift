@@ -4,13 +4,14 @@ import XCTest
 private final class FixtureBundle {}
 
 /// The text of AppTests/Fixtures/<name>.json: the response `data` of operation <name>, which the CLI copies there from
-/// contract/fixtures (recorded from mock.shop, or hand-written to the schema).
-func fixtureText(_ name: String) throws -> String {
+/// contract/fixtures (recorded from mock.shop, or hand-written to the schema). `type` reads another kind of fixture
+/// (JudgeMeWidget.html).
+func fixtureText(_ name: String, type: String = "json") throws -> String {
     let bundle = Bundle(for: FixtureBundle.self)
     // a synchronized folder may copy Fixtures/ flat into the test bundle
-    guard let url = bundle.url(forResource: name, withExtension: "json", subdirectory: "Fixtures")
-        ?? bundle.url(forResource: name, withExtension: "json") else {
-        throw NSError(domain: "AppTests", code: 1, userInfo: [NSLocalizedDescriptionKey: "Missing fixture \(name)"])
+    guard let url = bundle.url(forResource: name, withExtension: type, subdirectory: "Fixtures")
+        ?? bundle.url(forResource: name, withExtension: type) else {
+        throw NSError(domain: "AppTests", code: 1, userInfo: [NSLocalizedDescriptionKey: "Missing fixture \(name).\(type)"])
     }
     return try String(contentsOf: url, encoding: .utf8)
 }

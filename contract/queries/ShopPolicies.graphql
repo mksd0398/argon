@@ -1,4 +1,4 @@
-query ShopPolicies($country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {
+query ShopPolicies($country: CountryCode, $language: LanguageCode, $buyer: BuyerInput) @inContext(country: $country, language: $language, buyer: $buyer) {
   shop {
     privacyPolicy { ...Policy }
     refundPolicy { ...Policy }

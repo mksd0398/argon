@@ -21,7 +21,8 @@
       "buyerIdentity": {
         "email": null,
         "phone": null,
-        "countryCode": "CA"
+        "countryCode": "CA",
+        "purchasingCompany": null
       },
       "delivery": {
         "addresses": [
@@ -65,13 +66,24 @@
               "totalAmount": {
                 "amount": "360.0",
                 "currencyCode": "CAD"
-              }
+              },
+              "subtotalAmount": {
+                "amount": "360.0",
+                "currencyCode": "CAD"
+              },
+              "amountPerQuantity": {
+                "amount": "120.0",
+                "currencyCode": "CAD"
+              },
+              "compareAtAmountPerQuantity": null
             },
             "discountAllocations": [],
+            "sellingPlanAllocation": null,
             "merchandise": {
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/43696905224214",
               "title": "Small / Green",
+              "sku": null,
               "image": {
                 "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/4ecbbab490d5a90c04074428b4b0e09358c6895050db590ffbb84e1f8e05fbbc.jpg",
                 "altText": null,
@@ -82,7 +94,13 @@
                 "amount": "120.0",
                 "currencyCode": "CAD"
               },
+              "quantityRule": {
+                "minimum": 0,
+                "maximum": null,
+                "increment": 0
+              },
               "product": {
+                "id": "gid://shopify/Product/7982905098262",
                 "handle": "men-crewneck",
                 "title": "Men's Crewneck"
               }
@@ -114,12 +132,12 @@
               {
                 "handle": "a1b2c3d4-standard",
                 "title": "Standard",
+                "description": "3 to 5 business days",
+                "deliveryMethodType": "SHIPPING",
                 "estimatedCost": {
                   "amount": "10.0",
                   "currencyCode": "CAD"
-                },
-                "description": "3 to 5 business days",
-                "deliveryMethodType": "SHIPPING"
+                }
               },
               {
                 "handle": "e5f6a7b8-express",

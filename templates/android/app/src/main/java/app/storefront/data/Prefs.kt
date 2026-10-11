@@ -22,3 +22,11 @@ internal fun DataStore<Preferences>.safeData(): Flow<Preferences> =
             false
         }
     }
+
+/**
+ * An id list as the stores keep it: one string, ids joined by newlines. That keeps their order (a string set would not),
+ * and a product id never contains a newline.
+ */
+internal fun decodeIds(raw: String?): List<String> = raw.orEmpty().split("\n").filter { it.isNotEmpty() }
+
+internal fun encodeIds(ids: List<String>): String = ids.joinToString("\n")

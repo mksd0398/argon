@@ -4,11 +4,13 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.nullable
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonEncoder
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -93,6 +95,31 @@ internal class NodesSerializer<T>(item: KSerializer<T>) : KSerializer<List<T>> {
     override fun deserialize(decoder: Decoder): List<T> = decoder.decodeSerializableValue(connection).nodes
 
     override fun serialize(encoder: Encoder, value: List<T>) = encoder.encodeSerializableValue(connection, Connection(value))
+}
+
+/** The `value` of a metafield selected as `{ value }`; null when the resource has none (or the token may not read metafields). */
+private fun metafieldValue(decoder: Decoder): String? =
+    (((decoder as JsonDecoder).decodeJsonElement() as? JsonObject)?.get("value") as? JsonPrimitive)?.contentOrNull
+
+private fun encodeMetafieldValue(encoder: Encoder, value: Any?) =
+    (encoder as JsonEncoder).encodeJsonElement(value?.let { JsonObject(mapOf("value" to JsonPrimitive(it.toString()))) } ?: JsonNull)
+
+/** The `reviews.rating` metafield (`rating: metafield(...) { value }`) as stars out of 5, see [Ratings.parse]. */
+internal object RatingSerializer : KSerializer<Double?> {
+    override val descriptor = PrimitiveSerialDescriptor("app.storefront.data.Rating", PrimitiveKind.DOUBLE).nullable
+
+    override fun deserialize(decoder: Decoder): Double? = Ratings.parse(metafieldValue(decoder))
+
+    override fun serialize(encoder: Encoder, value: Double?) = encodeMetafieldValue(encoder, value)
+}
+
+/** The `reviews.rating_count` metafield (`{ value }`) as a number. */
+internal object RatingCountSerializer : KSerializer<Int?> {
+    override val descriptor = PrimitiveSerialDescriptor("app.storefront.data.RatingCount", PrimitiveKind.INT).nullable
+
+    override fun deserialize(decoder: Decoder): Int? = Ratings.count(metafieldValue(decoder))
+
+    override fun serialize(encoder: Encoder, value: Int?) = encodeMetafieldValue(encoder, value)
 }
 
 /** A JSON scalar kept as JSON text (a filter value's `input`, which Shopify sends as a string holding JSON). */

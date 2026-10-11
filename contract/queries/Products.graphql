@@ -2,7 +2,8 @@ query Products(
   $ids: [ID!]!
   $country: CountryCode
   $language: LanguageCode
-) @inContext(country: $country, language: $language) {
+  $buyer: BuyerInput
+) @inContext(country: $country, language: $language, buyer: $buyer) {
   nodes(ids: $ids) {
     __typename
     ... on Product { ...ProductCard }
