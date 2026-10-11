@@ -1,7 +1,4 @@
 import Foundation
-import os
-
-private let homeLog = Logger(subsystem: "app.storefront", category: "HomeScreen")
 
 /// What a home template lays out (`Sections.content`): banners, the categories to shop by, and product rails.
 struct HomeContent: Equatable {
@@ -129,26 +126,4 @@ enum Sections {
         }
         return sections
     }
-}
-
-/// The sections of the `mobile_screen` "home" (`home` loads its section metaobjects); the fallback home (`fallback` loads the
-/// first collections) when it has none to render, or when the store refuses the metaobject query with GraphQL errors (a token
-/// without metaobject access). HTTP and response-shape failures are rethrown: the screen shows an error with Retry instead
-/// of caching a degraded home.
-func homeSections(
-    _ brand: Brand,
-    home: () async throws -> [Metaobject],
-    fallback: () async throws -> [CollectionCard]
-) async throws -> [Section] {
-    var sections: [Section] = []
-    do {
-        let nodes = try await home()
-        sections = Sections.fromHome(nodes, hosts: brand.hosts)
-    } catch ArgonAPIError.graphql(let messages) {
-        // GraphQL messages name fields and permissions, never a token: logged so a merchant can see why the home fell back
-        homeLog.warning("home screen query refused, showing the fallback home: \(messages.joined(separator: "; "), privacy: .public)")
-    }
-    if !sections.isEmpty { return sections }
-    let collections = try await fallback()
-    return Sections.fallback(brand, collections)
 }

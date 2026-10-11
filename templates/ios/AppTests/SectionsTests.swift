@@ -71,9 +71,9 @@ final class SectionsTests: XCTestCase {
     }
 }
 
-/// What a home template is given to lay out: the store's own sections first, the stock banners and the first collections
-/// for whatever they leave out.
-final class HomeContentTests: XCTestCase {
+/// What a home template is given to lay out (`Sections.content`): the store's own sections first, the stock banners and
+/// the first collections for whatever they leave out. How the home screen loads the two is in HomeContentTests.
+final class SectionsContentTests: XCTestCase {
     private let stock: (HomeTemplate, Int) -> String? = { template, index in "file:///stock/home-\(template.rawValue)-\(index).jpg" }
     private let brand = Brand(name: "Shop", logo: nil, cover: nil, accent: nil, hosts: ["shop.test"])
 
@@ -143,76 +143,5 @@ final class HomeContentTests: XCTestCase {
         }
         XCTAssertEqual(HomeTemplate.fashion.bannerCopy.map { $0.heading }, ["The new season", "Everyday essentials", "Made to last"])
         XCTAssertEqual(HomeTemplate.fashion.bannerCopy.map { $0.button }, ["Shop now", "Explore", "Discover"])
-    }
-}
-
-final class HomeSectionsTests: XCTestCase {
-    /// Which loads ran.
-    private var calls: [String] = []
-
-    /// Runs `homeSections` with canned screens.
-    @MainActor
-    private func home(_ screen: @escaping () throws -> [Metaobject]) async throws -> [Section] {
-        let brand = try await mockShopBrand()
-        let fallback = try await fallbackFixture()
-        return try await homeSections(
-            brand,
-            home: {
-                self.calls.append("home")
-                return try screen()
-            },
-            fallback: {
-                self.calls.append("fallback")
-                return fallback
-            }
-        )
-    }
-
-    @MainActor
-    func testTheStoresScreenIsUsedWhenItHasSections() async throws {
-        let screen = try await homeFixture()
-        let sections = try await home { screen }
-        XCTAssertEqual(calls, ["home"])
-        XCTAssertEqual(sections.first.map { kind($0) }, "banner")
-    }
-
-    @MainActor
-    func testNoRenderableSectionsFallBack() async throws {
-        let sections = try await home { [] }
-        XCTAssertEqual(calls, ["home", "fallback"])
-        XCTAssertEqual(sections.first.map { kind($0) }, "collections")
-    }
-
-    @MainActor
-    func testGraphqlErrorsFallBack() async throws {
-        // e.g. a token without metaobject access: a 200 response carrying errors
-        let sections = try await home { throw ArgonAPIError.graphql(messages: ["Access denied for metaobject"]) }
-        XCTAssertEqual(calls, ["home", "fallback"])
-        XCTAssertFalse(sections.isEmpty)
-    }
-
-    @MainActor
-    func testHttpFailuresAreRethrownNotReplacedByTheFallback() async throws {
-        let failed = await thrownError { try await self.home { throw ArgonAPIError.http(status: 503) } }
-        guard case let .http(status)? = failed as? ArgonAPIError else { return XCTFail("expected an HTTP error") }
-        XCTAssertEqual(status, 503)
-        XCTAssertEqual(calls, ["home"], "the fallback must not run, or the screen would cache a degraded home")
-    }
-
-    @MainActor
-    func testInvalidResponsesAreRethrown() async throws {
-        let failed = await thrownError { try await self.home { throw ArgonAPIError.decoding(operation: "HomeScreen", detail: "") } }
-        guard case .decoding? = failed as? ArgonAPIError else { return XCTFail("expected a decoding error") }
-        XCTAssertEqual(calls, ["home"])
-    }
-
-    @MainActor
-    func testAFailingFallbackStillSurfacesItsError() async throws {
-        let brand = try await mockShopBrand()
-        let failed = await thrownError {
-            try await homeSections(brand, home: { [] }, fallback: { throw ArgonAPIError.http(status: 500) })
-        }
-        guard case let .http(status)? = failed as? ArgonAPIError else { return XCTFail("expected an HTTP error") }
-        XCTAssertEqual(status, 500)
     }
 }
