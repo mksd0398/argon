@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.dp
 import app.argon.ui.ArgonTheme
 import coil3.compose.AsyncImage
 
-/** Standard: title at the start. LargeTitle: a big title below the actions. CenteredLogo: the shop's logo (or title)
+/** Standard: title (or the logo, when one is given) at the start. LargeTitle: a big title below the actions. CenteredLogo: the shop's logo (or title)
  *  centred. Search: a search field in place of the title. */
 enum class ArgonTopBarVariant { Standard, LargeTitle, CenteredLogo, Search }
 
@@ -51,7 +51,14 @@ fun ArgonTopBar(
     val actions: @Composable RowScope.() -> Unit = { trailing.forEach { ActionButton(it) } }
     when (variant) {
         ArgonTopBarVariant.Standard -> TopAppBar(
-            title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            title = {
+                // with a logo, the logo sits where the title would (a home screen with its logo at the start)
+                if (logoUrl != null) {
+                    AsyncImage(logoUrl, title, Modifier.height(28.dp).widthIn(max = 160.dp), contentScale = ContentScale.Fit)
+                } else {
+                    Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            },
             modifier = modifier,
             navigationIcon = navigation,
             actions = actions,

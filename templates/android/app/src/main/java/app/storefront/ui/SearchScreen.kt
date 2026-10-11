@@ -1,58 +1,39 @@
 package app.storefront.ui
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.navigation.NavController
+import app.argon.ui.ArgonTheme
+import app.argon.ui.components.ArgonIconName
+import app.argon.ui.components.ArgonListItem
+import app.argon.ui.components.ArgonListLeading
+import app.argon.ui.components.ArgonTopBar
+import app.argon.ui.components.ArgonTopBarAction
+import app.argon.ui.components.ArgonTopBarVariant
 import app.storefront.AppGraph
 import app.storefront.data.Page
 import app.storefront.data.ProductCard
 import app.storefront.data.Route
-import coil3.compose.AsyncImage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 
@@ -93,7 +74,10 @@ private suspend fun loadSuggestions(query: String): Suggestions {
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Search (`search?q=`): the field in the top bar, suggestions while typing (queries, collections, products), and the
+ * results of a submitted query in the store's collection template ([ListingView], with search's own sorts).
+ */
 @Composable
 fun SearchScreen(initial: String, nav: NavController) {
     val model = viewModel<SearchModel>(factory = viewModelFactory { initializer { SearchModel(initial) } })
@@ -103,7 +87,13 @@ fun SearchScreen(initial: String, nav: NavController) {
     var failure by remember { mutableStateOf<String?>(null) }
     val showResults = model.submitted != null && model.text.trim() == model.submitted
 
-    LaunchedEffect(Unit) { if (model.submitted == null) focus.requestFocus() }
+    fun submit(query: String) {
+        model.submit(query)
+        focusManager.clearFocus()
+    }
+
+    // opened to type: the field has the keyboard (the request goes to the field inside the bar)
+    LaunchedEffect(Unit) { if (model.submitted == null) runCatching { focus.requestFocus() } }
     // 300 ms debounce: typing again cancels this effect (and a request in flight) before it queries
     LaunchedEffect(model.text) {
         val q = model.text.trim()
@@ -125,45 +115,37 @@ fun SearchScreen(initial: String, nav: NavController) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    TextField(
-                        value = model.text,
-                        onValueChange = { model.text = it },
-                        placeholder = { Text("Search products") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        keyboardActions = KeyboardActions(onSearch = { model.submit(model.text); focusManager.clearFocus() }),
-                        trailingIcon = {
-                            if (model.text.isNotEmpty()) IconButton(onClick = { model.text = "" }) { Icon(Icons.Filled.Close, contentDescription = "Clear") }
-                        },
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent,
-                        ),
-                        modifier = Modifier.fillMaxWidth().focusRequester(focus),
-                    )
-                },
-                navigationIcon = { BackButton(nav) },
+            ArgonTopBar(
+                "Search products",
+                Modifier.focusRequester(focus).padding(bottom = ArgonTheme.spacing.s),
+                variant = ArgonTopBarVariant.Search,
+                leading = listOf(nav.backAction()),
+                trailing = if (model.text.isEmpty()) emptyList() else listOf(ArgonTopBarAction(ArgonIconName.Close, "Clear") { model.text = "" }),
+                searchText = model.text,
+                onSearchTextChange = { model.text = it },
+                onSearch = { submit(it) },
             )
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             if (showResults) {
-                ListingView(model.listing, "No products match \"${model.submitted}\".") { nav.open(it) }
+                ListingView(model.listing, "No products match \"${model.submitted}\".", { nav.open(it) })
             } else {
                 LazyColumn(Modifier.fillMaxSize()) {
-                    failure?.let { item { Text(it, Modifier.padding(16.dp), color = MaterialTheme.colorScheme.error) } }
+                    failure?.let { item { Text(it, Modifier.padding(ArgonTheme.spacing.l), style = ArgonTheme.type.body, color = ArgonTheme.colors.sale) } }
                     suggestions?.let { s ->
-                        items(s.queries) { q ->
-                            SuggestionRow(q, Icons.Filled.Search) { model.submit(q); focusManager.clearFocus() }
-                        }
+                        items(s.queries) { q -> ArgonListItem(q, leading = ArgonListLeading.Icon(ArgonIconName.Search), onClick = { submit(q) }) }
                         if (s.collections.isNotEmpty()) item { SuggestionLabel("Collections") }
-                        items(s.collections) { (handle, title) -> SuggestionRow(title, null) { nav.open(Route.Collection(handle)) } }
+                        items(s.collections) { (handle, title) -> ArgonListItem(title, onClick = { nav.open(Route.Collection(handle)) }) }
                         if (s.products.isNotEmpty()) item { SuggestionLabel("Products") }
-                        items(s.products) { p -> ProductRow(p) { nav.open(Route.Product(p.handle)) } }
+                        items(s.products) { p ->
+                            ArgonListItem(
+                                p.title,
+                                subtitle = p.price.display(),
+                                leading = p.image?.let { ArgonListLeading.Image(it.url) },
+                                onClick = { nav.open(Route.Product(p.handle)) },
+                            )
+                        }
                     }
                 }
             }
@@ -172,37 +154,7 @@ fun SearchScreen(initial: String, nav: NavController) {
 }
 
 @Composable
-private fun SuggestionLabel(text: String) =
-    Text(text, Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-
-@Composable
-private fun SuggestionRow(text: String, icon: ImageVector?, onClick: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (icon != null) Icon(icon, contentDescription = null)
-        Text(text)
-    }
-}
-
-@Composable
-private fun ProductRow(card: ProductCard, onClick: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        AsyncImage(
-            model = card.image?.url,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.size(48.dp).clip(RoundedCornerShape(6.dp)),
-        )
-        Column {
-            Text(card.title, maxLines = 1)
-            Text(card.price.display(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
+private fun SuggestionLabel(text: String) = SectionHeader(
+    text,
+    Modifier.padding(start = ArgonTheme.spacing.l, end = ArgonTheme.spacing.l, top = ArgonTheme.spacing.l, bottom = ArgonTheme.spacing.xs),
+)
