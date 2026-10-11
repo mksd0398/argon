@@ -12,7 +12,7 @@ enum AppGraph {
     /// Which home page and which collection page the app shows; an unknown value is the default.
     static let homeTemplate = HomeTemplate(config: info("HomeTemplate"))
     static let collectionTemplate = CollectionTemplate(config: info("CollectionTemplate"))
-    /// Judge.me's public token; empty hides reviews.
+    /// Judge.me's public token; empty: reviews without their star breakdown (`judgeMe`).
     static let judgeMeToken = info("JudgemePublicToken").trimmingCharacters(in: .whitespaces)
     /// Whether product cards and the product page show the vendor (`SHOW_VENDOR`, false unless it is `true`): many
     /// stores' vendor is their own name on every product, or an internal label.

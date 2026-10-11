@@ -344,7 +344,12 @@ const SDK_LINES = {
   meta: ['.package(url: "https://github.com/facebook/facebook-ios-sdk", from: "18.1.1"),', '.product(name: "FacebookCore", package: "facebook-ios-sdk"),'],
   moengage: ['.package(url: "https://github.com/moengage/apple-sdk", from: "11.3.0"),', '.product(name: "MoEngage-iOS-SDK", package: "apple-sdk"),'],
 };
-const FIREBASE_EXCLUDED = 'exclude: ["Resources", "PrivacyInfo.xcprivacy", "GoogleService-Info.plist", "Assets.xcassets"],';
+// what Firebase changes on the app target: its file kept out of the sources, and -ObjC on the link
+const FIREBASE_TARGET = [
+  'exclude: ["Resources", "PrivacyInfo.xcprivacy", "GoogleService-Info.plist", "Assets.xcassets"],',
+  "swiftSettings: [.swiftLanguageMode(.v5)],",
+  'linkerSettings: [.unsafeFlags(["-Xlinker", "-ObjC"])]',
+];
 const config = (dir) => ({
   android: readFileSync(join(dir, "android/shopify.properties"), "utf8").split("\n"),
   ios: readFileSync(join(dir, "ios/Config.xcconfig"), "utf8").split("\n"),
@@ -367,7 +372,7 @@ test("every analytics flag: keys in both config files, Firebase's files, the iOS
     assert.ok(lines(readFileSync(join(dir, "ios/xtool.yml"), "utf8")).includes("- App/GoogleService-Info.plist"), "bundled by an xtool build");
 
     const added = addedLines(readFileSync(join(dir, "ios/Package.swift"), "utf8"));
-    assert.deepEqual(added, [...Object.values(SDK_LINES).map(([dependency]) => dependency), ...Object.values(SDK_LINES).map(([, product]) => product), FIREBASE_EXCLUDED]);
+    assert.deepEqual(added, [...Object.values(SDK_LINES).map(([dependency]) => dependency), ...Object.values(SDK_LINES).map(([, product]) => product), ...FIREBASE_TARGET]);
     const info = readFileSync(join(dir, "ios/Xtool-Info.plist"), "utf8");
     for (const [key, value] of [["CFBundleDisplayName", "Mock.shop"], ["FacebookAppID", "123"], ["FacebookClientToken", "abc"], ["FacebookDisplayName", "Mock.shop"]]) {
       assert.ok(info.includes(`\t<key>${key}</key>\n\t<string>${value}</string>\n`), key);
@@ -397,7 +402,7 @@ test("one provider at a time: only its SDK, and server/ only for Google Analytic
     const p = project(join(cwd, "demo-app"));
     assert.deepEqual([p.added, p.server], [SDK_LINES.moengage, false]);
     assert.ok(p.android.includes("MOENGAGE_DATA_CENTER=1") && p.ios.includes("MOENGAGE_DATA_CENTER = 1"), "data center 1 unless told");
-    assert.ok(!p.info.includes("Facebook") && !out.includes("Meta:") && !out.includes("Google Analytics"));
+    assert.ok(!p.info.includes("FacebookAppID") && !out.includes("Meta:") && !out.includes("Google Analytics"));
   });
   // a data center without a workspace configures nothing. --server: server/, and the Google Analytics purchase is its to report
   await withRun(["demo-app", "--demo", "--yes", "--moengage-data-center=4", "--server"], fakes(), (cwd, out) => {
@@ -493,7 +498,7 @@ test("packageSwift: each SDK's package and product go in below Checkout Kit's, i
   assert.deepEqual(meta.slice(meta.findIndex((line) => line.includes("checkout-sheet-kit-swift\", from")) + 1).slice(0, 2), [`        ${SDK_LINES.meta[0]}`, "    ],"]);
   assert.deepEqual(meta.slice(meta.findIndex((line) => line.includes("ShopifyCheckoutSheetKit")) + 1).slice(0, 2), [`                ${SDK_LINES.meta[1]}`, "            ],"]);
   // the order is fixed, whatever order the providers are given in; only Firebase has a file to keep out of the target
-  assert.deepEqual(addedLines(packageSwift(TEMPLATE_PACKAGE, ["moengage", "firebase"])), [SDK_LINES.firebase[0], SDK_LINES.moengage[0], SDK_LINES.firebase[1], SDK_LINES.moengage[1], FIREBASE_EXCLUDED]);
+  assert.deepEqual(addedLines(packageSwift(TEMPLATE_PACKAGE, ["moengage", "firebase"])), [SDK_LINES.firebase[0], SDK_LINES.moengage[0], SDK_LINES.firebase[1], SDK_LINES.moengage[1], ...FIREBASE_TARGET]);
 
   const unix = lines(TEMPLATE_PACKAGE).join("\n"), windows = lines(TEMPLATE_PACKAGE).join("\r\n");
   assert.ok(!packageSwift(unix, ["firebase", "meta", "moengage"]).includes("\r"));
@@ -658,6 +663,12 @@ test("configText: xcconfig never keeps two slashes in a row, however many there 
 test("xtoolFiles: the display name is XML-escaped", () => {
   const files = xtoolFiles({ appName: "Fish & <Chips>", bundleId: "com.x.y", operations: ["Shop"] });
   assert.ok(files["Xtool-Info.plist"].includes("<string>Fish &amp; &lt;Chips&gt;</string>"));
+  // the SDKs' own collection starts off, with or without an SDK, as in the template's Info.plist
+  const template = readFileSync(new URL("../templates/ios/Info.plist", import.meta.url), "utf8");
+  const off = [...files["Xtool-Info.plist"].matchAll(/<key>(.+)<\/key>\n\t<false\/>/g)].map((match) => match[1]);
+  assert.deepEqual(off, ["FacebookAutoLogAppEventsEnabled", "FacebookAdvertiserIDCollectionEnabled", "FIREBASE_ANALYTICS_COLLECTION_ENABLED",
+    "FirebaseAutomaticScreenReportingEnabled", "FirebaseAppDelegateProxyEnabled"]);
+  for (const key of off) assert.match(template, new RegExp(`<key>${key}</key>\\s*<false/>`), key);
   assert.ok(files["xtool.yml"].endsWith("- App/Resources/queries/Shop.graphql\n"));
   assert.ok(files["xtool.yml"].includes("\niconPath: App/Assets.xcassets/AppIcon.appiconset/AppIcon.png\n"));
 });

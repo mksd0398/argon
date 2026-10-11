@@ -105,7 +105,7 @@ A Firebase file must be for this app's `BUNDLE_ID`: Google Analytics gets nothin
 
 - **Android** needs nothing more: the build adds an SDK when its file or its keys are there.
 - **iOS with Xcode**: add the provider's Swift package to the App target (File → Add Package Dependencies). For Google Analytics also add `-ObjC` to the App target's Other Linker Flags (Build Settings): Firebase's package asks for it.
-- **iOS with xtool**: `ios/Package.swift` already has the packages of the providers Argon was given. To add one later, add its package and its product there, next to Checkout Kit's. Firebase's file also goes in `ios/xtool.yml` (`- App/GoogleService-Info.plist`), and Meta's SDK reads three keys from `ios/Xtool-Info.plist`: `FacebookAppID`, `FacebookClientToken` and `FacebookDisplayName`.
+- **iOS with xtool**: `ios/Package.swift` already has the packages of the providers Argon was given. To add one later, add its package and its product there, next to Checkout Kit's. Firebase's file also goes in `ios/xtool.yml` (`- App/GoogleService-Info.plist`) and in the app target's `exclude` list, and the target needs `linkerSettings: [.unsafeFlags(["-Xlinker", "-ObjC"])]`; Meta's SDK reads three keys from `ios/Xtool-Info.plist`: `FacebookAppID`, `FacebookClientToken` and `FacebookDisplayName`.
 
 | Provider | Swift package | Product |
 |---|---|---|
