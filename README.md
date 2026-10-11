@@ -30,11 +30,13 @@ The apps work the way a Liquid theme does. They render whatever the store contai
 - **Page templates**, picked in the config: four home screens (fashion, beauty, grocery, industrial & B2B) and two collection layouts (sticky filter bar at the top, floating bar at the bottom), with colour swatches ([Page templates](#page-templates))
 - **A product page built to sell**: variant swatches, bundles, unit prices, volume pricing and quantity rules, B2B catalogue prices, subscriptions, a sticky add-to-cart bar, recommendations, recently viewed, and Judge.me reviews
 - **Orders and returns**: tracking, payments, refunds, and a return or exchange request, from the Customer Account API
-- A persisted **cart**
+- A persisted **cart** with a free-shipping progress bar, discount codes, the savings on each line and in the summary, and recommendations
 - **Checkout** through Checkout Kit: Shopify owns payment, tax, shipping, discounts and orders
+- **Onboarding**: a three-page welcome the first time the app opens, shown once
 - **Login** with the Customer Account API (OAuth 2.0 + PKCE), profile, addresses, company, store credit, and the *Delete account* entry both app stores require
 - **A home screen the merchant edits**: an ordered list of metaobject sections ([Content model](#content-model))
 - **Branding** from the store's own colours and logo
+- **The app icon and the launch screen**, made from the store's logo when the project is generated ([App icon and launch screen](#app-icon-and-launch-screen))
 - **A native component library**: 29 themed components on each platform (Compose `ui` module, `ArgonUI` Swift package), with a debug gallery at Account → Components
 - **The full Storefront and Customer Account API, prebuilt**: 55 typed operations behind `StorefrontApi` and `CustomerAccountApi` (same names on iOS), checked against Shopify's 2026-10 schemas
 - **One Shopify SDK**: Checkout Kit. A hand-written GraphQL client, no Mobile Buy SDK, no Apollo, no DI framework
@@ -66,7 +68,7 @@ A missing Xcode or Android SDK only produces a warning. You can generate the pro
 npx @mksd0398/argon demo-app --demo --yes
 ```
 
-The apps use `mock.shop`: no account, no token. Menu, catalogue and cart work. Metaobjects return null there, so Home shows the template's stock banners over the store's collections. It has no customer accounts and no reviews app, so the Account tab offers **Preview with a sample account** (sample orders, a return and a company) and product pages show sample reviews, to see those pages. **`mock.shop` doesn't implement `nodes(ids:)`, so the Wishlist tab stays empty on it.** It works on real stores.
+The apps use `mock.shop`: no account, no token. Menu, catalogue and cart work, and the app icon is mock.shop's logo. Metaobjects return null there, so Home shows the template's stock banners over the store's collections. It has no customer accounts and no reviews app, so the Account tab offers **Preview with a sample account** (sample orders, a return and a company) and product pages show sample reviews, to see those pages. **`mock.shop` doesn't implement `nodes(ids:)`, so the Wishlist tab stays empty on it.** It works on real stores.
 
 ### A real store
 
@@ -79,7 +81,7 @@ npx @mksd0398/argon my-store-app
 3. **Admin session**: `shopify store auth` as a staff user, with `read_products`, `write_metaobject_definitions` and `write_metaobjects`.
 4. **Provision**: creates the four content definitions if missing, and seeds the `home` screen from your collections and products if it doesn't exist. Warns if the storefront password is on or legacy customer accounts are in use. Existing definitions and an existing `home` entry are left as they are.
 5. **Headless channel**: the part Shopify only allows in admin ([below](#the-headless-channel-step)). Argon opens it in your browser and checks the token with live calls.
-6. **Generate** both apps, write the config, run `git init` and commit.
+6. **Generate** both apps, make the app icon and launch screen from the store's logo, write the config, run `git init` and commit.
 
 Argon never stores Admin credentials and never changes your Shopify CLI config.
 
@@ -117,7 +119,7 @@ cd my-store-app
 - **iOS**: open `ios/App.xcodeproj` in Xcode 16+, pick a simulator, Run.
 - **Android**: open `android/` in Android Studio, or `cd android && ./gradlew assembleDebug`.
 
-Per-store values live in `ios/Config.xcconfig` and `android/shopify.properties`, with the same twelve keys on both (`SHOP_DOMAIN`, `STOREFRONT_TOKEN`, `CUSTOMER_CLIENT_ID`, `SHOP_ID`, `API_VERSION`, `APP_NAME`, `BUNDLE_ID`, `PDP_METAFIELDS`, `HOME_TEMPLATE`, `COLLECTION_TEMPLATE`, `JUDGEME_PUBLIC_TOKEN`, `SHOW_VENDOR`). The generated README explains each. With an empty token on a store other than `mock.shop`, the app shows a setup screen naming the missing key instead of failing at run time.
+Per-store values live in `ios/Config.xcconfig` and `android/shopify.properties`, with the same fourteen keys on both (`SHOP_DOMAIN`, `STOREFRONT_TOKEN`, `CUSTOMER_CLIENT_ID`, `SHOP_ID`, `API_VERSION`, `APP_NAME`, `BUNDLE_ID`, `PDP_METAFIELDS`, `HOME_TEMPLATE`, `COLLECTION_TEMPLATE`, `JUDGEME_PUBLIC_TOKEN`, `SHOW_VENDOR`, `ONBOARDING`, `FREE_SHIPPING_THRESHOLD`). The generated README explains each. With an empty token on a store other than `mock.shop`, the app shows a setup screen naming the missing key instead of failing at run time.
 
 ---
 
@@ -130,11 +132,33 @@ Every app carries all of them; two config keys pick what it shows, so switching 
 | `HOME_TEMPLATE` | `fashion` (editorial, image-led), `beauty` (soft cards, ratings, shop by routine), `grocery` (search first, dense, quick add), `b2b` (SKUs, trade prices, bulk quantities) |
 | `COLLECTION_TEMPLATE` | `top` (sort and filters in a sticky bar), `bottom` (a floating bar) |
 
-- **Home** shows the store's own banners, collections and product rows from the [content model](#content-model) in the template's layout. Until the store has banners, each template shows three stock photos from Shopify's [Burst](https://www.shopify.com/stock-photos) (`templates/images/CREDITS.md`).
+- **Home** shows the store's own banners, collections and product rows from the [content model](#content-model) in the template's layout. Until the store has banners, each template shows three stock photos from Shopify's [Burst](https://www.shopify.com/stock-photos) (`templates/images/CREDITS.md`). On the `fashion` home the hero runs to the top edge of the screen, under a transparent top bar that turns solid as the hero scrolls away.
+- **Onboarding** (`ONBOARDING`, `true` by default): three full-screen pages over the home template's stock photos, shown once before the tabs, with Skip, and Sign in on the last page when login is configured. `false` turns it off.
+- **Cart**: a progress bar towards free shipping when `FREE_SHIPPING_THRESHOLD` is set (an amount in the shop's currency; the demo sets 150), a discount code field with the applied codes as removable tags, each line's compare-at price and discounts, "You may also like", and a summary with Subtotal, Discounts, You save and Total.
 - **Colour swatches** use Shopify's swatch data, and fall back to the colour's name ("Peacock Blue" is shown blue) for stores that have none.
 - **Reviews** come from [Judge.me](https://judge.me)'s Widget API with the store's *public* token (`JUDGEME_PUBLIC_TOKEN`, from Judge.me admin → Settings → Integrations → View API tokens), drawn natively. Leave it empty to hide reviews. Never use the private token: it would ship inside the app.
 - **B2B**: when the signed-in customer is a company contact, every price is the company location's catalogue price, with quantity rules and volume pricing on the product page.
 - **Returns and exchanges** use Shopify's self-serve returns. The Customer Account API takes return requests only, so an exchange is sent as a return whose note names the wanted variant; the merchant completes it in admin.
+
+---
+
+## App icon and launch screen
+
+Both are part of the app binary, so nothing can set them at run time. Argon makes them when it generates the project, from the logo in the store's brand settings (Shopify admin → Settings → Brand). It asks the Storefront API for the square logo, or the default logo when there is none, as a PNG of at most 1024 px, and writes:
+
+| File | Content |
+|---|---|
+| `android/app/src/main/res/drawable-xxxhdpi/launcher_logo.png` | The logo, at most 264×264 px (66 dp, the adaptive icon's safe zone), transparent as downloaded |
+| `android/app/src/main/res/values/launcher.xml` | `launcher_background`, the colour behind the logo |
+| `ios/App/Assets.xcassets/AppIcon.appiconset/AppIcon.png` | 1024×1024, opaque: the logo scaled to fit 62% of the side (a small logo is enlarged), on the background colour |
+| `ios/App/Assets.xcassets/LaunchLogo.imageset/LaunchLogo.png` | The logo, at most 600×600 px, transparent |
+| `ios/App/Assets.xcassets/LaunchBackground.colorset/Contents.json` | The background colour |
+
+The background colour is the logo's top-left pixel when that pixel is opaque (a logo on its own background), else white. A light logo on a transparent background therefore needs its background set by hand.
+
+Without a usable logo (none set, the download fails, or a file the built-in PNG reader can't decode, such as an interlaced PNG), Android keeps the template's own icon and iOS gets a plain one on the brand's primary colour (near-black when the brand has none). Argon prints whether the logo was used; a logo never stops a run.
+
+To change them later, replace those files (the generated README lists them), or set the logo in Shopify and generate the project again.
 
 ---
 
@@ -207,7 +231,7 @@ Both apps carry the same GraphQL documents (`queries/`) and the same names (`Sto
 
 ## Not in v1
 
-Markets (`@inContext` and currency switching), Shop Pay / Apple Pay buttons, discount codes in the cart (checkout already accepts them), wishlist sync to the customer account, push notifications, universal links, section types beyond the three, and an Argon agent skill.
+Markets (`@inContext` and currency switching), Shop Pay / Apple Pay buttons, gift cards in the cart (checkout already accepts them), wishlist sync to the customer account, push notifications, universal links, section types beyond the three, and an Argon agent skill.
 
 ---
 
@@ -215,7 +239,7 @@ Markets (`@inContext` and currency switching), Shop Pay / Apple Pay buttons, dis
 
 ```bash
 npm ci
-npm test            # CLI, scaffolding, provisioning (stubbed), link parser, contract vs the 2026-10 schemas
+npm test            # CLI, scaffolding, the PNG reader, provisioning (stubbed), link parser, contract vs the 2026-10 schemas
 npm run test:live   # also runs every Storefront contract document against mock.shop
 ```
 

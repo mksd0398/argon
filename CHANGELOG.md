@@ -4,6 +4,18 @@
 
 ### Added
 
+- **The app icon and the launch screen come from the store's logo.** When it generates a project, the CLI asks the Storefront API for the brand's square logo (else its default logo) as a PNG and writes the Android adaptive icon's logo and background colour, the iOS app icon, and the iOS launch logo and background.
+  - The background is the logo's own (its top-left pixel when opaque), else white.
+  - Without a usable logo, Android keeps the template's icon and iOS gets a plain one on the brand's primary colour (near-black when the brand has none). A logo never stops a run: a failed download or an unreadable image only warns.
+  - No new dependency: a small PNG reader and writer on Node's `zlib` (`lib/png.js`).
+  - `ios/xtool.yml` gets `iconPath`, so an xtool build has the same icon.
+- **Onboarding:** a three-page welcome before the tabs the first time the app opens, over the home template's stock banners, with Skip, and Sign in on the last page when login is configured. `ONBOARDING=false` turns it off.
+- **An edge-to-edge hero on the fashion home:** the hero starts at the top edge of the screen, under a transparent top bar that turns solid as the hero scrolls away. The top bar has a new `overlay` variant for it.
+- **Cart:**
+  - Progress towards free shipping when `FREE_SHIPPING_THRESHOLD` is set (an amount in the shop's currency; the demo sets 150).
+  - Discount codes: a field to apply one, the applied codes as removable tags, and a message for a code that can't be used on the cart.
+  - Each line shows its compare-at price and its discounts. The summary shows Subtotal, Discounts, You save and Total.
+  - "You may also like": recommendations for the first item, without products already in the cart.
 - **Page templates**, built from the component library, the same on both platforms.
   - Home: four layouts picked by `HOME_TEMPLATE`: `fashion`, `beauty`, `grocery`, `b2b`. Each shows the store's own banners, collections and product rows; until the store has banners, three stock photos from Shopify's Burst.
   - Collection: two layouts picked by `COLLECTION_TEMPLATE`: `top` (sticky sort and filter bar) and `bottom` (floating bar). Colour filters and product cards show swatches, from Shopify's swatch data or matched from the colour's name. Price filters use a range slider.
@@ -47,6 +59,7 @@
 
 ### Fixed
 
+- Checkout no longer reloads about once a second for a signed-in customer. Shopify answers every cart buyer update with a new checkout URL, and the cart attached the customer each time it prepared checkout, which changed the cart and prepared checkout again. A cart's buyer is now attached once.
 - A screen that failed to load (offline at launch, or started behind the lock screen) now reloads by itself when the app returns to the foreground. On Android the error reads "Can't reach the store. Check your internet connection." instead of a raw hostname error.
 - Checkout now shows the store's own checkout branding. Checkout Kit uses the `web` color scheme (Android `ColorScheme.Web()`, iOS `.web`) instead of its default generic light/dark theme.
 
