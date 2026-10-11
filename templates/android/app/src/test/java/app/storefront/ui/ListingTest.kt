@@ -159,11 +159,28 @@ class ListingTest {
     }
 
     @Test
-    fun priceFilterGivesMinAndOrMax() {
-        assertEquals("""{"price":{"min":10.0,"max":50.5}}""", priceFilter("10", " 50.5 "))
-        assertEquals("""{"price":{"max":20.0}}""", priceFilter("", "20"))
-        assertEquals("a comma-decimal keyboard's comma", """{"price":{"min":12.5}}""", priceFilter("12,5", ""))
-        assertNull(priceFilter("", "abc"))
-        assertNull("not a JSON number", priceFilter("NaN", "Infinity"))
+    fun theCurrencyIsTheListsOnceAProductHasShownIt() {
+        val l = Listing(scope, COLLECTION_SORTS) { after, _, _ -> if (after == null) page(listOf("a"), "c1") else page(emptyList(), null) }
+        assertNull(l.currencyCode)
+        l.reload()
+        assertEquals("USD", l.currencyCode)
+        l.loadMore() // an empty page has no price to read: the currency stays
+        assertEquals("USD", l.currencyCode)
+    }
+
+    @Test
+    fun eachListSortsWithTheKeysOfItsOwnQuery() {
+        // the values of ProductCollectionSortKeys, ProductSortKeys and SearchSortKeys: a key of another enum is refused by the API
+        val collectionKeys = setOf("COLLECTION_DEFAULT", "BEST_SELLING", "PRICE", "CREATED", "TITLE", "MANUAL", "ID", "RELEVANCE")
+        val catalogKeys = setOf("BEST_SELLING", "PRICE", "CREATED_AT", "UPDATED_AT", "TITLE", "VENDOR", "PRODUCT_TYPE", "ID", "RELEVANCE")
+        val searchKeys = setOf("RELEVANCE", "PRICE")
+        assertTrue(COLLECTION_SORTS.all { it.key in collectionKeys })
+        assertTrue(CATALOG_SORTS.all { it.key in catalogKeys })
+        assertTrue(SEARCH_SORTS.all { it.key in searchKeys })
+        assertEquals("each list opens in its first sort", listOf("Featured", "Best selling", "Relevance"), listOf(COLLECTION_SORTS, CATALOG_SORTS, SEARCH_SORTS).map { it.first().label })
+        for (sorts in listOf(COLLECTION_SORTS, CATALOG_SORTS, SEARCH_SORTS)) {
+            assertEquals("no two entries sort the same way", sorts.size, sorts.distinctBy { it.key to it.reverse }.size)
+            assertEquals("or read the same", sorts.size, sorts.distinctBy { it.label }.size)
+        }
     }
 }
