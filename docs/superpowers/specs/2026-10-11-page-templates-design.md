@@ -24,6 +24,8 @@ Three new keys in `android/shopify.properties` and `ios/Config.xcconfig` (the CL
 | `COLLECTION_TEMPLATE` | `top` (default), `bottom` | `AppGraph.collectionTemplate` |
 | `JUDGEME_PUBLIC_TOKEN` | Judge.me public token, empty hides reviews | `AppGraph.judgeMeToken` |
 
+A fourth key, `SHOW_VENDOR` (`true` / `false`, default `false`, `AppGraph.showVendor`), decides whether cards and the product page show the vendor: many stores' vendor is their own name or an internal label, and Shopify's themes hide it by default.
+
 An unknown value falls back to the default. Android reads them through `BuildConfig` (add to `app/build.gradle.kts` beside `PDP_METAFIELDS`); iOS through `AppGraph.info` (Info.plist keys `HomeTemplate`, `CollectionTemplate`, `JudgemePublicToken`, which fall back to the bundled `Config.xcconfig`).
 
 Enums, same names on both platforms: `HomeTemplate { fashion, beauty, grocery, b2b }`, `CollectionTemplate { top, bottom }`.

@@ -15,6 +15,7 @@
 - **B2B:** a signed-in company contact sees the company location's catalogue prices everywhere, checks out as the company, and can switch location.
 - **A sample account on the demo store:** mock.shop has no customer accounts, so its Account tab can preview the signed-in pages with sample orders, a return and a company.
 - CLI: `--home`, `--collection` and `--judgeme-token`, asked for when run interactively.
+- `SHOW_VENDOR` (default `false`): product cards and the product page show the vendor only when it is `true`.
 - Components: `ArgonRating`, `ArgonQuantityStepper`, `ArgonSwatch`.
 - **A native component library in every app:** 29 components (Accordion to Top bar) with a store-themed palette, Instrument Serif and Hanken Grotesk, and a debug-only gallery at Account → Components.
   - Android: a Compose `ui` module.

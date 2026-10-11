@@ -66,7 +66,7 @@ A missing Xcode or Android SDK only produces a warning. You can generate the pro
 npx @mksd0398/argon demo-app --demo --yes
 ```
 
-The apps use `mock.shop`: no account, no token. Menu, catalogue and cart work. Metaobjects return null there, so Home shows the template's stock banners over the store's collections. It has no customer accounts, so the Account tab offers **Preview with a sample account**: sample orders, a return and a company, to see those pages. **`mock.shop` doesn't implement `nodes(ids:)`, so the Wishlist tab stays empty on it.** It works on real stores.
+The apps use `mock.shop`: no account, no token. Menu, catalogue and cart work. Metaobjects return null there, so Home shows the template's stock banners over the store's collections. It has no customer accounts and no reviews app, so the Account tab offers **Preview with a sample account** (sample orders, a return and a company) and product pages show sample reviews, to see those pages. **`mock.shop` doesn't implement `nodes(ids:)`, so the Wishlist tab stays empty on it.** It works on real stores.
 
 ### A real store
 
@@ -117,7 +117,7 @@ cd my-store-app
 - **iOS**: open `ios/App.xcodeproj` in Xcode 16+, pick a simulator, Run.
 - **Android**: open `android/` in Android Studio, or `cd android && ./gradlew assembleDebug`.
 
-Per-store values live in `ios/Config.xcconfig` and `android/shopify.properties`, with the same eleven keys on both (`SHOP_DOMAIN`, `STOREFRONT_TOKEN`, `CUSTOMER_CLIENT_ID`, `SHOP_ID`, `API_VERSION`, `APP_NAME`, `BUNDLE_ID`, `PDP_METAFIELDS`, `HOME_TEMPLATE`, `COLLECTION_TEMPLATE`, `JUDGEME_PUBLIC_TOKEN`). The generated README explains each. With an empty token on a store other than `mock.shop`, the app shows a setup screen naming the missing key instead of failing at run time.
+Per-store values live in `ios/Config.xcconfig` and `android/shopify.properties`, with the same twelve keys on both (`SHOP_DOMAIN`, `STOREFRONT_TOKEN`, `CUSTOMER_CLIENT_ID`, `SHOP_ID`, `API_VERSION`, `APP_NAME`, `BUNDLE_ID`, `PDP_METAFIELDS`, `HOME_TEMPLATE`, `COLLECTION_TEMPLATE`, `JUDGEME_PUBLIC_TOKEN`, `SHOW_VENDOR`). The generated README explains each. With an empty token on a store other than `mock.shop`, the app shows a setup screen naming the missing key instead of failing at run time.
 
 ---
 

@@ -480,7 +480,7 @@ private fun ProductTitle(product: Product, summary: ReviewSummary?, onRating: ((
         Modifier.fillMaxWidth().padding(start = spacing.l, end = spacing.l, top = spacing.l),
         verticalArrangement = Arrangement.spacedBy(spacing.xs),
     ) {
-        if (product.vendor.isNotBlank()) {
+        if (AppGraph.showVendor && product.vendor.isNotBlank()) {
             Text(product.vendor, style = ArgonTheme.type.caption, color = ArgonTheme.colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Text(product.title, Modifier.semantics { heading() }, style = ArgonTheme.type.title, color = ArgonTheme.colors.ink)

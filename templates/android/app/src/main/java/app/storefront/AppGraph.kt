@@ -137,6 +137,12 @@ object AppGraph {
     /** The store's Judge.me public token (`JUDGEME_PUBLIC_TOKEN`); empty hides reviews. */
     val judgeMeToken: String = BuildConfig.JUDGEME_PUBLIC_TOKEN
 
+    /**
+     * Whether product cards and the product page show the vendor (`SHOW_VENDOR`, false unless it is `true`): many stores'
+     * vendor is their own name on every product, or an internal label.
+     */
+    val showVendor: Boolean = BuildConfig.SHOW_VENDOR.trim().equals("true", ignoreCase = true)
+
     internal lateinit var assets: AssetManager
 
     /** The one HTTP client; the Customer Account client reuses it. */

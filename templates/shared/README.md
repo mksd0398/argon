@@ -35,6 +35,7 @@ One key list, two files with the same key names. Edit, then rebuild.
 | `HOME_TEMPLATE` | Home screen layout: `fashion`, `beauty`, `grocery` or `b2b` |
 | `COLLECTION_TEMPLATE` | Collection layout: `top` (sticky sort and filter bar) or `bottom` (floating bar) |
 | `JUDGEME_PUBLIC_TOKEN` | Judge.me *public* API token, for product reviews. Empty hides reviews |
+| `SHOW_VENDOR` | `true` shows the vendor on product cards and the product page. `false` (the default) hides it, as Shopify's own themes do |
 
 - iOS: `ios/Config.xcconfig` (`KEY = value`)
 - Android: `android/shopify.properties` (`KEY=value`)
@@ -67,7 +68,7 @@ The order page offers **Return or exchange items** when the store has self-serve
 
 ## Demo store (`mock.shop`)
 
-`mock.shop` has no metaobjects, so Home shows the template's stock banners over the store's collections. It has no customer accounts either: the Account tab offers **Preview with a sample account** (sample orders, a return, a company) so those pages can be seen. It also doesn't implement `nodes(ids:)`, so the Wishlist tab and Recently viewed stay empty there. They work on real stores.
+`mock.shop` has no metaobjects, so Home shows the template's stock banners over the store's collections. It has no customer accounts or reviews app either: the Account tab offers **Preview with a sample account** (sample orders, a return, a company) and product pages show sample reviews, so those pages can be seen. It also doesn't implement `nodes(ids:)`, so the Wishlist tab and Recently viewed stay empty there. They work on real stores.
 
 ## Edit the home screen
 

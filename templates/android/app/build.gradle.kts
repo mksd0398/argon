@@ -34,7 +34,7 @@ android {
         for (key in listOf(
             "SHOP_DOMAIN", "STOREFRONT_TOKEN", "CUSTOMER_CLIENT_ID", "SHOP_ID",
             "API_VERSION", "APP_NAME", "BUNDLE_ID", "PDP_METAFIELDS",
-            "HOME_TEMPLATE", "COLLECTION_TEMPLATE", "JUDGEME_PUBLIC_TOKEN",
+            "HOME_TEMPLATE", "COLLECTION_TEMPLATE", "JUDGEME_PUBLIC_TOKEN", "SHOW_VENDOR",
         )) buildConfigField("String", key, javaString(config(key)))
         resValue("string", "app_name", resourceString(config("APP_NAME")))
         manifestPlaceholders["authScheme"] = "shop.${config("SHOP_ID")}.app"

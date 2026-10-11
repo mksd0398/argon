@@ -9,11 +9,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.argon.ui.ArgonSize
 
-/** A native [LinearProgressIndicator]: [value] 0…1 fills it, null runs it indeterminate. */
+/** A native [LinearProgressIndicator] without its stop dot at the track's end: [value] 0…1 fills it, null runs it indeterminate. */
 @Composable
 fun ArgonProgressBar(value: Float? = null, modifier: Modifier = Modifier) =
     if (value == null) LinearProgressIndicator(modifier.fillMaxWidth())
-    else LinearProgressIndicator({ value.coerceIn(0f, 1f) }, modifier.fillMaxWidth())
+    else LinearProgressIndicator({ value.coerceIn(0f, 1f) }, modifier.fillMaxWidth(), drawStopIndicator = {})
 
 /** A native [CircularProgressIndicator], 16/24/40 dp by [size]. */
 @Composable

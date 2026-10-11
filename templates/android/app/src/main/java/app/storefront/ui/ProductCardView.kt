@@ -141,7 +141,7 @@ private fun StandardCard(card: ProductCard, onOpen: () -> Unit, modifier: Modifi
             val tag = Modifier.align(Alignment.TopStart).padding(spacing.s)
             if (!card.available) LabelTag("Sold out", tag) else if (card.compareAt != null) LabelTag("Sale", tag, isSale = true)
         }
-        if (card.vendor.isNotBlank()) {
+        if (AppGraph.showVendor && card.vendor.isNotBlank()) {
             Text(card.vendor, style = ArgonTheme.type.caption, color = ArgonTheme.colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         CardTitle(card)

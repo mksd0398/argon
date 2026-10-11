@@ -4,7 +4,7 @@ Two native apps for one Shopify store, kept identical screen for screen: `androi
 
 ## Layout
 
-- `android/shopify.properties`, `ios/Config.xcconfig`: per-store config. Same keys on both (`SHOP_DOMAIN`, `STOREFRONT_TOKEN`, `CUSTOMER_CLIENT_ID`, `SHOP_ID`, `API_VERSION`, `APP_NAME`, `BUNDLE_ID`, `PDP_METAFIELDS`, `HOME_TEMPLATE`, `COLLECTION_TEMPLATE`, `JUDGEME_PUBLIC_TOKEN`).
+- `android/shopify.properties`, `ios/Config.xcconfig`: per-store config. Same keys on both (`SHOP_DOMAIN`, `STOREFRONT_TOKEN`, `CUSTOMER_CLIENT_ID`, `SHOP_ID`, `API_VERSION`, `APP_NAME`, `BUNDLE_ID`, `PDP_METAFIELDS`, `HOME_TEMPLATE`, `COLLECTION_TEMPLATE`, `JUDGEME_PUBLIC_TOKEN`, `SHOW_VENDOR`).
 - `android/app/src/main/assets/queries/*.graphql` and `ios/App/Resources/queries/*.graphql`: the same GraphQL documents (Storefront and Customer Account API 2026-10), one operation per file, fragments already inlined. Keep the two folders identical.
 - **Data:** never call GraphQL from screens. Use the typed facades: `StorefrontApi` / `CustomerAccountApi` (`android/app/src/main/java/app/storefront/data/`) and `StorefrontAPI` / `CustomerAccountAPI` (`ios/App/Data/`). Same method names on both; they return typed models and `Page<T>` for lists, and throw `ArgonApiError` / `ArgonAPIError`.
 - **UI:** build views from the component library, not raw platform controls: `android/ui` (Compose module, package `app.argon.ui`, `ArgonTheme`, `Argon*` components) and `ios/ArgonUI` (local Swift package, `.argonTheme(accentHex:)`, `Argon*` components). Debug builds show every component at Account → Components. The library knows nothing about Shopify; pass it plain values.
