@@ -78,7 +78,7 @@ sealed class AnalyticsEvent(val name: String) {
         }
 }
 
-private fun values(vararg pairs: Pair<String, Any?>): Map<String, Any> = buildMap { for ((key, value) in pairs) if (value != null) put(key, value) }
+internal fun values(vararg pairs: Pair<String, Any?>): Map<String, Any> = buildMap { for ((key, value) in pairs) if (value != null) put(key, value) }
 
 private fun AnalyticsItem.values(currency: String) = values(
     "item_id" to productId, "variant_id" to variantId, "item_name" to name, "item_brand" to brand, "item_category" to category,
@@ -126,10 +126,11 @@ class Analytics(private val sinks: List<AnalyticsSink>, private val allowed: () 
 
     /**
      * The attributes of a new cart: the sinks' together, and `_argon_platform`, by which the store's server knows an
-     * order of the app's (they become the order's note attributes). Empty without a sink, and when not allowed.
+     * order of the app's (they become the order's note attributes). Empty when no sink has any of its own (the log, a
+     * provider the server has nothing to send to), and when not allowed.
      */
     suspend fun cartAttributes(): Map<String, String> {
-        if (sinks.isEmpty() || !allowed()) return emptyMap()
+        if (!allowed()) return emptyMap()
         return buildMap {
             for (sink in sinks) {
                 try {
@@ -140,7 +141,7 @@ class Analytics(private val sinks: List<AnalyticsSink>, private val allowed: () 
                     skipped(sink, e)
                 }
             }
-            put("_argon_platform", "android")
+            if (isNotEmpty()) put("_argon_platform", "android")
         }
     }
 
