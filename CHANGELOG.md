@@ -4,6 +4,18 @@
 
 ### Added
 
+- **Page templates**, built from the component library, the same on both platforms.
+  - Home: four layouts picked by `HOME_TEMPLATE`: `fashion`, `beauty`, `grocery`, `b2b`. Each shows the store's own banners, collections and product rows; until the store has banners, three stock photos from Shopify's Burst.
+  - Collection: two layouts picked by `COLLECTION_TEMPLATE`: `top` (sticky sort and filter bar) and `bottom` (floating bar). Colour filters and product cards show swatches, from Shopify's swatch data or matched from the colour's name. Price filters use a range slider.
+  - Product: variant swatches with unavailable values struck out, bundle contents, unit prices, quantity rules and volume pricing, subscriptions, stock and pickup lines, a sticky add-to-cart bar, Buy now, policies, recommendations and recently viewed.
+  - Orders: a list with shipment status, and an order page with tracking, payments, refunds, returns and business details.
+  - Returns and exchanges: a three-step request. An exchange is sent as a return whose note names the wanted variant (the Customer Account API has no exchange input).
+  - Account: profile, addresses, email offers, company and location, store credit, policies.
+- **Reviews from Judge.me**, drawn natively: the rating summary, the reviews with photos and store replies, and a form to write one. Uses Judge.me's Widget API with the store's public token (`JUDGEME_PUBLIC_TOKEN`); empty hides reviews.
+- **B2B:** a signed-in company contact sees the company location's catalogue prices everywhere, checks out as the company, and can switch location.
+- **A sample account on the demo store:** mock.shop has no customer accounts, so its Account tab can preview the signed-in pages with sample orders, a return and a company.
+- CLI: `--home`, `--collection` and `--judgeme-token`, asked for when run interactively.
+- Components: `ArgonRating`, `ArgonQuantityStepper`, `ArgonSwatch`.
 - **A native component library in every app:** 29 components (Accordion to Top bar) with a store-themed palette, Instrument Serif and Hanken Grotesk, and a debug-only gallery at Account → Components.
   - Android: a Compose `ui` module.
   - iOS: a local `ArgonUI` Swift package.
@@ -12,7 +24,7 @@
   - The gallery renders lazily, so off-screen components don't draw or animate.
 - **iOS without a Mac:** `ios/Package.swift` and `ios/xtool.yml` let [xtool](https://xtool.sh) build the same sources on Linux or Windows (WSL) and install the app on an iPhone. The app then reads its per-store values from the bundled `Config.xcconfig`.
 - **The complete Storefront and Customer Account API, prebuilt and typed** (2026-10).
-  - 52 operations: catalogue, search, menus, pages, blogs, metaobjects, store locations, every cart mutation, and the customer's profile, orders, addresses, email marketing and returns.
+  - 55 operations: catalogue, search, menus, pages, blogs, metaobjects, store locations, every cart mutation, and the customer's profile, orders, addresses, email marketing and returns.
   - Typed facades on both platforms: `StorefrontApi`/`StorefrontAPI` and `CustomerAccountApi`/`CustomerAccountAPI`.
   - Every operation runs with the buyer's country and language.
 - **Contract checks:**
@@ -21,6 +33,9 @@
 
 ### Changed
 
+- A field the store's token isn't allowed to read (Shopify answers `ACCESS_DENIED`) now comes back empty instead of failing the whole request: a token without the inventory permission shows no stock count rather than no product page.
+- The product page's `PDP_METAFIELDS` load in their own request, and selling plans come from the selected variant, so neither can blank the page.
+- Every Storefront call can run as a B2B buyer (`@inContext(buyer:)`).
 - Text on the brand colour is black or white, whichever contrasts more (at least 4.58:1 for any colour).
 - The apps decode responses into typed models; the hand-written parsers are gone.
 - The Headless channel step is guided:
