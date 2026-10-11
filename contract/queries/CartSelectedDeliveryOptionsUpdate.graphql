@@ -3,7 +3,8 @@ mutation CartSelectedDeliveryOptionsUpdate(
   $selectedDeliveryOptions: [CartSelectedDeliveryOptionInput!]!
   $country: CountryCode
   $language: LanguageCode
-) @inContext(country: $country, language: $language) {
+  $buyer: BuyerInput
+) @inContext(country: $country, language: $language, buyer: $buyer) {
   cartSelectedDeliveryOptionsUpdate(cartId: $cartId, selectedDeliveryOptions: $selectedDeliveryOptions) {
     cart { ...Cart ...CartDeliveryGroups }
     userErrors { ...CartUserError }

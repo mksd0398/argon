@@ -1,5 +1,5 @@
-query FallbackHome($country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {
-  collections(first: 6) {
+query FallbackHome($country: CountryCode, $language: LanguageCode, $buyer: BuyerInput) @inContext(country: $country, language: $language, buyer: $buyer) {
+  collections(first: 8) {
     nodes {
       ...CollectionCard
       products(first: 8) { nodes { ...ProductCard } }

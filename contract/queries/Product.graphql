@@ -4,7 +4,8 @@ query Product(
   $selectedOptions: [SelectedOptionInput!]
   $country: CountryCode
   $language: LanguageCode
-) @inContext(country: $country, language: $language) {
+  $buyer: BuyerInput
+) @inContext(country: $country, language: $language, buyer: $buyer) {
   product(handle: $handle) {
     id
     handle
@@ -14,6 +15,8 @@ query Product(
     descriptionHtml
     availableForSale
     isGiftCard
+    tags
+    onlineStoreUrl
     requiresSellingPlan
     encodedVariantExistence
     encodedVariantAvailability
@@ -26,7 +29,7 @@ query Product(
       optionValues {
         id
         name
-        swatch { color image { __typename previewImage { ...Image } } }
+        swatch { ...Swatch }
         firstSelectableVariant { ...Variant }
       }
     }
@@ -44,5 +47,7 @@ query Product(
       }
     }
     metafields(identifiers: $metafields) { namespace key type value }
+    rating: metafield(namespace: "reviews", key: "rating") { value }
+    ratingCount: metafield(namespace: "reviews", key: "rating_count") { value }
   }
 }

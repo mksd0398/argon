@@ -2,19 +2,34 @@ fragment Image on Image { url altText width height }
 
 fragment Money on MoneyV2 { amount currencyCode }
 
+fragment Swatch on ProductOptionValueSwatch { color image { __typename previewImage { ...Image } } }
+
+fragment QuantityRule on QuantityRule { minimum maximum increment }
+
 fragment ProductCard on Product {
   id
   handle
   title
+  vendor
   availableForSale
   featuredImage { ...Image }
-  priceRange { minVariantPrice { ...Money } }
+  priceRange { minVariantPrice { ...Money } maxVariantPrice { ...Money } }
   compareAtPriceRange { minVariantPrice { ...Money } }
+  options(first: 3) { name optionValues { name swatch { ...Swatch } } }
+  firstVariant: selectedOrFirstAvailableVariant { id sku availableForSale quantityRule { ...QuantityRule } }
+  rating: metafield(namespace: "reviews", key: "rating") { value }
+  ratingCount: metafield(namespace: "reviews", key: "rating_count") { value }
 }
 
 fragment CollectionCard on Collection { id handle title image { ...Image } }
 
-fragment Filter on Filter { id label type values { id label count input } }
+fragment Filter on Filter {
+  id
+  label
+  type
+  presentation
+  values { id label count input swatch { color image { previewImage { ...Image } } } }
+}
 
 fragment MenuItem on MenuItem {
   id
@@ -93,7 +108,7 @@ fragment Cart on Cart {
   attributes { key value }
   discountCodes { code applicable }
   appliedGiftCards { id lastCharacters amountUsed { ...Money } balance { ...Money } }
-  buyerIdentity { email phone countryCode }
+  buyerIdentity { email phone countryCode purchasingCompany { company { id name } location { id name } } }
   delivery {
     addresses {
       id
@@ -114,14 +129,27 @@ fragment Cart on Cart {
       attributes { key value }
       cost { totalAmount { ...Money } }
       discountAllocations { __typename discountedAmount { ...Money } }
+      sellingPlanAllocation { sellingPlan { id name } }
       merchandise {
         __typename
         ... on ProductVariant {
           id
           title
+          sku
           image { ...Image }
           price { ...Money }
+          quantityRule { ...QuantityRule }
           product { handle title }
+        }
+      }
+      ... on ComponentizableCartLine {
+        lineComponents {
+          id
+          quantity
+          merchandise {
+            __typename
+            ... on ProductVariant { id title image { ...Image } product { handle title } }
+          }
         }
       }
     }

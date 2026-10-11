@@ -3,7 +3,8 @@ mutation CartGiftCardCodesAdd(
   $giftCardCodes: [String!]!
   $country: CountryCode
   $language: LanguageCode
-) @inContext(country: $country, language: $language) {
+  $buyer: BuyerInput
+) @inContext(country: $country, language: $language, buyer: $buyer) {
   cartGiftCardCodesAdd(cartId: $cartId, giftCardCodes: $giftCardCodes) {
     cart { ...Cart }
     userErrors { ...CartUserError }

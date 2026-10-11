@@ -5,7 +5,8 @@ query Locations(
   $sortKey: LocationSortKeys
   $country: CountryCode
   $language: LanguageCode
-) @inContext(country: $country, language: $language) {
+  $buyer: BuyerInput
+) @inContext(country: $country, language: $language, buyer: $buyer) {
   locations(first: $first, after: $after, near: $near, sortKey: $sortKey) {
     pageInfo { hasNextPage endCursor }
     nodes { id name address { ...LocationAddress } }

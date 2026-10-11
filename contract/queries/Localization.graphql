@@ -1,4 +1,4 @@
-query Localization($country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {
+query Localization($country: CountryCode, $language: LanguageCode, $buyer: BuyerInput) @inContext(country: $country, language: $language, buyer: $buyer) {
   localization {
     country { isoCode name currency { isoCode name symbol } unitSystem }
     language { isoCode endonymName }

@@ -86,7 +86,8 @@ test("--demo --yes scaffolds both apps against mock.shop", async () => {
     const dir = join(cwd, "demo-app");
     const props = readFileSync(join(dir, "android/shopify.properties"), "utf8");
     for (const line of ["SHOP_DOMAIN=mock.shop", "SHOP_ID=68817551382", "STOREFRONT_TOKEN=", "CUSTOMER_CLIENT_ID=",
-      "API_VERSION=2026-10", "APP_NAME=Mock.shop", "BUNDLE_ID=com.mockshop.demoapp", "PDP_METAFIELDS="]) {
+      "API_VERSION=2026-10", "APP_NAME=Mock.shop", "BUNDLE_ID=com.mockshop.demoapp", "PDP_METAFIELDS=",
+      "HOME_TEMPLATE=fashion", "COLLECTION_TEMPLATE=top", "JUDGEME_PUBLIC_TOKEN="]) {
       assert.ok(props.split("\n").includes(line), `shopify.properties has ${line}`);
     }
     const xcconfig = readFileSync(join(dir, "ios/Config.xcconfig"), "utf8");
@@ -95,7 +96,7 @@ test("--demo --yes scaffolds both apps against mock.shop", async () => {
 
     const android = queryFiles(join(dir, "android/app/src/main/assets/queries"));
     const ios = queryFiles(join(dir, "ios/App/Resources/queries"));
-    assert.equal(android.length, 52);
+    assert.equal(android.length, 54);
     assert.deepEqual(ios, android);
 
     // xtool (iOS without a Mac): every file the app reads from its bundle is listed, and each exists
@@ -103,7 +104,16 @@ test("--demo --yes scaffolds both apps against mock.shop", async () => {
     assert.deepEqual(xtool.slice(0, 4), ["version: 1", "bundleID: com.mockshop.demoapp", "infoPath: Xtool-Info.plist", "resources:"]);
     const resources = xtool.slice(4).map((line) => line.replace(/^- /, ""));
     assert.deepEqual(resources.slice(0, 2), ["Config.xcconfig", "App/PrivacyInfo.xcprivacy"]);
-    assert.deepEqual(resources.slice(2), ios.map((file) => `App/Resources/queries/${file}`));
+    assert.deepEqual(resources.slice(2, 2 + ios.length), ios.map((file) => `App/Resources/queries/${file}`));
+    // the home templates' placeholder banners, and (demo store only) the sample account, in both apps
+    const images = readdirSync(new URL("../templates/images/", import.meta.url)).filter((file) => file.endsWith(".jpg")).sort();
+    assert.equal(images.length, 12);
+    assert.deepEqual(readdirSync(join(dir, "android/app/src/main/assets/home")).sort(), images);
+    const samples = readdirSync(join(dir, "android/app/src/main/assets/sample")).sort();
+    assert.equal(samples.length, 14);
+    assert.ok(samples.includes("Orders.sample.json"));
+    assert.deepEqual(readdirSync(join(dir, "ios/App/Resources/sample")).sort(), samples);
+    assert.deepEqual(resources.slice(2 + ios.length), [...images.map((file) => `App/Resources/home/${file}`), ...samples.map((file) => `App/Resources/sample/${file}`)]);
     for (const file of [...resources, "Xtool-Info.plist", "Package.swift"]) assert.ok(existsSync(join(dir, "ios", file)), file);
     assert.ok(readFileSync(join(dir, "ios/Xtool-Info.plist"), "utf8").includes("<string>Mock.shop</string>"));
     for (const folder of ["android/app/src/main/assets/queries", "ios/App/Resources/queries"]) {

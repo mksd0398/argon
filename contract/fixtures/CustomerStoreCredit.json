@@ -1,0 +1,15 @@
+{
+  "customer": {
+    "storeCreditAccounts": {
+      "nodes": [
+        {
+          "id": "gid://shopify/StoreCreditAccount/9300001",
+          "balance": {
+            "amount": "25.0",
+            "currencyCode": "CAD"
+          }
+        }
+      ]
+    }
+  }
+}

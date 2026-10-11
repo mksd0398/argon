@@ -25,9 +25,13 @@ test("parseArgs: --flag=value, defaults and missing value", () => {
   const o = parseArgs(["--store=a.myshopify.com", "--bundle-id", "com.x.y", "--token=t=1", "app"]);
   assert.deepEqual(o, {
     name: "app", demo: false, store: "a.myshopify.com", token: "t=1", clientId: undefined,
-    bundleId: "com.x.y", skipContent: false, yes: false, help: false,
+    bundleId: "com.x.y", home: undefined, collection: undefined, judgemeToken: undefined, skipContent: false, yes: false, help: false,
   });
   assert.throws(() => parseArgs(["--store"]), /Missing value for --store/);
+  const templates = parseArgs(["app", "--home=grocery", "--collection", "bottom", "--judgeme-token=pub"]);
+  assert.deepEqual([templates.home, templates.collection, templates.judgemeToken], ["grocery", "bottom", "pub"]);
+  assert.throws(() => parseArgs(["--home=luxury"]), /--home must be one of: fashion, beauty, grocery, b2b/);
+  assert.throws(() => parseArgs(["--collection=side"]), /--collection must be one of: top, bottom/);
 });
 
 // run(): console and TTY are swapped out so --help and the no-terminal check can be asserted

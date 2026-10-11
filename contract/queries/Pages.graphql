@@ -5,7 +5,8 @@ query Pages(
   $sortKey: PageSortKeys
   $country: CountryCode
   $language: LanguageCode
-) @inContext(country: $country, language: $language) {
+  $buyer: BuyerInput
+) @inContext(country: $country, language: $language, buyer: $buyer) {
   pages(first: $first, after: $after, query: $query, sortKey: $sortKey) {
     pageInfo { hasNextPage endCursor }
     nodes { id handle title bodySummary }

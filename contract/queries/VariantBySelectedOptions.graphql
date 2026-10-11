@@ -3,10 +3,34 @@ query VariantBySelectedOptions(
   $selectedOptions: [SelectedOptionInput!]!
   $country: CountryCode
   $language: LanguageCode
-) @inContext(country: $country, language: $language) {
+  $buyer: BuyerInput
+) @inContext(country: $country, language: $language, buyer: $buyer) {
   product(handle: $handle) {
     variantBySelectedOptions(selectedOptions: $selectedOptions, ignoreUnknownOptions: true, caseInsensitiveMatch: true) {
       ...Variant
+      barcode
+      quantityAvailable
+      currentlyNotInStock
+      unitPrice { ...Money }
+      unitPriceMeasurement { measuredType quantityUnit quantityValue referenceUnit referenceValue }
+      quantityRule { ...QuantityRule }
+      quantityPriceBreaks(first: 10) { nodes { minimumQuantity price { ...Money } } }
+      requiresComponents
+      components(first: 20) {
+        nodes {
+          quantity
+          productVariant { id title image { ...Image } price { ...Money } product { handle title } }
+        }
+      }
+      groupedBy(first: 5) {
+        nodes { id title price { ...Money } product { handle title featuredImage { ...Image } } }
+      }
+      sellingPlanAllocations(first: 20) {
+        nodes {
+          sellingPlan { id name }
+          priceAdjustments { price { ...Money } compareAtPrice { ...Money } perDeliveryPrice { ...Money } }
+        }
+      }
     }
   }
 }

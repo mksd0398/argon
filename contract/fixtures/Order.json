@@ -1,15 +1,30 @@
 {
   "order": {
-    "id": "gid://shopify/Order/6000002",
-    "name": "#1002",
-    "number": 1002,
-    "confirmationNumber": "X7K2P9QZ1",
-    "processedAt": "2026-10-03T14:20:00Z",
-    "statusPageUrl": "https://shopify.com/68817551382/account/orders/6000002",
-    "financialStatus": "PAID",
+    "id": "gid://shopify/Order/6001004",
+    "name": "#1004",
+    "number": 1004,
+    "confirmationNumber": "XK4R7T2PQ",
+    "processedAt": "2026-09-21T09:40:00Z",
+    "statusPageUrl": "https://shopify.com/68817551382/account/orders/6001004",
+    "financialStatus": "PARTIALLY_REFUNDED",
     "fulfillmentStatus": "FULFILLED",
     "cancelledAt": null,
     "cancelReason": null,
+    "edited": false,
+    "requiresShipping": true,
+    "note": "Please leave the parcel at the front desk.",
+    "poNumber": "PO-2291",
+    "purchasingEntity": {
+      "__typename": "PurchasingCompany",
+      "company": {
+        "id": "gid://shopify/Company/9100001",
+        "name": "Analytical Engines Ltd"
+      },
+      "location": {
+        "id": "gid://shopify/CompanyLocation/9200001",
+        "name": "Ottawa head office"
+      }
+    },
     "shippingAddress": {
       "id": "gid://shopify/CustomerAddress/8000001",
       "firstName": "Ada",
@@ -54,26 +69,90 @@
         "Canada"
       ]
     },
+    "shippingLine": {
+      "title": "Standard shipping",
+      "originalPrice": {
+        "amount": "12.0",
+        "currencyCode": "CAD"
+      }
+    },
     "subtotal": {
-      "amount": "108.0",
+      "amount": "230.0",
       "currencyCode": "CAD"
     },
     "totalShipping": {
-      "amount": "10.0",
-      "currencyCode": "CAD"
-    },
-    "totalTax": {
       "amount": "12.0",
       "currencyCode": "CAD"
     },
+    "totalTax": {
+      "amount": "29.9",
+      "currencyCode": "CAD"
+    },
     "totalPrice": {
-      "amount": "130.0",
+      "amount": "271.9",
       "currencyCode": "CAD"
     },
     "totalRefunded": {
-      "amount": "0.0",
+      "amount": "35.0",
       "currencyCode": "CAD"
     },
+    "paymentInformation": {
+      "paymentStatus": "PARTIALLY_REFUNDED",
+      "totalPaidAmount": {
+        "amount": "271.9",
+        "currencyCode": "CAD"
+      },
+      "totalOutstandingAmount": {
+        "amount": "0.0",
+        "currencyCode": "CAD"
+      },
+      "paymentCollectionUrl": null,
+      "paymentTerms": {
+        "paymentTermsName": "Net 30",
+        "nextDueAt": "2026-10-21T09:40:00Z",
+        "overdue": false
+      }
+    },
+    "transactions": [
+      {
+        "id": "gid://shopify/OrderTransaction/7100001",
+        "kind": "SALE",
+        "status": "SUCCESS",
+        "type": "CARD",
+        "processedAt": "2026-09-21T09:40:00Z",
+        "transactionAmount": {
+          "presentmentMoney": {
+            "amount": "271.9",
+            "currencyCode": "CAD"
+          }
+        },
+        "paymentDetails": {
+          "__typename": "CardPaymentDetails",
+          "cardBrand": "visa",
+          "last4": "4242"
+        },
+        "giftCardDetails": null
+      },
+      {
+        "id": "gid://shopify/OrderTransaction/7100002",
+        "kind": "REFUND",
+        "status": "SUCCESS",
+        "type": "CARD",
+        "processedAt": "2026-10-02T10:15:00Z",
+        "transactionAmount": {
+          "presentmentMoney": {
+            "amount": "35.0",
+            "currencyCode": "CAD"
+          }
+        },
+        "paymentDetails": {
+          "__typename": "CardPaymentDetails",
+          "cardBrand": "visa",
+          "last4": "4242"
+        },
+        "giftCardDetails": null
+      }
+    ],
     "discountApplications": {
       "nodes": [
         {
@@ -90,11 +169,13 @@
         {
           "id": "gid://shopify/LineItem/5000001",
           "title": "Men's Crewneck",
-          "variantTitle": "Small / Green",
+          "variantTitle": "Medium / Olive",
+          "sku": "MENCREWNECK-MO",
           "quantity": 1,
+          "refundableQuantity": 1,
           "image": {
             "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/4ecbbab490d5a90c04074428b4b0e09358c6895050db590ffbb84e1f8e05fbbc.jpg",
-            "altText": "Men's Crewneck"
+            "altText": null
           },
           "productId": "gid://shopify/Product/7982905098262",
           "variantId": "gid://shopify/ProductVariant/43696905224214",
@@ -103,7 +184,63 @@
             "currencyCode": "CAD"
           },
           "totalPrice": {
-            "amount": "108.0",
+            "amount": "120.0",
+            "currencyCode": "CAD"
+          },
+          "totalDiscount": {
+            "amount": "0.0",
+            "currencyCode": "CAD"
+          }
+        },
+        {
+          "id": "gid://shopify/LineItem/5000002",
+          "title": "Sweatpants",
+          "variantTitle": "Medium / Green",
+          "sku": "SWEATPANTS-MG",
+          "quantity": 2,
+          "refundableQuantity": 0,
+          "image": {
+            "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/e4fe192f0e86ffc74d3b906f754119d4b5f4432cf01120d090ab7eb5182e8897.jpg",
+            "altText": null
+          },
+          "productId": "gid://shopify/Product/7982856273942",
+          "variantId": "gid://shopify/ProductVariant/43696926949398",
+          "price": {
+            "amount": "35.0",
+            "currencyCode": "CAD"
+          },
+          "totalPrice": {
+            "amount": "70.0",
+            "currencyCode": "CAD"
+          },
+          "totalDiscount": {
+            "amount": "0.0",
+            "currencyCode": "CAD"
+          }
+        },
+        {
+          "id": "gid://shopify/LineItem/5000003",
+          "title": "Men's T-shirt",
+          "variantTitle": "Large / Ocean",
+          "sku": "MENTSHIRT-LO",
+          "quantity": 1,
+          "refundableQuantity": 1,
+          "image": {
+            "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/c99af4de567f8baafab47fa2d5267d83a997f9082892f01d7145c0eaa5403832.jpg",
+            "altText": null
+          },
+          "productId": "gid://shopify/Product/7982902771734",
+          "variantId": "gid://shopify/ProductVariant/43696932126742",
+          "price": {
+            "amount": "40.0",
+            "currencyCode": "CAD"
+          },
+          "totalPrice": {
+            "amount": "40.0",
+            "currencyCode": "CAD"
+          },
+          "totalDiscount": {
+            "amount": "0.0",
             "currencyCode": "CAD"
           }
         }
@@ -112,18 +249,39 @@
     "fulfillments": {
       "nodes": [
         {
-          "id": "gid://shopify/Fulfillment/4000001",
+          "id": "gid://shopify/Fulfillment/7200001",
           "status": "SUCCESS",
-          "createdAt": "2026-10-04T10:00:00Z",
-          "estimatedDeliveryAt": "2026-10-07T21:00:00Z",
+          "createdAt": "2026-09-22T08:30:00Z",
+          "estimatedDeliveryAt": "2026-09-25T18:00:00Z",
           "latestShipmentStatus": "DELIVERED",
+          "isPickedUp": false,
           "trackingInformation": [
             {
               "company": "Canada Post",
               "number": "7023210039414604",
-              "url": "https://www.canadapost-postescanada.ca/track-reperage/en#/search?searchFor=7023210039414604"
+              "url": "https://www.canadapost-postescanada.ca/track-reperage/en#/details/7023210039414604"
             }
           ],
+          "events": {
+            "nodes": [
+              {
+                "status": "CONFIRMED",
+                "happenedAt": "2026-09-22T08:30:00Z"
+              },
+              {
+                "status": "IN_TRANSIT",
+                "happenedAt": "2026-09-23T06:10:00Z"
+              },
+              {
+                "status": "OUT_FOR_DELIVERY",
+                "happenedAt": "2026-09-25T08:45:00Z"
+              },
+              {
+                "status": "DELIVERED",
+                "happenedAt": "2026-09-25T13:05:00Z"
+              }
+            ]
+          },
           "fulfillmentLineItems": {
             "nodes": [
               {
@@ -131,11 +289,90 @@
                 "lineItem": {
                   "id": "gid://shopify/LineItem/5000001"
                 }
+              },
+              {
+                "quantity": 2,
+                "lineItem": {
+                  "id": "gid://shopify/LineItem/5000002"
+                }
+              },
+              {
+                "quantity": 1,
+                "lineItem": {
+                  "id": "gid://shopify/LineItem/5000003"
+                }
               }
             ]
           }
         }
       ]
+    },
+    "refunds": [
+      {
+        "id": "gid://shopify/Refund/7300001",
+        "createdAt": "2026-10-02T10:15:00Z",
+        "returnName": "#1004-R1",
+        "totalRefunded": {
+          "amount": "35.0",
+          "currencyCode": "CAD"
+        }
+      }
+    ],
+    "returns": {
+      "nodes": [
+        {
+          "id": "gid://shopify/Return/3000001",
+          "name": "#1004-R1",
+          "status": "CLOSED",
+          "createdAt": "2026-09-27T17:20:00Z",
+          "closedAt": "2026-10-02T10:15:00Z",
+          "decline": null,
+          "returnLineItems": {
+            "nodes": [
+              {
+                "__typename": "ReturnLineItem",
+                "id": "gid://shopify/ReturnLineItem/3100001",
+                "quantity": 2,
+                "returnReasonDefinition": {
+                  "name": "Size was too small"
+                },
+                "lineItem": {
+                  "id": "gid://shopify/LineItem/5000002",
+                  "title": "Sweatpants",
+                  "variantTitle": "Medium / Green",
+                  "image": {
+                    "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/e4fe192f0e86ffc74d3b906f754119d4b5f4432cf01120d090ab7eb5182e8897.jpg",
+                    "altText": null
+                  }
+                }
+              }
+            ]
+          },
+          "exchangeLineItems": {
+            "nodes": [
+              {
+                "id": "gid://shopify/ExchangeLineItem/3200001",
+                "title": "Sweatpants",
+                "variantTitle": "Large / Green",
+                "quantity": 1,
+                "image": {
+                  "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/e4fe192f0e86ffc74d3b906f754119d4b5f4432cf01120d090ab7eb5182e8897.jpg",
+                  "altText": null
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "returnInformation": {
+      "returnableLineItems": {
+        "nodes": [
+          {
+            "quantity": 1
+          }
+        ]
+      }
     }
   }
 }

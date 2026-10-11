@@ -4,7 +4,8 @@ query PredictiveSearch(
   $types: [PredictiveSearchType!] = [PRODUCT, COLLECTION, QUERY]
   $country: CountryCode
   $language: LanguageCode
-) @inContext(country: $country, language: $language) {
+  $buyer: BuyerInput
+) @inContext(country: $country, language: $language, buyer: $buyer) {
   predictiveSearch(query: $query, limit: $limit, limitScope: EACH, types: $types) {
     queries { text styledText }
     products { ...ProductCard }

@@ -1,14 +1,30 @@
 query OrderReturnOptions($id: ID!) {
   order(id: $id) {
     id
+    name
     returnInformation {
+      hasRestockingFee
+      hasReturnShippingFee
+      returnShippingMethods
+      returnShippingMethodNote
+      returnFees {
+        __typename
+        title
+        amountSet { presentmentMoney { ...Money } }
+      }
+      nonReturnableSummary { summaryMessage }
       returnableLineItems(first: 50) {
         nodes {
           quantity
           lineItem {
             id
             title
+            variantTitle
+            sku
             image { url altText }
+            productId
+            variantId
+            price { ...Money }
             suggestedReturnReasonDefinitions(first: 20) { nodes { id handle name } }
           }
         }

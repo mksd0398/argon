@@ -6,7 +6,8 @@ query Metaobjects(
   $reverse: Boolean
   $country: CountryCode
   $language: LanguageCode
-) @inContext(country: $country, language: $language) {
+  $buyer: BuyerInput
+) @inContext(country: $country, language: $language, buyer: $buyer) {
   metaobjects(type: $type, first: $first, after: $after, sortKey: $sortKey, reverse: $reverse) {
     pageInfo { hasNextPage endCursor }
     nodes { id handle type fields { key type value } }

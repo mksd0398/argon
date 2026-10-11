@@ -4,7 +4,8 @@ query StoreAvailability(
   $near: GeoCoordinateInput
   $country: CountryCode
   $language: LanguageCode
-) @inContext(country: $country, language: $language) {
+  $buyer: BuyerInput
+) @inContext(country: $country, language: $language, buyer: $buyer) {
   node(id: $variantId) {
     __typename
     ... on ProductVariant {

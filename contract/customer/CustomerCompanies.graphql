@@ -1,0 +1,15 @@
+query CustomerCompanies {
+  customer {
+    companyContacts(first: 5) {
+      nodes {
+        id
+        title
+        company {
+          id
+          name
+          locations(first: 20) { nodes { id name } }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "customer": {
+    "companyContacts": {
+      "nodes": [
+        {
+          "id": "gid://shopify/CompanyContact/9000001",
+          "title": "Purchasing lead",
+          "company": {
+            "id": "gid://shopify/Company/9100001",
+            "name": "Analytical Engines Ltd",
+            "locations": {
+              "nodes": [
+                {
+                  "id": "gid://shopify/CompanyLocation/9200001",
+                  "name": "Ottawa head office"
+                },
+                {
+                  "id": "gid://shopify/CompanyLocation/9200002",
+                  "name": "Toronto warehouse"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

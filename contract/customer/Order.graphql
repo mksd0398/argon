@@ -10,13 +10,42 @@ query Order($id: ID!) {
     fulfillmentStatus
     cancelledAt
     cancelReason
+    edited
+    requiresShipping
+    note
+    poNumber
+    purchasingEntity {
+      __typename
+      ... on PurchasingCompany { company { id name } location { id name } }
+    }
     shippingAddress { ...CustomerAddress }
     billingAddress { ...CustomerAddress }
+    shippingLine { title originalPrice { ...Money } }
     subtotal { ...Money }
     totalShipping { ...Money }
     totalTax { ...Money }
     totalPrice { ...Money }
     totalRefunded { ...Money }
+    paymentInformation {
+      paymentStatus
+      totalPaidAmount { ...Money }
+      totalOutstandingAmount { ...Money }
+      paymentCollectionUrl
+      paymentTerms { paymentTermsName nextDueAt overdue }
+    }
+    transactions {
+      id
+      kind
+      status
+      type
+      processedAt
+      transactionAmount { presentmentMoney { ...Money } }
+      paymentDetails {
+        __typename
+        ... on CardPaymentDetails { cardBrand last4 }
+      }
+      giftCardDetails { last4 }
+    }
     discountApplications(first: 10) {
       nodes {
         __typename
@@ -32,12 +61,15 @@ query Order($id: ID!) {
         id
         title
         variantTitle
+        sku
         quantity
+        refundableQuantity
         image { url altText }
         productId
         variantId
         price { ...Money }
         totalPrice { ...Money }
+        totalDiscount { ...Money }
       }
     }
     fulfillments(first: 10) {
@@ -47,9 +79,35 @@ query Order($id: ID!) {
         createdAt
         estimatedDeliveryAt
         latestShipmentStatus
+        isPickedUp
         trackingInformation { company number url }
+        events(first: 20) { nodes { status happenedAt } }
         fulfillmentLineItems(first: 50) { nodes { quantity lineItem { id } } }
       }
+    }
+    refunds { id createdAt returnName totalRefunded { ...Money } }
+    returns(first: 10) {
+      nodes {
+        id
+        name
+        status
+        createdAt
+        closedAt
+        decline { reason note }
+        returnLineItems(first: 20) {
+          nodes {
+            __typename
+            id
+            quantity
+            returnReasonDefinition { name }
+            lineItem { id title variantTitle image { url altText } }
+          }
+        }
+        exchangeLineItems(first: 10) { nodes { id title variantTitle quantity image { url altText } } }
+      }
+    }
+    returnInformation {
+      returnableLineItems(first: 1) { nodes { quantity } }
     }
   }
 }

@@ -21,7 +21,8 @@
       "buyerIdentity": {
         "email": null,
         "phone": null,
-        "countryCode": "CA"
+        "countryCode": "CA",
+        "purchasingCompany": null
       },
       "delivery": {
         "addresses": [
@@ -68,10 +69,12 @@
               }
             },
             "discountAllocations": [],
+            "sellingPlanAllocation": null,
             "merchandise": {
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/43696905224214",
               "title": "Small / Green",
+              "sku": null,
               "image": {
                 "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/4ecbbab490d5a90c04074428b4b0e09358c6895050db590ffbb84e1f8e05fbbc.jpg",
                 "altText": null,
@@ -81,6 +84,11 @@
               "price": {
                 "amount": "120.0",
                 "currencyCode": "CAD"
+              },
+              "quantityRule": {
+                "minimum": 0,
+                "maximum": null,
+                "increment": 0
               },
               "product": {
                 "handle": "men-crewneck",

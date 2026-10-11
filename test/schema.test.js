@@ -24,17 +24,18 @@ const docs = [...(await loadContract())].map(([name, text]) => {
 
 test("every document validates against its API's 2026-10 schema and selects no deprecated field", () => {
   assert.equal(docs.filter((d) => !d.customer).length, 40);
-  assert.equal(docs.filter((d) => d.customer).length, 12);
+  assert.equal(docs.filter((d) => d.customer).length, 14);
   const errors = docs.flatMap((d) => validate(d.schema, d.ast, [...specifiedRules, NoDeprecatedCustomRule]).map((e) => `${d.name}: ${e.message}`));
   assert.deepEqual(errors, []);
 });
 
-test("every Storefront operation takes $country and $language and runs @inContext with them", () => {
+test("every Storefront operation takes $country, $language and $buyer and runs @inContext with them", () => {
   for (const { name, op } of docs.filter((d) => !d.customer)) {
     const vars = Object.fromEntries((op.variableDefinitions ?? []).map((v) => [v.variable.name.value, print(v.type)]));
     assert.equal(vars.country, "CountryCode", name);
     assert.equal(vars.language, "LanguageCode", name);
-    assert.deepEqual((op.directives ?? []).map(print), ["@inContext(country: $country, language: $language)"], name);
+    assert.equal(vars.buyer, "BuyerInput", name);
+    assert.deepEqual((op.directives ?? []).map(print), ["@inContext(country: $country, language: $language, buyer: $buyer)"], name);
   }
 });
 
@@ -77,7 +78,7 @@ function sample(type) {
   return { Int: 1, Float: 1, Boolean: true }[type.name] ?? "1";
 }
 
-// Executing the document over the fixture with the default resolvers returns the fixture unchanged only if the fixture
+// Executing the document over the fixture returns the fixture unchanged only if the fixture
 // has exactly the selected fields, non-null where the schema says so, valid enum values, and __typename on abstract types.
 test("every operation has a fixture, shaped exactly like its document's response", () => {
   const fixtures = readdirSync(new URL("fixtures/", CONTRACT)).filter((f) => f.endsWith(".json")).map((f) => f.slice(0, -".json".length));
@@ -88,7 +89,9 @@ test("every operation has a fixture, shaped exactly like its document's response
     const variableValues = Object.fromEntries(
       (op.variableDefinitions ?? []).filter((v) => v.type.kind === Kind.NON_NULL_TYPE).map((v) => [v.variable.name.value, sample(typeFromAST(schema, v.type))]),
     );
-    const result = executeSync({ schema, document: ast, rootValue: data, variableValues });
+    // by response key, so an aliased field (firstVariant: selectedOrFirstAvailableVariant) reads the fixture's alias
+    const fieldResolver = (source, _args, _context, info) => source[info.path.key];
+    const result = executeSync({ schema, document: ast, rootValue: data, variableValues, fieldResolver });
     assert.deepEqual(result.errors?.map((e) => `${e.message} (${e.path?.join(".")})`) ?? [], [], name);
     assert.deepEqual(JSON.parse(JSON.stringify(result.data)), data, `${name}: fixture fields differ from the document's selection`);
   }

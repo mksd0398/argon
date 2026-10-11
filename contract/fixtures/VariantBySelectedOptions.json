@@ -4,7 +4,7 @@
       "id": "gid://shopify/ProductVariant/43695848128534",
       "title": "Small / Olive",
       "availableForSale": true,
-      "sku": null,
+      "sku": "CREW-S-OLV",
       "selectedOptions": [
         {
           "name": "Size",
@@ -25,6 +25,138 @@
         "altText": null,
         "width": 4096,
         "height": 4096
+      },
+      "barcode": "0123456789012",
+      "quantityAvailable": 4,
+      "currentlyNotInStock": false,
+      "unitPrice": {
+        "amount": "60.0",
+        "currencyCode": "CAD"
+      },
+      "unitPriceMeasurement": {
+        "measuredType": "COUNT",
+        "quantityUnit": "ITEM",
+        "quantityValue": 2,
+        "referenceUnit": "ITEM",
+        "referenceValue": 1
+      },
+      "quantityRule": {
+        "minimum": 2,
+        "maximum": 40,
+        "increment": 2
+      },
+      "quantityPriceBreaks": {
+        "nodes": [
+          {
+            "minimumQuantity": 10,
+            "price": {
+              "amount": "108.0",
+              "currencyCode": "CAD"
+            }
+          },
+          {
+            "minimumQuantity": 20,
+            "price": {
+              "amount": "96.0",
+              "currencyCode": "CAD"
+            }
+          }
+        ]
+      },
+      "requiresComponents": true,
+      "components": {
+        "nodes": [
+          {
+            "quantity": 1,
+            "productVariant": {
+              "id": "gid://shopify/ProductVariant/43696932126742",
+              "title": "Small / Olive",
+              "image": {
+                "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/c99af4de567f8baafab47fa2d5267d83a997f9082892f01d7145c0eaa5403832.jpg",
+                "altText": null,
+                "width": 4096,
+                "height": 4096
+              },
+              "price": {
+                "amount": "40.0",
+                "currencyCode": "CAD"
+              },
+              "product": {
+                "handle": "men-t-shirt",
+                "title": "Men's T-shirt"
+              }
+            }
+          },
+          {
+            "quantity": 1,
+            "productVariant": {
+              "id": "gid://shopify/ProductVariant/43696926949398",
+              "title": "Small / Olive",
+              "image": {
+                "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/e4fe192f0e86ffc74d3b906f754119d4b5f4432cf01120d090ab7eb5182e8897.jpg",
+                "altText": null,
+                "width": 4096,
+                "height": 4096
+              },
+              "price": {
+                "amount": "35.0",
+                "currencyCode": "CAD"
+              },
+              "product": {
+                "handle": "sweatpants",
+                "title": "Sweatpants"
+              }
+            }
+          }
+        ]
+      },
+      "groupedBy": {
+        "nodes": [
+          {
+            "id": "gid://shopify/ProductVariant/43696903847958",
+            "title": "Weekend set",
+            "price": {
+              "amount": "180.0",
+              "currencyCode": "CAD"
+            },
+            "product": {
+              "handle": "hoodie-old",
+              "title": "Hoodie",
+              "featuredImage": {
+                "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/3d4d46da1bdbda2bf52f92987e6d4108770eb0a8f233f63a279849fce731f5af.jpg",
+                "altText": null,
+                "width": 4096,
+                "height": 4096
+              }
+            }
+          }
+        ]
+      },
+      "sellingPlanAllocations": {
+        "nodes": [
+          {
+            "sellingPlan": {
+              "id": "gid://shopify/SellingPlan/4400001",
+              "name": "Deliver every month"
+            },
+            "priceAdjustments": [
+              {
+                "price": {
+                  "amount": "108.0",
+                  "currencyCode": "CAD"
+                },
+                "compareAtPrice": {
+                  "amount": "120.0",
+                  "currencyCode": "CAD"
+                },
+                "perDeliveryPrice": {
+                  "amount": "108.0",
+                  "currencyCode": "CAD"
+                }
+              }
+            ]
+          }
+        ]
       }
     }
   }

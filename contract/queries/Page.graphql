@@ -2,6 +2,7 @@ query Page(
   $handle: String!
   $country: CountryCode
   $language: LanguageCode
-) @inContext(country: $country, language: $language) {
+  $buyer: BuyerInput
+) @inContext(country: $country, language: $language, buyer: $buyer) {
   page(handle: $handle) { id handle title body bodySummary seo { title description } updatedAt }
 }
