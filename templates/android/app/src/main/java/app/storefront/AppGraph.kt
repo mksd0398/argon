@@ -149,7 +149,7 @@ object AppGraph {
     /** Where product lists keep sort and filter (`COLLECTION_TEMPLATE`); top when unset or unknown. */
     val collectionTemplate: CollectionTemplate = CollectionTemplate.of(BuildConfig.COLLECTION_TEMPLATE)
 
-    /** The store's Judge.me public token (`JUDGEME_PUBLIC_TOKEN`); empty hides reviews. */
+    /** The store's Judge.me public token (`JUDGEME_PUBLIC_TOKEN`); empty: reviews without their star breakdown ([judgeMe]). */
     val judgeMeToken: String = BuildConfig.JUDGEME_PUBLIC_TOKEN
 
     /**
@@ -227,16 +227,17 @@ object AppGraph {
     }
 
     /**
-     * Product reviews (Judge.me); null without a [judgeMeToken]: the store then shows none. The demo store's app has
-     * bundled sample reviews instead (`assets/sample/JudgeMeWidget.sample.html`, which the CLI copies for mock.shop only).
+     * Product reviews (Judge.me). Without a [judgeMeToken] they are read the way Judge.me's own storefront widget reads
+     * them, and a store that has none shows none (see [JudgeMe]). The demo store's app has bundled sample reviews
+     * instead (`assets/sample/JudgeMeWidget.sample.html`, which the CLI copies for mock.shop only).
      */
-    val judgeMe: JudgeMe? by lazy {
+    val judgeMe: JudgeMe by lazy {
         val sample = "sample/JudgeMeWidget.sample.html"
         when {
             judgeMeToken.isNotBlank() -> JudgeMe(shopDomain, judgeMeToken, http)
             runCatching { assets.open(sample).close() }.isSuccess ->
                 JudgeMe(shopDomain, "", http, sample = { assets.open(sample).bufferedReader().use { it.readText() } })
-            else -> null
+            else -> JudgeMe(shopDomain, "", http)
         }
     }
 

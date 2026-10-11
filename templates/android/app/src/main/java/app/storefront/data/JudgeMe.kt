@@ -15,8 +15,11 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 
-/** [average]: stars out of 5; [count]: all the product's reviews; [histogram]: stars (1...5) to how many reviews gave them. */
-data class ReviewSummary(val average: Double, val count: Int, val histogram: Map<Int, Int>)
+/**
+ * [average]: stars out of 5; [count]: all the product's reviews; [histogram]: stars (1...5) to how many reviews gave them.
+ * Reviews read without a token come with their count only: [average] is null and [histogram] empty.
+ */
+data class ReviewSummary(val average: Double?, val count: Int, val histogram: Map<Int, Int>)
 
 /** [date]: ISO-8601; [pictures]: the shopper's photos (URLs); [reply]: the store's answer. */
 data class Review(
@@ -38,6 +41,12 @@ data class ReviewPage(val summary: ReviewSummary?, val reviews: List<Review>, va
  * Product reviews from Judge.me, through its Widget API with the shop's public token ([token]; the private token must
  * never ship in an app). Failures are [ArgonApiError]s.
  *
+ * Without a [token] the reviews come from the endpoint Judge.me's own storefront widget pages through, which asks for
+ * none: the reviews and their count, without the average and the star breakdown ([ReviewSummary]).
+ * ponytail: that endpoint is not a documented API, so it can change without notice. Any answer but a 200 with its JSON
+ * turns it off until the app starts again: no reviews, no more requests, no error. Upgrade: set `JUDGEME_PUBLIC_TOKEN`,
+ * the documented route, with the average and the breakdown.
+ *
  * [sample]: the demo store has no reviews app, so its app shows one bundled page of sample reviews instead ([sample]
  * returns that widget's HTML, `sample/JudgeMeWidget.sample.html`). Nothing is then asked of Judge.me or sent to it.
  */
@@ -49,12 +58,19 @@ class JudgeMe(
 ) {
     val isSample: Boolean get() = sample != null
 
+    /** No token (and no sample): nobody has said this store uses Judge.me, so only a product with reviews shows any of it. */
+    val isTokenless: Boolean get() = token.isBlank() && sample == null
+
+    // the token-less endpoint answered something else than its JSON: it is left alone for the rest of this run
+    @Volatile private var tokenlessOff = false
+
     /** The reviews of product [productId] (its GID), [perPage] at a time from [page] 1. */
     suspend fun reviews(productId: String, page: Int = 1, perPage: Int = 5): ReviewPage {
         if (sample != null) {
             val only = withContext(Dispatchers.IO) { JudgeMeHtml.parse(sample(), page, perPage) }
             return only.copy(reviews = if (page == 1) only.reviews else emptyList(), hasNextPage = false)
         }
+        if (token.isBlank()) return tokenlessReviews(productId, page, perPage)
         val url = "https://api.judge.me/api/v1/widgets/product_review".toHttpUrl().newBuilder()
             .addQueryParameter("shop_domain", shopDomain)
             .addQueryParameter("external_id", numericId(productId))
@@ -65,6 +81,36 @@ class JudgeMe(
         // the answer is JSON whose `widget` is the review widget's HTML
         val widget = (json?.get("widget") as? JsonPrimitive)?.contentOrNull ?: throw ArgonApiError.Decoding("JudgeMe.reviews", "no widget")
         return JudgeMeHtml.parse(widget, page, perPage)
+    }
+
+    /**
+     * A page of reviews without a token. The answer is JSON `{"html": ..., "total_count": 2, "page": "1"}`: `html` holds
+     * the same review blocks as the token route's widget, with no summary around them. Once it is anything else, every
+     * page is empty and nothing is asked. A network failure is not an answer: it throws, and the next call asks again.
+     */
+    private suspend fun tokenlessReviews(productId: String, page: Int, perPage: Int): ReviewPage {
+        val none = ReviewPage(null, emptyList(), page, hasNextPage = false)
+        if (tokenlessOff) return none
+        val url = "https://api.judge.me/reviews/reviews_for_widget".toHttpUrl().newBuilder()
+            .addQueryParameter("url", shopDomain)
+            .addQueryParameter("shop_domain", shopDomain)
+            .addQueryParameter("platform", "shopify")
+            .addQueryParameter("page", page.toString())
+            .addQueryParameter("per_page", perPage.toString())
+            .addQueryParameter("product_id", numericId(productId))
+            .build()
+        val json = try {
+            send("reviews", Request.Builder().url(url).build())
+        } catch (e: ArgonApiError.Http) {
+            null
+        }
+        val html = (json?.get("html") as? JsonPrimitive)?.contentOrNull
+        val count = (json?.get("total_count") as? JsonPrimitive)?.contentOrNull?.toIntOrNull()
+        if (html == null || count == null) {
+            tokenlessOff = true
+            return none
+        }
+        return ReviewPage(ReviewSummary(null, count, emptyMap()), JudgeMeHtml.parse(html).reviews, page, hasNextPage = count > page * perPage)
     }
 
     /** Sends a review; the store approves it before it shows. Judge.me needs no token for this call. */

@@ -234,8 +234,8 @@ internal class ProductState(val product: Product) {
     var recent by mutableStateOf<List<ProductCard>?>(null)
         private set
 
-    /** The product's reviews; null when the store has no Judge.me token. */
-    val reviews: ReviewsState? = AppGraph.judgeMe?.let { ReviewsState(it, product.id) }
+    /** The product's reviews; without a Judge.me token their block shows only once it has some ([ReviewsState.isShown]). */
+    val reviews = ReviewsState(AppGraph.judgeMe, product)
 
     fun select(option: String, value: String) {
         selection = selection + (option to value)
@@ -290,7 +290,7 @@ internal class ProductState(val product: Product) {
             launch { if (complementary == null) complementary = quietly("complementary products") { recommended("COMPLEMENTARY") } }
             launch { if (related == null) related = quietly("related products") { recommended("RELATED") } }
             launch { loadRecent() }
-            launch { reviews?.loadFirst() }
+            launch { reviews.loadFirst() }
         }
     }
 
@@ -439,7 +439,7 @@ private fun ProductContent(state: ProductState, nav: NavController) {
             when (block) {
                 ProductBlock.Gallery -> ProductGallery(product.images, product.title, gallery, galleryTags(variant)) { viewerPage = it }
                 // the stars lead to the reviews, when the page has them
-                ProductBlock.Title -> ProductTitle(product, state.reviews?.summary, onRating = showReviews.takeIf { state.reviews != null })
+                ProductBlock.Title -> ProductTitle(product, state.reviews.summary, onRating = showReviews.takeIf { state.reviews.isShown })
                 ProductBlock.Price -> ProductPrice(variant, state.price, state.quantity, company?.companyName)
                 ProductBlock.Options -> ProductOptions(visibleOptions(product), state.selection, product.variants) { option, value ->
                     state.select(option, value)
@@ -463,8 +463,8 @@ private fun ProductContent(state: ProductState, nav: NavController) {
                 ProductBlock.Bundle -> ProductBundle(variant, onOpen = open)
                 ProductBlock.Details -> ProductDetails(product.descriptionHtml, state.metafields.orEmpty(), state.policies, state.openDetails) { state.toggleDetails(it) }
                 ProductBlock.Trust -> TrustRow(open, gutter)
-                ProductBlock.Reviews -> state.reviews?.let { reviews ->
-                    ProductReviews(reviews, onWrite = { writingReview = true }, onLoadMore = { screen.launch { reviews.loadMore() } })
+                ProductBlock.Reviews -> if (state.reviews.isShown) {
+                    ProductReviews(state.reviews, onWrite = { writingReview = true }, onLoadMore = { screen.launch { state.reviews.loadMore() } })
                 }
                 ProductBlock.PairsWith -> ProductRail("Pairs well with", state.complementary.orEmpty(), ProductCardStyle.Compact, onOpen = open)
                 ProductBlock.AlsoLike -> ProductRail("You may also like", state.related.orEmpty(), ProductCardStyle.Standard, onOpen = open)
@@ -475,7 +475,7 @@ private fun ProductContent(state: ProductState, nav: NavController) {
 
     // outside the list: an overlay must not go away with the block that opened it
     GalleryViewer(product.images, product.title, viewerPage) { viewerPage = null }
-    state.reviews?.let { reviews -> ReviewSheet(writingReview, { writingReview = false }, reviews::submit) }
+    ReviewSheet(writingReview, { writingReview = false }, state.reviews::submit)
 }
 
 /** Block 2: the vendor, the title, and the rating ([shownRating]); [onRating] makes the stars a way to the reviews. */

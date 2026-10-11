@@ -143,12 +143,14 @@ data class FreeShipping(val remaining: Money, val progress: Float) {
 }
 
 /**
- * Free shipping for a cart worth [subtotal] (its total after discounts) in a store that ships free from [threshold];
- * null for a store without one (`FREE_SHIPPING_THRESHOLD` unset), or an amount that can't be read.
- * ponytail: the threshold is one number, compared with the cart in whatever currency the shopper buys in. Upgrade: one
- * threshold per currency, if stores selling in several ask for it.
+ * Free shipping for a cart worth [subtotal] (its total after discounts) in a store that ships free from [threshold], a
+ * number in [shopCurrency]; null for a store without one (`FREE_SHIPPING_THRESHOLD` unset), an amount that can't be
+ * read, a cart in another currency, and until the shop's currency is known.
+ * ponytail: the threshold is one number, in the shop's own currency: a shopper buying in another one sees no progress.
+ * Upgrade: one threshold per currency, if stores selling in several ask for it.
  */
-fun freeShipping(subtotal: Money, threshold: Double?): FreeShipping? {
+fun freeShipping(subtotal: Money, threshold: Double?, shopCurrency: String?): FreeShipping? {
+    if (subtotal.currencyCode != shopCurrency) return null
     val goal = threshold?.takeIf { it > 0 && it.isFinite() }?.toBigDecimal() ?: return null
     val have = subtotal.amount.toBigDecimalOrNull() ?: return null
     val remaining = (goal - have).max(BigDecimal.ZERO)
@@ -298,7 +300,7 @@ private fun EmptyCart() = Column(
 private fun CartContent(cart: Cart, busy: Boolean, onOpen: (Route) -> Unit, onQuantity: (CartLine, Int) -> Unit, onCheckout: () -> Unit) {
     val spacing = ArgonTheme.spacing
     val gutter = Modifier.padding(horizontal = spacing.l)
-    val shipping = freeShipping(cart.total, AppGraph.freeShippingThreshold)
+    val shipping = freeShipping(cart.total, AppGraph.freeShippingThreshold, shopCurrency())
     val alsoLike = alsoLike(cart)
     Column(Modifier.fillMaxSize()) {
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.l), contentPadding = PaddingValues(vertical = spacing.l)) {
@@ -336,6 +338,24 @@ private fun alsoLike(cart: Cart): List<ProductCard> {
         }
     }
     return cards
+}
+
+/**
+ * The currency of the shop's own prices, which `FREE_SHIPPING_THRESHOLD` is a number in; null until the shop has
+ * answered, and when it can't be asked (the shop is fetched once for the whole app, so this is rarely a call).
+ */
+@Composable
+private fun shopCurrency(): String? {
+    val currency by produceState<String?>(null) {
+        value = try {
+            AppGraph.storefront.shop().paymentSettings?.currencyCode
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
+    }
+    return currency
 }
 
 /** "Add $30.00 more for free shipping" over a bar of how far the cart is; "You've unlocked free shipping" once it is there. */
