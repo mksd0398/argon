@@ -16,7 +16,7 @@ A SwiftUI iOS app (`ios/`, iOS 17+) and a Jetpack Compose Android app (`android/
 2. Connect the iPhone by USB, trust the computer, and turn on Developer Mode (Settings → Privacy & Security).
 3. Run `cd ios && xtool dev`.
 
-xtool has no build settings, so the app reads its per-store values from `ios/Config.xcconfig`, which `xtool.yml` copies into the app. `xtool.yml` also lists every GraphQL document: when you add a query, add its file there too. With a free Apple ID the installed app expires after 7 days and xtool prefixes the bundle ID.
+xtool has no build settings, so the app reads its per-store values from `ios/Config.xcconfig`, which `xtool.yml` copies into the app. `xtool.yml` also lists every file the app reads from its bundle (the GraphQL documents, the home banners): when you add one, add it there too. With a free Apple ID the installed app expires after 7 days and xtool prefixes the bundle ID.
 
 ## Configuration
 
@@ -32,15 +32,42 @@ One key list, two files with the same key names. Edit, then rebuild.
 | `APP_NAME` | Display name under the app icon |
 | `BUNDLE_ID` | iOS bundle ID / Android `applicationId` |
 | `PDP_METAFIELDS` | Product metafields to list on the product page, comma-separated `namespace.key` (e.g. `custom.material,custom.care`). Empty shows none |
+| `HOME_TEMPLATE` | Home screen layout: `fashion`, `beauty`, `grocery` or `b2b` |
+| `COLLECTION_TEMPLATE` | Collection layout: `top` (sticky sort and filter bar) or `bottom` (floating bar) |
+| `JUDGEME_PUBLIC_TOKEN` | Judge.me *public* API token, for product reviews. Empty hides reviews |
 
 - iOS: `ios/Config.xcconfig` (`KEY = value`)
 - Android: `android/shopify.properties` (`KEY=value`)
 
 With an empty `STOREFRONT_TOKEN` on any store other than `mock.shop`, the app shows a setup screen naming the missing key.
 
+## Page templates
+
+Both apps carry every template; `HOME_TEMPLATE` and `COLLECTION_TEMPLATE` pick the ones shown. Change the value in both config files and rebuild.
+
+- **Home**: `fashion` (editorial, image-led), `beauty` (soft cards, ratings, shop by routine), `grocery` (search first, dense rows, quick add), `b2b` (SKUs, trade prices, bulk quantities). Each lays out the store's banners, collections and product rows from [the home screen content](#edit-the-home-screen).
+- **Stock banners**: until the store has its own banners, each template shows three photos from Shopify's Burst library (`android/app/src/main/assets/home/`, `ios/App/Resources/home/`). Delete the ones of templates you don't use.
+- **Collection**: `top` keeps sort and filter chips in a sticky bar under the title; `bottom` puts Sort and Filter in a floating bar. Colour filters and product cards show swatches: Shopify's swatch data where the store has it, else a colour matched from the name.
+- **Product**: variants with swatches, bundles, unit prices, quantity rules and volume pricing, subscriptions, a sticky add-to-cart bar, recommendations, recently viewed, reviews.
+- **Orders and account**: order tracking and payments, a return or exchange request, profile, addresses, company, store credit.
+
+### Reviews (Judge.me)
+
+Set `JUDGEME_PUBLIC_TOKEN` to the **public** token from Judge.me admin → Settings → Integrations → View API tokens. The product page then shows the rating summary and the reviews, and takes new ones. Never use the private token: anything in the config files ships inside the app.
+
+Rating stars on product cards come from the standard `reviews.rating` and `reviews.rating_count` product metafields, which Judge.me keeps up to date. They appear once those two definitions have **Storefront API access** on (Settings → Custom data → Products).
+
+### B2B
+
+When the signed-in customer is a contact of a company (Shopify B2B), the apps run every Storefront call as that company location: catalogue prices, quantity rules and volume pricing show on the product page, and checkout opens as the company. A contact with several locations switches between them on the Account screen.
+
+### Returns and exchanges
+
+The order page offers **Return or exchange items** when the store has self-serve returns on (Settings → Customer accounts) and something is returnable. Shopify's Customer Account API takes return requests only, so an exchange is sent as a return whose note names the wanted variant; complete it from the return in Shopify admin.
+
 ## Demo store (`mock.shop`)
 
-`mock.shop` has no metaobjects, so Home shows the fallback home. It also doesn't implement `nodes(ids:)`, so the Wishlist tab stays empty there. It works on real stores.
+`mock.shop` has no metaobjects, so Home shows the template's stock banners over the store's collections. It has no customer accounts either: the Account tab offers **Preview with a sample account** (sample orders, a return, a company) so those pages can be seen. It also doesn't implement `nodes(ids:)`, so the Wishlist tab and Recently viewed stay empty there. They work on real stores.
 
 ## Edit the home screen
 
@@ -52,6 +79,7 @@ In Shopify admin go to **Content → Metaobjects → Mobile screen → Home**. T
 - The **storefront password is off** (Online Store → Preferences), or Checkout Kit can't open checkout.
 - **Products and collections are available to the Headless storefront's sales channel**, and its Storefront API keeps the metaobject read permission, or the app shows an empty or fallback home.
 - **Collection and search filters** appear only after the Search & Discovery app has filters configured.
+- **Storefront API permissions** (Headless channel → Storefront API): the apps leave out what a permission you turn off would have fed. Without `unauthenticated_read_product_inventory`, for example, the product page shows no "Only 3 left".
 
 ## Publishing
 

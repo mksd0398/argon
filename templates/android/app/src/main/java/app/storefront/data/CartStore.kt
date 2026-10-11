@@ -33,6 +33,9 @@ class CartStore(
     // One change at a time: two quick taps must not create two carts or interleave line updates.
     private val lock = Mutex()
 
+    // The company location the signed-in buyer purchases for (B2B); null: a retail cart.
+    private var companyLocationId: String? = null
+
     /** Null while there is no cart (none yet, not loaded yet, expired, or checked out). */
     val cart: StateFlow<Cart?> = state
 
@@ -48,10 +51,41 @@ class CartStore(
     suspend fun add(variantId: String, quantity: Int) {
         lock.withLock {
             val lines = listOf(CartLineInput(variantId, quantity))
-            val create: suspend () -> Cart = { keep { api.cartCreate(CartInput(lines = lines)) } }
+            val create: suspend () -> Cart = { keep { api.cartCreate(CartInput(lines = lines, buyerIdentity = newCartBuyer())) } }
             // a stored cart that has expired is replaced by a new one holding these lines
             change({ api.addLines(it, lines) }, ifGone = create) ?: create()
         }
+    }
+
+    /**
+     * The company location the signed-in customer buys for ([BuyerStore]), or null for a retail shopper. It goes on the
+     * cart with the customer's token, so its lines take the company's prices: now when there is a cart, with every new
+     * cart, and before checkout. Null only forgets the location (signing out drops the cart itself).
+     */
+    suspend fun setBuyer(companyLocationId: String?) {
+        lock.withLock {
+            this.companyLocationId = companyLocationId
+            if (companyLocationId == null || currentId() == null) return
+            val token = accessToken() ?: return
+            change({ api.updateBuyerIdentity(it, CartBuyerIdentityInput(customerAccessToken = token, companyLocationId = companyLocationId)) })
+        }
+    }
+
+    /**
+     * A company's cart starts with its buyer, or its first lines would show retail prices; anyone else is attached at
+     * checkout (null). A token that can't be had now doesn't stop the add: checkout attaches the buyer again.
+     */
+    private suspend fun newCartBuyer(): CartBuyerIdentityInput? {
+        val location = companyLocationId ?: return null
+        val token = try {
+            accessToken()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            log.log(Level.WARNING, "company buyer not attached to the new cart", e)
+            null
+        }
+        return token?.let { CartBuyerIdentityInput(customerAccessToken = it, companyLocationId = location) }
     }
 
     /** Sets the quantity of a line; 0 (or less) removes it. */
@@ -77,7 +111,7 @@ class CartStore(
         val current = state.value ?: return null
         try {
             val token = accessToken() ?: return current.checkoutUrl
-            change({ api.updateBuyerIdentity(it, CartBuyerIdentityInput(customerAccessToken = token)) })?.checkoutUrl
+            change({ api.updateBuyerIdentity(it, CartBuyerIdentityInput(customerAccessToken = token, companyLocationId = companyLocationId)) })?.checkoutUrl
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

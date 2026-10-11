@@ -108,7 +108,26 @@ extension URLSession {
 
 private struct GraphQLErrors: Decodable {
     struct Entry: Decodable {
+        struct Extensions: Decodable {
+            let code: String?
+        }
+
         let message: String?
+        let extensions: Extensions?
+        /// The response field the error is about: the first element of its `path` (the rest may be list indexes).
+        let root: String?
+
+        private enum CodingKeys: String, CodingKey {
+            case message, extensions, path
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            message = try c.decodeIfPresent(String.self, forKey: .message)
+            extensions = try? c.decodeIfPresent(Extensions.self, forKey: .extensions)
+            var path = try? c.nestedUnkeyedContainer(forKey: .path)
+            root = try? path?.decode(String.self)
+        }
     }
 
     let errors: [Entry]?
@@ -118,13 +137,52 @@ private struct GraphQLData<T: Decodable>: Decodable {
     let data: T
 }
 
+/// Whether a JSON value is null, whatever else it could be.
+private struct IsNull: Decodable {
+    let value: Bool
+
+    init(from decoder: Decoder) throws {
+        value = try decoder.singleValueContainer().decodeNil()
+    }
+}
+
+/// Each distinct access-denied message is logged once per launch: every product card repeats the same one.
+private enum DeniedLog {
+    private static let lock = NSLock()
+    private static var seen: Set<String> = []
+
+    static func isNew(_ message: String) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return seen.insert(message).inserted
+    }
+}
+
+/// Whether `errors` only say that the token may not read some fields (code ACCESS_DENIED), and each of those fields sits
+/// under a root field of `body`'s `data` that still came back: the denied fields are null there, the rest is usable.
+/// A denied root field (null in `data`) is not: the operation has nothing to show.
+private func onlyDeniedFields(_ errors: [GraphQLErrors.Entry], in body: Data) -> Bool {
+    guard errors.allSatisfy({ $0.extensions?.code == "ACCESS_DENIED" }),
+          let roots = try? JSONDecoder().decode(GraphQLData<[String: IsNull]>.self, from: body).data else { return false }
+    return errors.allSatisfy { error in error.root.flatMap { roots[$0] }?.value == false }
+}
+
 /// The `data` of response `body` as `T`. An `errors` array is ArgonAPIError.graphql, checked first (data that comes with errors
-/// may be partial); anything else that doesn't fit `T` is .decoding.
+/// may be partial), unless all it reports is fields the token may not read (`onlyDeniedFields`: a Headless token without
+/// `unauthenticated_read_product_inventory`, say): then `data` is returned with those fields null, so a page loses its stock
+/// count instead of failing. Anything else that doesn't fit `T` is .decoding.
 func decodeResponse<T: Decodable>(_ type: T.Type, from body: Data, operation: String) throws -> T {
     let decoder = JSONDecoder()
     do {
         let errors = try decoder.decode(GraphQLErrors.self, from: body).errors ?? []
-        if !errors.isEmpty { throw ArgonAPIError.graphql(messages: errors.map { $0.message ?? "Unknown error" }) }
+        if !errors.isEmpty {
+            let messages = errors.map { $0.message ?? "Unknown error" }
+            guard onlyDeniedFields(errors, in: body) else { throw ArgonAPIError.graphql(messages: messages) }
+            // GraphQL messages name fields and permissions, never a token
+            for message in Set(messages) where DeniedLog.isNew(message) {
+                apiLog.warning("\(operation, privacy: .public): \(message, privacy: .public)")
+            }
+        }
         return try decoder.decode(GraphQLData<T>.self, from: body).data
     } catch let error as DecodingError {
         let detail = describe(error)

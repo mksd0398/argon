@@ -1,3 +1,4 @@
+import ArgonUI
 import SwiftUI
 
 extension Money {
@@ -32,30 +33,11 @@ private enum CurrencyFormat {
     }
 }
 
-/// `img` filling the space it's given (cropped), on a grey placeholder while it loads or when there is none.
-@MainActor
-struct RemoteImage: View {
-    let img: Img?
-
-    var body: some View {
-        Color.gray.opacity(0.15)
-            .overlay {
-                AsyncImage(url: img.flatMap { URL(string: $0.url) }) { image in
-                    image.resizable().scaledToFill()
-                } placeholder: {
-                    Color.clear
-                }
-            }
-            .clipped()
-            .accessibilityHidden(img?.alt == nil)
-            .accessibilityLabel(img?.alt ?? "")
-    }
-}
-
 /// Heart toggle for the product with id `productId`: filled while it is in the wishlist.
 @MainActor
 struct WishlistHeart: View {
     let productId: String
+    @Environment(\.argonTheme) private var theme
 
     var body: some View {
         let saved = AppGraph.wishlist.contains(productId)
@@ -63,53 +45,201 @@ struct WishlistHeart: View {
         Button {
             Task { await AppGraph.wishlist.toggle(productId) }
         } label: {
-            Image(systemName: saved ? "heart.fill" : "heart")
+            ArgonIcon(name: saved ? .heartFilled : .heart, size: 17, tint: theme.colors.ink)
                 .frame(width: 36, height: 36)
                 .contentShape(Rectangle())
         }
-        .tint(saved ? nil : Color.primary)
+        .buttonStyle(.plain)
         .accessibilityLabel(label)
     }
 }
 
+/// How a product card is laid out.
+enum ProductCardStyle {
+    /// A 4:5 image with the wishlist heart and a "Sold out" or "Sale" tag, then vendor, title, rating, price and colours.
+    case standard
+    /// Dense (grocery): a square image, title, price and a quick add.
+    case compact
+    /// One line of a list (B2B): thumbnail, title, SKU, price, quantity rule and a quick add.
+    case row
+}
+
+/// A product in a grid, a rail or a list. Tapping it calls `onOpen`; the heart and the quick add take their own taps.
 @MainActor
 struct ProductCardView: View {
     let card: ProductCard
+    var style: ProductCardStyle = .standard
     let onOpen: () -> Void
+    @Environment(\.argonTheme) private var theme
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Color.clear
-                .aspectRatio(0.8, contentMode: .fit)
-                .overlay { RemoteImage(img: card.image) }
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+        Group {
+            switch style {
+            case .standard: standard
+            case .compact: compact
+            case .row: row
+            }
+        }
+        .contentShape(Rectangle())
+        // the buttons inside are buttons of their own and take their taps before this one
+        .onTapGesture(perform: onOpen)
+        .accessibilityAddTraits(.isButton)
+    }
+
+    private var standard: some View {
+        VStack(alignment: .leading, spacing: theme.spacing.xs) {
+            picture(ratio: 0.8)
                 .overlay(alignment: .topLeading) {
-                    if !card.available {
-                        Text("Sold out")
-                            .font(.caption2)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(.background, in: RoundedRectangle(cornerRadius: 4))
-                            .padding(8)
+                    Group {
+                        if !card.available {
+                            LabelTag(text: "Sold out")
+                        } else if card.compareAt != nil {
+                            LabelTag(text: "Sale", isSale: true)
+                        }
                     }
+                    .padding(theme.spacing.s)
                 }
                 .overlay(alignment: .topTrailing) {
                     WishlistHeart(productId: card.id)
-                        .background(.regularMaterial, in: Circle())
-                        .padding(4)
+                        .background(theme.colors.surface.opacity(0.9), in: Circle())
+                        .padding(theme.spacing.xs)
                 }
-            Text(card.title).font(.subheadline).lineLimit(2)
-            HStack(spacing: 8) {
-                Text(card.price.display())
-                if let compare = card.compareAt {
-                    Text(compare.display()).strikethrough().foregroundStyle(.secondary)
+            if !card.vendor.trimmingCharacters(in: .whitespaces).isEmpty {
+                Text(card.vendor).font(theme.type.caption).foregroundStyle(theme.colors.muted).lineLimit(1)
+            }
+            title()
+            if let rating = card.rating, card.ratingCount != 0 {
+                ArgonRating(value: rating, count: card.ratingCount)
+            }
+            price
+            colours
+        }
+    }
+
+    private var compact: some View {
+        VStack(alignment: .leading, spacing: theme.spacing.xs) {
+            picture(ratio: 1)
+            // two lines always, so the quick adds of a row of cards line up
+            title(reservesSpace: true)
+            price
+            QuickAdd(card: card, onOpen: onOpen)
+        }
+    }
+
+    private var row: some View {
+        HStack(alignment: .top, spacing: theme.spacing.m) {
+            StoreImage(image: card.image)
+                .frame(width: 72, height: 72)
+                .clipShape(RoundedRectangle(cornerRadius: theme.radius.s))
+            VStack(alignment: .leading, spacing: theme.spacing.xxs) {
+                title()
+                if let sku = card.firstVariant?.sku, !sku.trimmingCharacters(in: .whitespaces).isEmpty {
+                    Text("SKU \(sku)").font(theme.type.caption).foregroundStyle(theme.colors.muted).lineLimit(1)
+                }
+                price
+                if let rule = quantityRuleLabel(card.firstVariant?.quantityRule) {
+                    Text(rule).font(theme.type.caption).foregroundStyle(theme.colors.muted)
                 }
             }
-            .font(.subheadline)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            QuickAdd(card: card, onOpen: onOpen)
         }
-        .contentShape(Rectangle())
-        // the heart is a button of its own and takes its taps before this one
-        .onTapGesture(perform: onOpen)
-        .accessibilityAddTraits(.isButton)
+        .padding(.vertical, theme.spacing.s)
+    }
+
+    private func picture(ratio: CGFloat) -> some View {
+        Color.clear
+            .aspectRatio(ratio, contentMode: .fit)
+            .overlay { StoreImage(image: card.image) }
+            .clipShape(RoundedRectangle(cornerRadius: theme.radius.m))
+    }
+
+    private func title(reservesSpace: Bool = false) -> some View {
+        Text(card.title)
+            .font(theme.type.label)
+            .foregroundStyle(theme.colors.ink)
+            .lineLimit(2, reservesSpace: reservesSpace)
+            .multilineTextAlignment(.leading)
+    }
+
+    private var price: some View {
+        PriceView(price: card.price, compareAt: card.compareAt, size: .s, prefix: card.hasPriceRange ? "From" : nil)
+    }
+
+    /// Up to four of the product's colours as dots, then "+N" for the rest.
+    @ViewBuilder private var colours: some View {
+        let colors = card.colors
+        if !colors.isEmpty {
+            HStack(spacing: theme.spacing.xxs) {
+                ForEach(Array(colors.prefix(4).enumerated()), id: \.offset) { _, value in
+                    let fill = swatch(for: value)
+                    ArgonSwatch(colorHex: fill.colorHex, imageUrl: fill.imageUrl, label: value.name, size: .s)
+                }
+                if colors.count > 4 {
+                    Text(verbatim: "+\(colors.count - 4)").font(theme.type.caption).foregroundStyle(theme.colors.muted)
+                }
+            }
+        }
+    }
+}
+
+/// "Min. 2 · Multiples of 2": the parts of `rule` a buyer has to know; nil when any quantity can be bought.
+func quantityRuleLabel(_ rule: QuantityRule?) -> String? {
+    guard let rule = rule else { return nil }
+    var parts: [String] = []
+    if rule.min > 1 { parts.append("Min. \(rule.min)") }
+    if rule.step > 1 { parts.append("Multiples of \(rule.step)") }
+    return parts.isEmpty ? nil : parts.joined(separator: " · ")
+}
+
+/// A card's shortcut to the cart. A product with a choice to make (`quickAddVariantId` is nil) gets "Options", which
+/// opens it (`onOpen`). Any other gets "Add"; once its variant is in the cart that becomes a stepper on the cart line's
+/// quantity, moving by the variant's quantity rule (under the rule's minimum the line is removed). A change Shopify
+/// refuses shows its message for a moment (`AppGraph.toast`) and leaves the quantity as it was.
+@MainActor
+struct QuickAdd: View {
+    let card: ProductCard
+    let onOpen: () -> Void
+    @State private var busy = false
+
+    var body: some View {
+        Group {
+            if let variantId = card.quickAddVariantId {
+                let rule = card.firstVariant?.quantityRule
+                let least = rule?.min ?? 1
+                if let line = AppGraph.cart.cart?.lines.first(where: { $0.variantId == variantId }) {
+                    ArgonQuantityStepper(
+                        value: line.quantity,
+                        onChange: { quantity in write { try await AppGraph.cart.update(line.id, quantity: quantity < least ? 0 : quantity) } },
+                        min: 0,
+                        max: rule?.maximum,
+                        step: rule?.step ?? 1,
+                        size: .s,
+                        isEnabled: !busy
+                    )
+                } else {
+                    ArgonButton(title: "Add", style: .secondary, size: .s, isLoading: busy) {
+                        write { try await AppGraph.cart.add(variantId, quantity: least) }
+                    }
+                }
+            } else {
+                ArgonButton(title: "Options", style: .secondary, size: .s, action: onOpen)
+            }
+        }
+        // as tall as the button in all three states, so a card doesn't jump when "Add" becomes the stepper
+        .frame(minHeight: 44, alignment: .leading)
+    }
+
+    private func write(_ change: @escaping () async throws -> Void) {
+        busy = true
+        // on the app's scope, not the card's: scrolling the card away must not drop the change
+        Task {
+            do {
+                try await change()
+            } catch {
+                AppGraph.toast.show(error.localizedDescription)
+            }
+            busy = false
+        }
     }
 }

@@ -243,6 +243,24 @@ class AuthStoreTest {
     }
 
     @Test
+    fun tokenChangesCountsEveryNewAccessToken() = runBlocking {
+        val s = store()
+        assertEquals(0, s.tokenChanges.value)
+        s.signedInStore()
+        assertEquals("signed in", 1, s.tokenChanges.value)
+        s.validAccessToken()
+        assertEquals("the same token: nothing new", 1, s.tokenChanges.value)
+        tokenReply = { 200 to tokens("a2", "r2") }
+        clock += 3_600_000
+        s.validAccessToken()
+        assertEquals("refreshed", 2, s.tokenChanges.value)
+        s.signOut()
+        assertEquals("signed out", 3, s.tokenChanges.value)
+        s.signOut()
+        assertEquals("already signed out: nothing changed", 3, s.tokenChanges.value)
+    }
+
+    @Test
     fun aRefusedRefreshSignsOut() = runBlocking {
         val s = store().signedInStore()
         tokenReply = { 400 to """{"error":"invalid_grant"}""" }

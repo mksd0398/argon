@@ -147,7 +147,7 @@ private struct ProductRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            RemoteImage(img: card.image)
+            StoreImage(image: card.image)
                 .frame(width: 48, height: 48)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
             VStack(alignment: .leading, spacing: 2) {

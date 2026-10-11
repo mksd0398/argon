@@ -20,34 +20,12 @@ func initialSelection(_ variants: [Variant]) -> [String: String] {
     (variants.first { $0.available } ?? variants.first)?.options ?? [:]
 }
 
-/// The merchant's HTML description as text (paragraphs, lists, bold, links); nil when blank or unreadable.
-/// The HTML importer runs WebKit, which must be on the main thread.
-@MainActor
-func htmlText(_ html: String) -> AttributedString? {
-    guard !html.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
-    // the system body font instead of the importer's 12 pt Times
-    let styled = "<style>body{font:-apple-system-body}</style>" + html
-    guard let imported = try? NSAttributedString(
-        data: Data(styled.utf8),
-        options: [.documentType: NSAttributedString.DocumentType.html, .characterEncoding: String.Encoding.utf8.rawValue],
-        documentAttributes: nil
-    ) else { return nil }
-    let text = NSMutableAttributedString(attributedString: imported)
-    // the importer's fixed black would vanish in dark mode; links keep their own colour
-    text.removeAttribute(.foregroundColor, range: NSRange(location: 0, length: text.length))
-    while text.string.hasSuffix("\n") {
-        text.deleteCharacters(in: NSRange(location: text.length - 1, length: 1))
-    }
-    return AttributedString(text)
-}
-
 // ponytail: the Product query loads variants(first: 250), the Storefront API's page ceiling: a product with more
 // variants shows "Unavailable" for the combinations that didn't load. Upgrade: paginate the variants, or query
 // variantBySelectedOptions for each selection.
 @MainActor
 private func loadProduct(_ handle: String) async throws -> Product {
-    let found = try await AppGraph.storefront.product(handle, metafields: metafieldIdentifiers(AppGraph.pdpMetafields))
-    guard let product = found else { throw NotFound(what: "Product") }
+    guard let product = try await AppGraph.storefront.product(handle) else { throw NotFound(what: "Product") }
     return product
 }
 
@@ -70,6 +48,8 @@ private struct ProductContent: View {
     @State private var adding = false
     @State private var addError: String? = nil
     @State private var added = false
+    // PDP_METAFIELDS, asked for apart from the product: a store whose token can't read them still shows the page
+    @State private var metafields: [Metafield] = []
 
     init(product: Product) {
         self.product = product
@@ -121,18 +101,18 @@ private struct ProductContent: View {
                         Text("Added to cart").font(.subheadline).foregroundStyle(.secondary)
                     }
 
-                    DescriptionView(html: product.descriptionHtml)
+                    HtmlText(html: product.descriptionHtml)
 
-                    if !product.metafields.isEmpty {
+                    if !metafields.isEmpty {
                         Divider()
                         Text("Details").font(.headline)
                         // ponytail: values are shown as the store sends them (a rich-text or JSON metafield shows its raw text)
-                        ForEach(product.metafields.indices, id: \.self) { index in
+                        ForEach(metafields.indices, id: \.self) { index in
                             HStack(alignment: .top, spacing: 16) {
-                                Text(detailLabel(product.metafields[index].key))
+                                Text(detailLabel(metafields[index].key))
                                     .foregroundStyle(.secondary)
                                     .frame(width: 110, alignment: .leading)
-                                Text(product.metafields[index].value)
+                                Text(metafields[index].value)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                             }
                         }
@@ -140,6 +120,11 @@ private struct ProductContent: View {
                 }
                 .padding(16)
             }
+        }
+        .task {
+            let identifiers = metafieldIdentifiers(AppGraph.pdpMetafields)
+            // a failure (a token without metafield access) just means no Details section
+            metafields = (try? await AppGraph.storefront.productMetafields(handle: product.handle, identifiers: identifiers)) ?? []
         }
     }
 
@@ -211,7 +196,7 @@ private struct Gallery: View {
                 if !images.isEmpty {
                     TabView(selection: $page) {
                         ForEach(images.indices, id: \.self) { index in
-                            RemoteImage(img: images[index]).tag(index)
+                            StoreImage(image: images[index]).tag(index)
                         }
                     }
                     .tabViewStyle(.page(indexDisplayMode: .never))
@@ -228,18 +213,5 @@ private struct Gallery: View {
                 }
             }
             .clipped()
-    }
-}
-
-@MainActor
-private struct DescriptionView: View {
-    let html: String
-    @State private var text: AttributedString? = nil
-
-    var body: some View {
-        VStack(alignment: .leading) {
-            if let text = text { Text(text) }
-        }
-        .task(id: html) { text = htmlText(html) }
     }
 }

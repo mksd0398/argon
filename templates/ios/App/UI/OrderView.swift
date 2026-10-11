@@ -76,7 +76,7 @@ private struct OrderLineRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            RemoteImage(img: line.image)
+            StoreImage(image: line.image)
                 .frame(width: 64, height: 64)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
             VStack(alignment: .leading, spacing: 2) {

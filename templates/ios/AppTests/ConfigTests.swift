@@ -8,6 +8,9 @@ final class ConfigTests: XCTestCase {
         XCTAssertEqual(xcconfigKey("CustomerClientId"), "CUSTOMER_CLIENT_ID")
         XCTAssertEqual(xcconfigKey("ShopId"), "SHOP_ID")
         XCTAssertEqual(xcconfigKey("PdpMetafields"), "PDP_METAFIELDS")
+        XCTAssertEqual(xcconfigKey("HomeTemplate"), "HOME_TEMPLATE")
+        XCTAssertEqual(xcconfigKey("CollectionTemplate"), "COLLECTION_TEMPLATE")
+        XCTAssertEqual(xcconfigKey("JudgemePublicToken"), "JUDGEME_PUBLIC_TOKEN")
     }
 
     func testReadsKeyValueLinesAndDropsTheEmptySubstitution() {

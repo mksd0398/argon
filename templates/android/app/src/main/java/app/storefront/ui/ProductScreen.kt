@@ -1,7 +1,6 @@
 package app.storefront.ui
 
-import android.text.method.LinkMovementMethod
-import android.widget.TextView
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -30,19 +29,18 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.text.HtmlCompat
 import androidx.navigation.NavController
 import app.storefront.AppGraph
+import app.storefront.data.Metafield
 import app.storefront.data.MetafieldIdentifier
 import app.storefront.data.Product
 import app.storefront.data.Variants
@@ -69,7 +67,17 @@ private suspend fun loadProduct(handle: String): Product {
     // ponytail: the Product query loads variants(first: 250), the Storefront API's page ceiling: a product with more
     // variants shows "Unavailable" for the combinations that didn't load. Upgrade: paginate the variants, or query
     // variantBySelectedOptions for each selection.
-    return AppGraph.storefront.product(handle, metafields = metafieldIdentifiers(AppGraph.pdpMetafields)) ?: error("Product not found")
+    return AppGraph.storefront.product(handle) ?: error("Product not found")
+}
+
+/** The `PDP_METAFIELDS` of the product. A store that refuses them (a token without metafield access) just has no Details. */
+private suspend fun loadMetafields(handle: String): List<Metafield> = try {
+    AppGraph.storefront.productMetafields(handle, metafieldIdentifiers(AppGraph.pdpMetafields))
+} catch (e: CancellationException) {
+    throw e
+} catch (e: Exception) {
+    Log.w("ProductScreen", "product metafields not loaded: ${e.message}")
+    emptyList()
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -93,6 +101,7 @@ private fun ProductContent(product: Product, snackbar: SnackbarHostState) {
     var adding by remember { mutableStateOf(false) }
     var addError by remember { mutableStateOf<String?>(null) }
     val variant = Variants.match(product.variants, selection)
+    val metafields by produceState(emptyList<Metafield>(), product.handle) { value = loadMetafields(product.handle) }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Gallery(product)
@@ -169,13 +178,13 @@ private fun ProductContent(product: Product, snackbar: SnackbarHostState) {
             }
             addError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
 
-            Description(product.descriptionHtml)
+            HtmlText(product.descriptionHtml)
 
-            if (product.metafields.isNotEmpty()) {
+            if (metafields.isNotEmpty()) {
                 HorizontalDivider()
                 Text("Details", style = MaterialTheme.typography.titleMedium)
                 // ponytail: values are shown as the store sends them (a rich-text or JSON metafield shows its raw text)
-                for (metafield in product.metafields) {
+                for (metafield in metafields) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         Text(
                             metafield.key.replace('_', ' ').replaceFirstChar { it.uppercase() },
@@ -214,21 +223,4 @@ private fun Gallery(product: Product) {
             )
         }
     }
-}
-
-/** The merchant's HTML description through the platform's HTML renderer (paragraphs, lists, bold, links). */
-@Composable
-private fun Description(html: String) {
-    if (html.isBlank()) return
-    val color = MaterialTheme.colorScheme.onSurface.toArgb()
-    val linkColor = MaterialTheme.colorScheme.primary.toArgb()
-    AndroidView(
-        factory = { TextView(it).apply { movementMethod = LinkMovementMethod.getInstance(); textSize = 15f } },
-        update = {
-            it.setTextColor(color)
-            it.setLinkTextColor(linkColor)
-            it.text = HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_COMPACT).trimEnd()
-        },
-        modifier = Modifier.fillMaxWidth(),
-    )
 }

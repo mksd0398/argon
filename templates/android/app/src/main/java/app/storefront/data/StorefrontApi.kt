@@ -26,6 +26,13 @@ data class StorefrontContext(val country: String? = null, val language: String? 
     }
 }
 
+/**
+ * The signed-in buyer Storefront calls run for (`@inContext(buyer:)`), so prices and the catalogue are their company's.
+ * [customerAccessToken]: the Customer Account API access token; [companyLocationId]: the location they buy for.
+ */
+@Serializable
+data class Buyer(val customerAccessToken: String, val companyLocationId: String? = null)
+
 // Cart inputs. Null fields are left out of the request.
 
 @Serializable
@@ -50,13 +57,17 @@ data class CartLineUpdateInput(
     val attributes: List<Attribute>? = null,
 )
 
-/** [customerAccessToken]: the signed-in customer's Customer Account API access token. */
+/**
+ * [customerAccessToken]: the signed-in customer's Customer Account API access token; [companyLocationId]: with it, the
+ * company location they buy for (a B2B cart).
+ */
 @Serializable
 data class CartBuyerIdentityInput(
     val email: String? = null,
     val phone: String? = null,
     val countryCode: String? = null,
     val customerAccessToken: String? = null,
+    val companyLocationId: String? = null,
 )
 
 /** A new address, or a copy of one of the customer's ([copyFromCustomerAddressId]). */
@@ -75,15 +86,17 @@ data class CartSelectedDeliveryOptionInput(val deliveryGroupId: String, val deli
 /**
  * Every Storefront API operation of the contract as a typed call. [execute] runs a named document with its variables and
  * returns the response's `data` ([Storefront.query] in the app, canned responses in tests). Lists come [PAGE_SIZE] at a
- * time. Calls run in [context], picked on first use from [locale] (null: the shop's default). `shop`, `localization`,
- * `policies` and `menu` are kept for the session. Every failure is an [ArgonApiError]; a cart mutation's `userErrors` are
- * thrown, its `warnings` come back on the cart.
+ * time. Calls run in [context], picked on first use from [locale] (null: the shop's default), and for [buyer]. `shop`,
+ * `localization`, `policies` and `menu` are kept for the session. Every failure is an [ArgonApiError]; a cart mutation's
+ * `userErrors` are thrown, its `warnings` come back on the cart.
  */
 class StorefrontApi(private val execute: suspend (String, JsonObject) -> JsonObject, private val locale: Locale? = null) {
     private val cache = ConcurrentHashMap<String, Any>()
     private val contextLock = Mutex()
 
     @Volatile private var picked: StorefrontContext? = null
+
+    @Volatile private var currentBuyer: Buyer? = null
 
     /** The context of every call but [localization]; null until picked. Setting it (a country picker) drops the session cache. */
     var context: StorefrontContext?
@@ -93,15 +106,28 @@ class StorefrontApi(private val execute: suspend (String, JsonObject) -> JsonObj
             cache.clear()
         }
 
+    /**
+     * The company buyer every call runs for (`$buyer`), so prices and products are their catalogue's; null: retail.
+     * Setting it drops the session cache, like [context].
+     */
+    var buyer: Buyer?
+        get() = currentBuyer
+        set(value) {
+            currentBuyer = value
+            cache.clear()
+        }
+
     private suspend fun currentContext(): StorefrontContext = picked ?: contextLock.withLock {
         picked ?: (locale?.let { StorefrontContext.pick(it, localization()) } ?: StorefrontContext()).also { picked = it }
     }
 
-    /** Runs [operation] in the context and returns its `data`. */
+    private fun buyerVariable() = listOfNotNull(currentBuyer?.let { "buyer" to encode(it) })
+
+    /** Runs [operation] in the context, for the buyer, and returns its `data`. */
     private suspend fun send(operation: String, variables: JsonObject): JsonObject {
         val context = currentContext()
         val inContext = listOfNotNull(context.country?.let { "country" to JsonPrimitive(it) }, context.language?.let { "language" to JsonPrimitive(it) })
-        return execute(operation, JsonObject(variables + inContext))
+        return execute(operation, JsonObject(variables + inContext + buyerVariable()))
     }
 
     private suspend inline fun <reified T> run(operation: String, variables: JsonObject, vararg path: String): T =
@@ -115,24 +141,29 @@ class StorefrontApi(private val execute: suspend (String, JsonObject) -> JsonObj
 
     /** The countries and languages the shop sells in. Always in the shop's default context. */
     suspend fun localization(): Localization = cached("localization") {
-        decode("Localization", execute("Localization", vars()), "localization")
+        decode("Localization", execute("Localization", JsonObject(buyerVariable().toMap())), "localization")
     }
 
     suspend fun policies(): ShopPolicies = cached("policies") { run("ShopPolicies", vars(), "shop") }
 
     suspend fun menu(handle: String): Menu? = cached("menu:$handle") { run("Menu", vars("handle" to handle), "menu") }
 
-    /** [selectedOptions] (option name to value) picks `selectedOrFirstAvailableVariant`; [metafields] are the ones to load. */
-    suspend fun product(
-        handle: String,
-        selectedOptions: Map<String, String> = emptyMap(),
-        metafields: List<MetafieldIdentifier> = emptyList(),
-    ): Product? = run(
-        "Product",
-        vars("handle" to handle, "metafields" to encode(metafields), "selectedOptions" to selectedOptions.ifEmpty { null }?.let { encode(it.selected()) }),
-        "product",
-    )
+    /** [selectedOptions] (option name to value) picks `selectedOrFirstAvailableVariant`. */
+    suspend fun product(handle: String, selectedOptions: Map<String, String> = emptyMap()): Product? =
+        run("Product", vars("handle" to handle, "selectedOptions" to selectedOptions.ifEmpty { null }?.let { encode(it.selected()) }), "product")
 
+    /**
+     * The metafields among [identifiers] the product has a value for; none (and no request) without identifiers, or
+     * without the product. Its own query, not part of [product]: a token that may not read metafields is refused the
+     * whole product they are selected on.
+     */
+    suspend fun productMetafields(handle: String, identifiers: List<MetafieldIdentifier>): List<Metafield> {
+        if (identifiers.isEmpty()) return emptyList()
+        return run<List<Metafield?>?>("ProductMetafields", vars("handle" to handle, "metafields" to encode(identifiers)), "product", "metafields")
+            .orEmpty().filterNotNull()
+    }
+
+    /** The selected variant in full: stock, unit price, quantity rule and price breaks, bundle parts, selling plans. */
     suspend fun variantBySelectedOptions(productHandle: String, options: Map<String, String>): Variant? =
         run("VariantBySelectedOptions", vars("handle" to productHandle, "selectedOptions" to encode(options.selected())), "product", "variantBySelectedOptions")
 

@@ -44,6 +44,8 @@ final class CartStore {
     private let accessToken: () async throws -> String?
     // One change at a time: two quick taps must not create two carts or interleave line updates.
     private let lock: AsyncLock
+    /// The company location a B2B customer buys for (`setBuyer`); nil for anyone else.
+    private var companyLocationId: String? = nil
     private static let idKey = "cartId"
 
     init(api: StorefrontAPI, defaults: UserDefaults, accessToken: @escaping () async throws -> String? = { nil }) {
@@ -103,7 +105,7 @@ final class CartStore {
         guard let current = cart else { return nil }
         do {
             guard let token = try await accessToken() else { return current.checkoutUrl }
-            let identity = CartBuyerIdentityInput(customerAccessToken: token)
+            let identity = CartBuyerIdentityInput(customerAccessToken: token, companyLocationId: companyLocationId)
             let attached = try await change({ try await self.api.updateBuyerIdentity(cartId: $0, buyerIdentity: identity) })
             return attached?.checkoutUrl
         } catch {
@@ -120,8 +122,26 @@ final class CartStore {
         forget()
     }
 
+    /// The company location the signed-in customer buys for (`BuyerStore`), or nil for a retail shopper. It goes on the
+    /// cart with the customer's token, so its lines take the company's prices: now when there is a cart, with every new
+    /// cart, and before checkout. Nil only forgets the location (signing out drops the cart itself).
+    func setBuyer(_ companyLocationId: String?) async throws {
+        await lock.lock()
+        defer { lock.unlock() }
+        self.companyLocationId = companyLocationId
+        guard let location = companyLocationId, currentId() != nil, let token = try await accessToken() else { return }
+        let identity = CartBuyerIdentityInput(customerAccessToken: token, companyLocationId: location)
+        _ = try await change { try await self.api.updateBuyerIdentity(cartId: $0, buyerIdentity: identity) }
+    }
+
     private func create(_ lines: [CartLineInput]) async throws -> Cart {
-        try await send { try await self.api.cartCreate(CartInput(lines: lines)) }
+        var input = CartInput(lines: lines)
+        // a company's cart starts with its buyer, or its first lines would show retail prices; anyone else is attached at checkout
+        if let location = companyLocationId, let token = try? await accessToken() {
+            input.buyerIdentity = CartBuyerIdentityInput(customerAccessToken: token, companyLocationId: location)
+        }
+        let created = input
+        return try await send { try await self.api.cartCreate(created) }
     }
 
     private func removeLine(_ lineId: String) async throws {

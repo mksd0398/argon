@@ -3,9 +3,11 @@ package app.storefront.data
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonContentPolymorphicSerializer
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 // Storefront API models, decoded from the responses of contract/queries (fragments in contract/fragments.graphql).
 // Property names are the GraphQL field names, except where screens already used another name (@SerialName). Enums stay
@@ -24,9 +26,9 @@ data class Seo(val title: String? = null, val description: String? = null)
 @Serializable
 data class Attribute(val key: String, val value: String? = null)
 
-/** A resource by handle, with its title and (an article's) blog where the document selects them. */
+/** A resource by handle, with its title, (an article's) blog and (a product's) featured image where the document selects them. */
 @Serializable
-data class ResourceRef(val handle: String, val title: String? = null, val blog: ResourceRef? = null)
+data class ResourceRef(val handle: String, val title: String? = null, val blog: ResourceRef? = null, val featuredImage: Img? = null)
 
 /** One of a mutation's `userErrors`: [field] is the input path it is about, [code] Shopify's error code (may be null). */
 @Serializable
@@ -44,12 +46,19 @@ data class Page<T>(
     val filters: List<Filter> = emptyList(),
 )
 
+/** [type]: LIST, PRICE_RANGE or BOOLEAN; [presentation]: how the store wants it shown (IMAGE, SWATCH or TEXT). */
 @Serializable
-data class Filter(val id: String, val label: String, val type: String, val values: List<FilterValue> = emptyList())
+data class Filter(val id: String, val label: String, val type: String, val values: List<FilterValue> = emptyList(), val presentation: String? = null)
 
 /** [input]: the `ProductFilter` JSON that applies this value (send it back in `filters`). */
 @Serializable
-data class FilterValue(val id: String, val label: String, val count: Int = 0, @Serializable(with = JsonTextSerializer::class) val input: String)
+data class FilterValue(
+    val id: String,
+    val label: String,
+    val count: Int = 0,
+    @Serializable(with = JsonTextSerializer::class) val input: String,
+    val swatch: Swatch? = null,
+)
 
 @Serializable
 data class PriceRange(val minVariantPrice: Money, val maxVariantPrice: Money? = null)
@@ -57,6 +66,46 @@ data class PriceRange(val minVariantPrice: Money, val maxVariantPrice: Money? = 
 // Shopify reports "no compare-at" as null or 0.0; only a higher compare-at is a real discount.
 private fun Money?.above(price: Money) = this?.takeIf { it.amount.toBigDecimal() > price.amount.toBigDecimal() }
 
+/** How many of a variant one order may hold. [min] and [step] are the values to use: stores without rules (mock.shop) send 0. */
+@Serializable
+data class QuantityRule(val minimum: Int = 1, val maximum: Int? = null, val increment: Int = 1) {
+    val min: Int get() = maxOf(1, minimum)
+    val step: Int get() = maxOf(1, increment)
+}
+
+/** Reads the standard `reviews` metafields (Judge.me and other review apps fill them). */
+object Ratings {
+    /**
+     * A `rating` metafield's stars, 0...5: its value is JSON `{"value":"4.6","scale_min":"1.0","scale_max":"5.0"}` (brought
+     * to a scale of 5 by `scale_max`) or a plain number. Null when unreadable.
+     */
+    fun parse(value: String?): Double? {
+        val json = runCatching { Json.parseToJsonElement(value?.trim().orEmpty()) }.getOrNull()
+        // the JSON's numbers come as strings ("4.6"), or as numbers from an app that writes them so
+        fun number(element: JsonElement?) = (element as? JsonPrimitive)?.content?.toDoubleOrNull()?.takeIf { it.isFinite() }
+        val (rating, top) = if (json is JsonObject) number(json["value"]) to (number(json["scale_max"]) ?: 5.0) else number(json) to 5.0
+        if (rating == null || top <= 0) return null
+        // a rating already out of 5 is kept as written (4.6 stays 4.6, with no rounding on the way)
+        return (if (top == 5.0) rating else rating * 5 / top).coerceIn(0.0, 5.0)
+    }
+
+    /** A `rating_count` metafield's whole number; null when unreadable. */
+    fun count(value: String?): Int? = value?.trim()?.toIntOrNull()
+}
+
+/** Whether an option (or filter) named [name] chooses a colour: "Colour", "Color" or "Shade", in any case. */
+fun isColorName(name: String): Boolean = name.trim().lowercase() in setOf("colour", "color", "shade")
+
+/** The variant a product list shows a product by (`selectedOrFirstAvailableVariant`): what a quick add puts in the cart. */
+@Serializable
+data class CardVariant(
+    val id: String,
+    val sku: String? = null,
+    @SerialName("availableForSale") val available: Boolean = false,
+    val quantityRule: QuantityRule? = null,
+)
+
+/** [options]: the first three; [rating] (0...5) and [ratingCount]: the standard `reviews` metafields, null without reviews. */
 @Serializable
 data class ProductCard(
     val id: String,
@@ -66,9 +115,25 @@ data class ProductCard(
     @SerialName("featuredImage") val image: Img? = null,
     val priceRange: PriceRange,
     val compareAtPriceRange: PriceRange? = null,
+    val vendor: String = "",
+    val options: List<ProductOption> = emptyList(),
+    val firstVariant: CardVariant? = null,
+    @Serializable(with = RatingSerializer::class) val rating: Double? = null,
+    @Serializable(with = RatingCountSerializer::class) val ratingCount: Int? = null,
 ) : Reference, SearchResult {
     val price: Money get() = priceRange.minVariantPrice
+    val maxPrice: Money? get() = priceRange.maxVariantPrice
     val compareAt: Money? get() = compareAtPriceRange?.minVariantPrice.above(price)
+
+    /** Its variants don't all cost the same: the price is a "From". */
+    val hasPriceRange: Boolean get() = maxPrice.above(price) != null
+
+    /** The values of its colour option ([isColorName]); empty without one. */
+    val colors: List<ProductOptionValue> get() = options.firstOrNull { isColorName(it.name) }?.optionValues.orEmpty()
+
+    /** The variant a card can add without asking: the first one, when it is available and no option has a choice. Else null. */
+    val quickAddVariantId: String?
+        get() = firstVariant?.takeIf { it.available && options.all { option -> option.optionValues.size == 1 } }?.id
 }
 
 /** [products]: the first products, where the document selects them (home sections, the fallback home). */
@@ -97,6 +162,10 @@ data class CollectionDetail(
 @Serializable
 data class SelectedOption(val name: String, val value: String)
 
+/**
+ * A variant. Everything from [barcode] on is filled only by `variantBySelectedOptions` (the selected variant in full); a
+ * product's own variant lists leave it at these defaults. [quantityAvailable] is also null when the token may not read stock.
+ */
 @Serializable
 data class Variant(
     val id: String,
@@ -107,11 +176,64 @@ data class Variant(
     val price: Money,
     val compareAtPrice: Money? = null,
     val image: Img? = null,
+    val barcode: String? = null,
+    val quantityAvailable: Int? = null,
+    val currentlyNotInStock: Boolean = false,
+    val unitPrice: Money? = null,
+    val unitPriceMeasurement: UnitPriceMeasurement? = null,
+    val quantityRule: QuantityRule? = null,
+    /** Volume pricing: from [QuantityPriceBreak.minimumQuantity] up, each costs its price. */
+    @Serializable(with = NodesSerializer::class) val quantityPriceBreaks: List<QuantityPriceBreak> = emptyList(),
+    /** A bundle: [components] are its parts. */
+    val requiresComponents: Boolean = false,
+    @Serializable(with = NodesSerializer::class) val components: List<VariantComponent> = emptyList(),
+    /** The bundles this variant is a part of. */
+    @Serializable(with = NodesSerializer::class) val groupedBy: List<ComponentVariant> = emptyList(),
+    @Serializable(with = NodesSerializer::class) val sellingPlanAllocations: List<SellingPlanAllocation> = emptyList(),
 ) {
     /** Option name to value, e.g. Size to M. */
     val options: Map<String, String> get() = selectedOptions.associate { it.name to it.value }
     val compareAt: Money? get() = compareAtPrice.above(price)
 }
+
+/** What a unit price is per: [referenceValue] [referenceUnit] ("$6.00 / 1 ITEM") of the [quantityValue] [quantityUnit] sold. */
+@Serializable
+data class UnitPriceMeasurement(
+    val measuredType: String? = null,
+    val quantityUnit: String? = null,
+    val quantityValue: Double = 0.0,
+    val referenceUnit: String? = null,
+    val referenceValue: Int = 0,
+)
+
+@Serializable
+data class QuantityPriceBreak(val minimumQuantity: Int, val price: Money)
+
+/** One part of a bundle: [quantity] of [variant]. */
+@Serializable
+data class VariantComponent(val quantity: Int, @SerialName("productVariant") val variant: ComponentVariant)
+
+/** A variant as a bundle's part, or as a bundle the variant belongs to. [image]: its own, else its product's. */
+@Serializable
+data class ComponentVariant(
+    val id: String,
+    val title: String,
+    @SerialName("image") private val ownImage: Img? = null,
+    val price: Money,
+    val product: ResourceRef,
+) {
+    val image: Img? get() = ownImage ?: product.featuredImage
+}
+
+/** A selling plan (subscription) the variant can be bought on, with what it then costs. */
+@Serializable
+data class SellingPlanAllocation(val sellingPlan: SellingPlan, val priceAdjustments: List<PriceAdjustment> = emptyList()) {
+    @Serializable
+    data class PriceAdjustment(val price: Money, val compareAtPrice: Money? = null, val perDeliveryPrice: Money? = null)
+}
+
+@Serializable
+data class SellingPlan(val id: String, val name: String)
 
 @Serializable
 data class ProductOption(val id: String? = null, val name: String, val optionValues: List<ProductOptionValue> = emptyList()) {
@@ -128,26 +250,17 @@ data class Swatch(val color: String? = null, val image: Image? = null) {
 }
 
 @Serializable
-data class SellingPlanGroup(
-    val name: String,
-    val appName: String? = null,
-    val options: List<Option> = emptyList(),
-    @Serializable(with = NodesSerializer::class) val sellingPlans: List<SellingPlan> = emptyList(),
-) {
-    @Serializable
-    data class Option(val name: String, val values: List<String> = emptyList())
-}
-
-@Serializable
-data class SellingPlan(val id: String, val name: String, val description: String? = null, val recurringDeliveries: Boolean = false)
-
-@Serializable
 data class Metafield(val namespace: String, val key: String, val type: String? = null, val value: String)
 
 /** The identifier of a metafield to load (`HasMetafieldsIdentifier`). */
 @Serializable
 data class MetafieldIdentifier(val namespace: String, val key: String)
 
+/**
+ * [onlineStoreUrl]: its page on the web store, null when it isn't published there. [rating] (0...5) and [ratingCount]:
+ * the standard `reviews` metafields. Its configured metafields come from `productMetafields`, its selling plans from the
+ * selected variant ([Variant.sellingPlanAllocations]).
+ */
 @Serializable
 data class Product(
     val id: String,
@@ -158,6 +271,8 @@ data class Product(
     val descriptionHtml: String = "",
     val availableForSale: Boolean = false,
     val isGiftCard: Boolean = false,
+    val tags: List<String> = emptyList(),
+    val onlineStoreUrl: String? = null,
     val requiresSellingPlan: Boolean = false,
     val encodedVariantExistence: String? = null,
     val encodedVariantAvailability: String? = null,
@@ -168,15 +283,11 @@ data class Product(
     val selectedOrFirstAvailableVariant: Variant? = null,
     val adjacentVariants: List<Variant> = emptyList(),
     @Serializable(with = NodesSerializer::class) val variants: List<Variant> = emptyList(),
-    @Serializable(with = NodesSerializer::class) val sellingPlanGroups: List<SellingPlanGroup> = emptyList(),
-    // one entry per requested identifier; the ones this product has no value for come back null
-    @SerialName("metafields") private val requestedMetafields: List<Metafield?> = emptyList(),
+    @Serializable(with = RatingSerializer::class) val rating: Double? = null,
+    @Serializable(with = RatingCountSerializer::class) val ratingCount: Int? = null,
 ) {
     /** The images of its media (MediaImage), in order. */
     val images: List<Img> get() = media.mapNotNull { (it as? Media.Image)?.image }
-
-    /** The requested metafields this product has a value for. */
-    val metafields: List<Metafield> get() = requestedMetafields.filterNotNull()
 }
 
 /** Product media by `__typename`; [Other] is a media type this app doesn't know yet. */
@@ -396,7 +507,14 @@ data class ShopPolicies(
     val legalNotice: Policy? = null,
     val contactInformation: Policy? = null,
     val subscriptionPolicy: Policy? = null,
-)
+) {
+    /** The policies the shop has. */
+    val all: List<Policy>
+        get() = listOfNotNull(privacyPolicy, refundPolicy, shippingPolicy, termsOfService, termsOfSale, legalNotice, contactInformation, subscriptionPolicy)
+
+    /** The policy with this [handle] (`shipping-policy`, `refund-policy`, ...); null when the shop has none. */
+    fun policy(handle: String): Policy? = all.firstOrNull { it.handle == handle }
+}
 
 @Serializable
 data class Localization(
@@ -503,6 +621,9 @@ data class Cart(
     val subtotal: Money get() = cost.subtotalAmount
     val total: Money get() = cost.totalAmount
 
+    /** The company (and location) the cart is bought for; null for a retail cart. */
+    val purchasingCompany: PurchasingCompany? get() = buyerIdentity?.purchasingCompany
+
     @Serializable
     data class Cost(val subtotalAmount: Money, val totalAmount: Money)
 
@@ -513,7 +634,12 @@ data class Cart(
     data class AppliedGiftCard(val id: String, val lastCharacters: String, val amountUsed: Money, val balance: Money)
 
     @Serializable
-    data class BuyerIdentity(val email: String? = null, val phone: String? = null, val countryCode: String? = null)
+    data class BuyerIdentity(
+        val email: String? = null,
+        val phone: String? = null,
+        val countryCode: String? = null,
+        val purchasingCompany: PurchasingCompany? = null,
+    )
 
     @Serializable
     data class Delivery(val addresses: List<SelectableAddress> = emptyList())
@@ -542,6 +668,18 @@ data class Cart(
     )
 }
 
+/** A B2B company with the locations the document selects ([CustomerAccountApi.companies]; none on a cart or an order). */
+@Serializable
+data class Company(val id: String, val name: String, @Serializable(with = NodesSerializer::class) val locations: List<CompanyLocation> = emptyList())
+
+@Serializable
+data class CompanyLocation(val id: String, val name: String)
+
+/** The company and the location of it a cart or an order is bought for. */
+@Serializable
+data class PurchasingCompany(val company: Company, val location: CompanyLocation)
+
+/** [components]: a bundle's parts; [sellingPlanAllocation]: the subscription the line is bought on. */
 @Serializable
 data class CartLine(
     val id: String,
@@ -549,12 +687,15 @@ data class CartLine(
     val attributes: List<Attribute> = emptyList(),
     val cost: Cost,
     val discountAllocations: List<DiscountAllocation> = emptyList(),
+    val sellingPlanAllocation: SellingPlanAllocation? = null,
     val merchandise: Merchandise,
+    @SerialName("lineComponents") val components: List<CartLineComponent> = emptyList(),
 ) {
     val variantTitle: String get() = merchandise.title
     val productTitle: String get() = merchandise.product.title.orEmpty()
     val image: Img? get() = merchandise.image
     val total: Money get() = cost.totalAmount
+    val sellingPlanName: String? get() = sellingPlanAllocation?.sellingPlan?.name
 
     @Serializable
     data class Cost(val totalAmount: Money)
@@ -564,7 +705,28 @@ data class CartLine(
 
     /** The variant on the line ([product]: its product's handle and title). */
     @Serializable
-    data class Merchandise(val id: String, val title: String, val image: Img? = null, val price: Money, val product: ResourceRef)
+    data class Merchandise(
+        val id: String,
+        val title: String,
+        val sku: String? = null,
+        val image: Img? = null,
+        val price: Money,
+        val quantityRule: QuantityRule? = null,
+        val product: ResourceRef,
+    )
+}
+
+/** One part of a bundle on a cart line: [quantity] of a variant. */
+@Serializable
+data class CartLineComponent(val id: String, val quantity: Int, private val merchandise: Merchandise) {
+    val variantId: String get() = merchandise.id
+    val variantTitle: String get() = merchandise.title
+    val productHandle: String get() = merchandise.product.handle
+    val productTitle: String get() = merchandise.product.title.orEmpty()
+    val image: Img? get() = merchandise.image
+
+    @Serializable
+    data class Merchandise(val id: String, val title: String, val image: Img? = null, val product: ResourceRef)
 }
 
 // The app's own models, built from the API's for the screens.
@@ -611,9 +773,42 @@ sealed interface Section {
     data class Collections(val heading: String?, val items: List<CollectionCard>) : Section
 }
 
+/** Where a tap leads: a pushed screen, or a web page ([Web], in the in-app browser). */
 sealed interface Route {
     data class Product(val handle: String) : Route
     data class Collection(val handle: String) : Route
     data class Search(val query: String) : Route
+
+    /** A shop policy's page by its handle (`shipping-policy`, `refund-policy`, ...): the route `policy/{handle}`. */
+    data class Policy(val handle: String) : Route
     data class Web(val url: String) : Route
+}
+
+/** The home screen's layout by kind of store (`HOME_TEMPLATE`). */
+enum class HomeTemplate(val value: String) {
+    Fashion("fashion"), Beauty("beauty"), Grocery("grocery"), B2B("b2b");
+
+    /** The heading and button of the template's three stock banners, shown until the store has banners of its own. */
+    val bannerCopy: List<Pair<String, String>>
+        get() = when (this) {
+            Fashion -> listOf("The new season" to "Shop now", "Everyday essentials" to "Explore", "Made to last" to "Discover")
+            Beauty -> listOf("Your daily ritual" to "Shop now", "Skin first" to "Explore", "Colour that stays" to "Discover")
+            Grocery -> listOf("Fresh today" to "Shop now", "Fill your basket" to "Start shopping", "Baked this morning" to "Order now")
+            B2B -> listOf("Stocked and ready to ship" to "Browse the catalogue", "Tools for the trade" to "Shop now", "Order by the pallet" to "View bulk pricing")
+        }
+
+    companion object {
+        /** The template configured as [value]; the first (fashion) for anything else. */
+        fun of(value: String): HomeTemplate = entries.firstOrNull { it.value == value.trim().lowercase() } ?: Fashion
+    }
+}
+
+/** Where a product list keeps its sort and filter controls (`COLLECTION_TEMPLATE`): a sticky bar at the top, or a floating one at the bottom. */
+enum class CollectionTemplate(val value: String) {
+    Top("top"), Bottom("bottom");
+
+    companion object {
+        /** The template configured as [value]; the first (top) for anything else. */
+        fun of(value: String): CollectionTemplate = entries.firstOrNull { it.value == value.trim().lowercase() } ?: Top
+    }
 }

@@ -11,12 +11,20 @@ import androidx.datastore.preferences.preferencesDataStoreFile
 import app.storefront.auth.AuthStore
 import app.storefront.auth.TokenCrypto
 import app.storefront.data.Brand
+import app.storefront.data.BuyerStore
 import app.storefront.data.CartStore
+import app.storefront.data.CollectionTemplate
 import app.storefront.data.CustomerAccountApi
+import app.storefront.data.HomeTemplate
+import app.storefront.data.JudgeMe
+import app.storefront.data.RecentlyViewedStore
 import app.storefront.data.Storefront
 import app.storefront.data.StorefrontApi
 import app.storefront.data.WishlistStore
+import app.storefront.data.sampleTransport
 import app.storefront.data.toBrand
+import app.storefront.ui.TabState
+import app.storefront.ui.ToastState
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
@@ -30,8 +38,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 
@@ -41,6 +53,7 @@ class StorefrontApp : Application(), SingletonImageLoader.Factory {
         super.onCreate()
         AppGraph.assets = assets
         AppGraph.wishlist = WishlistStore(prefs("wishlist"), AppGraph.scope)
+        AppGraph.recentlyViewed = RecentlyViewedStore(prefs("recent"), AppGraph.scope)
         AppGraph.auth = AuthStore(
             domain = AppGraph.shopDomain,
             clientId = AppGraph.customerClientId,
@@ -55,6 +68,14 @@ class StorefrontApp : Application(), SingletonImageLoader.Factory {
             AppGraph.storefront,
             prefs("cart"),
             accessToken = { AppGraph.auth.validAccessToken() },
+        )
+        AppGraph.buyer = BuyerStore(
+            AppGraph.storefront,
+            AppGraph.cart,
+            prefs("buyer"),
+            accessToken = { AppGraph.auth.validAccessToken() },
+            companies = { AppGraph.customerAccount.companies() },
+            sample = { AppGraph.sampleAccount.value },
         )
         // Web = the store's own checkout branding (Checkout Kit's default is a generic light/dark theme)
         ShopifyCheckoutSheetKit.configure {
@@ -72,13 +93,18 @@ class StorefrontApp : Application(), SingletonImageLoader.Factory {
                 Log.w("AppGraph", "cart load failed", e)
             }
         }
-        // the stored session, so the Account tab opens signed in
         AppGraph.scope.launch {
+            // the stored session, so the Account tab opens signed in
             try {
                 AppGraph.auth.load()
             } catch (e: Exception) {
                 Log.w("AppGraph", "session load failed", e)
             }
+            // The B2B buyer follows the session: looked up now (when there is a session), after sign-in and each time the
+            // token changes (the Storefront API and the cart hold the token itself), dropped on sign-out. The sample
+            // account shows its company the same way. Latest wins: asking for the token may refresh it, which starts
+            // this over with the new one.
+            combine(AppGraph.auth.tokenChanges, AppGraph.sampleAccount) { _, _ -> }.collectLatest { AppGraph.refreshBuyer() }
         }
     }
 
@@ -102,6 +128,15 @@ object AppGraph {
     val apiVersion: String = BuildConfig.API_VERSION
     val pdpMetafields: String = BuildConfig.PDP_METAFIELDS
 
+    /** The home screen's layout (`HOME_TEMPLATE`); fashion when unset or unknown. */
+    val homeTemplate: HomeTemplate = HomeTemplate.of(BuildConfig.HOME_TEMPLATE)
+
+    /** Where product lists keep sort and filter (`COLLECTION_TEMPLATE`); top when unset or unknown. */
+    val collectionTemplate: CollectionTemplate = CollectionTemplate.of(BuildConfig.COLLECTION_TEMPLATE)
+
+    /** The store's Judge.me public token (`JUDGEME_PUBLIC_TOKEN`); empty hides reviews. */
+    val judgeMeToken: String = BuildConfig.JUDGEME_PUBLIC_TOKEN
+
     internal lateinit var assets: AssetManager
 
     /** The one HTTP client; the Customer Account client reuses it. */
@@ -111,11 +146,18 @@ object AppGraph {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     internal lateinit var wishlist: WishlistStore
+    internal lateinit var recentlyViewed: RecentlyViewedStore
     internal lateinit var cart: CartStore
     internal lateinit var auth: AuthStore
 
+    /** The company a signed-in B2B customer buys for; it puts [storefront] and [cart] in that company's context. */
+    internal lateinit var buyer: BuyerStore
+
+    /** The text of the bundled file `assets/<path>`. */
+    internal fun asset(path: String): String = assets.open(path).bufferedReader().use { it.readText() }
+
     /** The GraphQL document `assets/queries/<name>.graphql` (written by the CLI from contract/queries). */
-    fun document(name: String): String = assets.open("queries/$name.graphql").bufferedReader().use { it.readText() }
+    fun document(name: String): String = asset("queries/$name.graphql")
 
     /** Every Storefront API call, typed; in the device's country and language where the shop sells in them. */
     val storefront: StorefrontApi by lazy {
@@ -123,8 +165,47 @@ object AppGraph {
         StorefrontApi(client::query, Locale.getDefault())
     }
 
-    /** Every Customer Account API call, typed, as the signed-in customer (the session's token, see [AuthStore]). */
-    val customerAccount: CustomerAccountApi by lazy { CustomerAccountApi(auth::customerQuery) }
+    private val liveAccount by lazy { CustomerAccountApi(auth::customerQuery) }
+    private val sampleApi by lazy { CustomerAccountApi(sampleTransport(::asset)) }
+
+    /**
+     * Every Customer Account API call, typed, as the signed-in customer (the session's token, see [AuthStore]). While
+     * [sampleAccount] is on, every call answers its bundled sample instead.
+     */
+    val customerAccount: CustomerAccountApi get() = if (sampleAccount.value) sampleApi else liveAccount
+
+    /** Whether the app carries a sample account (`assets/sample/`): the demo store, which has no customer accounts. */
+    val sampleAvailable: Boolean by lazy { runCatching { assets.open("sample/Customer.sample.json").close() }.isSuccess }
+
+    /**
+     * On: the account screens preview the sample account ("Preview with a sample account", offered when
+     * [sampleAvailable]), nothing is saved. Sign-out turns it off.
+     */
+    val sampleAccount = MutableStateFlow(false)
+
+    /** Whether there is an account to show: a signed-in customer, or the sample account. */
+    val hasAccount: StateFlow<Boolean> by lazy {
+        combine(auth.signedIn, sampleAccount) { signedIn, sample -> signedIn || sample }
+            .stateIn(scope, SharingStarted.Eagerly, auth.signedIn.value || sampleAccount.value)
+    }
+
+    /** Product reviews (Judge.me); null without a [judgeMeToken]: the store then shows none. */
+    val judgeMe: JudgeMe? by lazy { if (judgeMeToken.isBlank()) null else JudgeMe(shopDomain, judgeMeToken, http) }
+
+    /** Sends the shopper to another tab from anywhere: `tabs.select(AppTab.Shop)`. */
+    val tabs = TabState()
+
+    /** Shows a short message over whichever screen is open: `toast.show(message)`. */
+    val toast = ToastState()
+
+    /**
+     * Looks the B2B buyer up again: the company of the signed-in customer (or of the sample account), retail for anyone
+     * else. Run whenever the buyer may have changed, and when the app is back in the foreground (the token may have run
+     * out meanwhile: the refresh asks for a valid one).
+     */
+    internal suspend fun refreshBuyer() {
+        if (auth.signedIn.value || sampleAccount.value) buyer.refresh() else buyer.clear()
+    }
 
     private val brandState = MutableStateFlow<Brand?>(null)
 

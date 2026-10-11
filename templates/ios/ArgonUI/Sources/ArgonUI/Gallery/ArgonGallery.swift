@@ -61,6 +61,9 @@ private struct GalleryContent: View {
     @State private var sheet = false
     @State private var bottomBar = false
     @State private var menuOpen = false
+    @State private var quantity = 2
+    @State private var packs = 6
+    @State private var colour = 0
 
     init() {}
 
@@ -70,7 +73,7 @@ private struct GalleryContent: View {
             LazyVStack(alignment: .leading, spacing: theme.spacing.xxl) {
                 Group { tokens; icons; buttons; choices; fields }
                 Group { selection; pickers; tagSection; badges; containers }
-                Group { progress; list; navigation }
+                Group { commerce; progress; list; navigation }
             }
             .padding(theme.spacing.l)
         }
@@ -340,6 +343,48 @@ private struct GalleryContent: View {
             GallerySection("Divider") {
                 ArgonDivider()
                 ArgonDivider(inset: 16)
+            }
+        }
+    }
+
+    private var commerce: some View {
+        let colours: [(name: String, hex: String?)] = [("Ivory", "#FFFFF0"), ("Rust", "#B7410E"), ("Navy", "#1F2A5C"), ("Print", nil)]
+        return VStack(alignment: .leading, spacing: theme.spacing.xxl) {
+            GallerySection("Rating") {
+                ArgonRating(value: 4.6, count: 128)
+                ArgonRating(value: 3.5, count: 12, size: .m)
+                ArgonRating(value: 5, size: .l)
+            }
+            GallerySection("QuantityStepper") {
+                HStack(spacing: theme.spacing.l) {
+                    ArgonQuantityStepper(value: quantity, onChange: { quantity = $0 }, size: .s)
+                    ArgonQuantityStepper(value: quantity, onChange: { quantity = $0 }, max: 5)
+                    ArgonQuantityStepper(value: 1, onChange: { _ in }, size: .l, isEnabled: false)
+                }
+                ArgonQuantityStepper(value: packs, onChange: { packs = $0 }, min: 6, max: 48, step: 6)
+                caption("Sold in sixes: 6 to 48")
+            }
+            GallerySection("Swatch") {
+                HStack(spacing: theme.spacing.s) {
+                    ForEach(colours.indices, id: \.self) { index in
+                        ArgonSwatch(colorHex: colours[index].hex, label: colours[index].name, size: .s)
+                    }
+                }
+                HStack(spacing: theme.spacing.s) {
+                    ForEach(colours.indices, id: \.self) { index in
+                        ArgonSwatch(colorHex: colours[index].hex, label: colours[index].name, isSelected: colour == index) { colour = index }
+                    }
+                    ArgonSwatch(colorHex: nil, imageUrl: sampleImage, label: "Floral")
+                    ArgonSwatch(colorHex: "#2E7D4F", label: "Forest", isAvailable: false)
+                }
+                HStack(alignment: .top, spacing: theme.spacing.s) {
+                    ForEach(colours.indices, id: \.self) { index in
+                        ArgonSwatch(
+                            colorHex: colours[index].hex, label: colours[index].name, isSelected: colour == index,
+                            isAvailable: index != 2, size: .l
+                        ) { colour = index }
+                    }
+                }
             }
         }
     }

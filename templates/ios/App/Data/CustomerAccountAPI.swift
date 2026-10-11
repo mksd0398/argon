@@ -68,9 +68,23 @@ final class CustomerAccountAPI {
         try await mutate("CustomerEmailMarketingUnsubscribe")
     }
 
-    /// What of order `orderId` can be returned, with the reasons to offer; nil when there is no such order.
-    func returnOptions(_ orderId: String) async throws -> ReturnOptions? {
+    /// What of order `orderId` can be returned, with the reasons to offer and what it costs; nil when there is no such order.
+    func returnOptions(_ orderId: String) async throws -> OrderReturnOptions? {
         try await fetchField(transport, "OrderReturnOptions", ["id": orderId], root: "order")
+    }
+
+    /// The companies the customer buys for (B2B), each with its locations; empty for a retail customer.
+    func companies() async throws -> [CompanyContact] {
+        let customer: ContactsOwner = try await fetchField(transport, "CustomerCompanies", [:], root: "customer")
+        return customer.companyContacts.nodes.compactMap { contact in
+            contact.company.map { CompanyContact(id: contact.id, title: contact.title, company: $0) }
+        }
+    }
+
+    /// The customer's store credit, one account per currency; empty when they have none.
+    func storeCredit() async throws -> [StoreCreditAccount] {
+        let customer: CreditOwner = try await fetchField(transport, "CustomerStoreCredit", [:], root: "customer")
+        return customer.storeCreditAccounts.nodes
     }
 
     func requestReturn(_ orderId: String, lines: [ReturnLineInput]) async throws -> OrderReturn {
@@ -100,6 +114,21 @@ private struct NameInput: Encodable {
 
 private struct OrdersOwner: Decodable {
     let orders: Page<OrderSummary>
+}
+
+private struct ContactsOwner: Decodable {
+    /// A contact whose company the API doesn't give is left out.
+    struct Contact: Decodable {
+        let id: String
+        let title: String?
+        let company: Company?
+    }
+
+    let companyContacts: Nodes<Contact>
+}
+
+private struct CreditOwner: Decodable {
+    let storeCreditAccounts: Nodes<StoreCreditAccount>
 }
 
 private struct AddressesOwner: Decodable {

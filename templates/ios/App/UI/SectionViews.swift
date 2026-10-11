@@ -49,7 +49,7 @@ private struct BannerView: View {
             if let image = image {
                 Color.clear
                     .aspectRatio(ratio(image), contentMode: .fit)
-                    .overlay { RemoteImage(img: image) }
+                    .overlay { StoreImage(image: image) }
                     .overlay { LinearGradient(colors: [.clear, .black.opacity(0.6)], startPoint: .top, endPoint: .bottom) }
             }
             VStack(alignment: .leading, spacing: 8) {
@@ -132,7 +132,7 @@ private struct CollectionsView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 12) {
                     ForEach(items, id: \.id) { collection in
-                        RemoteImage(img: collection.image)
+                        StoreImage(image: collection.image)
                             .frame(width: 140, height: 140)
                             .overlay(alignment: .bottomLeading) {
                                 Text(collection.title)

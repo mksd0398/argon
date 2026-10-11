@@ -172,6 +172,54 @@ class CartStoreTest {
         assertEquals("the cart is kept", cartId, s.cart.value?.id)
     }
 
+    // B2B
+
+    private val location = "gid://shopify/CompanyLocation/1"
+    private val JsonObject.identity get() = getValue("buyerIdentity").toString()
+
+    @Test
+    fun aCompanysCartIsItsFromTheFirstLineToCheckout() = runBlocking {
+        val s = store(token = "tok")
+        s.setBuyer(location)
+        assertEquals("no cart yet: nothing to attach", emptyList<String>(), names)
+
+        s.add("v1", 1)
+        s.checkoutUrl()
+        assertEquals(listOf("CartCreate", "CartBuyerIdentityUpdate"), names)
+        val company = """{"customerAccessToken":"tok","companyLocationId":"$location"}"""
+        assertEquals(company, calls[0].second.getValue("input").jsonObject.identity)
+        assertEquals(company, calls[1].second.identity)
+    }
+
+    @Test
+    fun setBuyerAttachesTheCurrentCartToTheCompany() = runBlocking {
+        val s = store(token = "tok")
+        s.add("v1", 1)
+        assertNull("a retail cart is created without a buyer", calls[0].second.getValue("input").jsonObject["buyerIdentity"])
+
+        s.setBuyer(location)
+        assertEquals(listOf("CartCreate", "CartBuyerIdentityUpdate"), names)
+        assertEquals(cartId, calls[1].second.getValue("cartId").jsonPrimitive.content)
+        assertEquals("""{"customerAccessToken":"tok","companyLocationId":"$location"}""", calls[1].second.identity)
+
+        // back to retail: nothing is sent, and the customer alone is attached at checkout
+        s.setBuyer(null)
+        s.checkoutUrl()
+        assertEquals(listOf("CartCreate", "CartBuyerIdentityUpdate", "CartBuyerIdentityUpdate"), names)
+        assertEquals("""{"customerAccessToken":"tok"}""", calls[2].second.identity)
+    }
+
+    @Test
+    fun aSignedOutShopperHasNoCompanyCart() = runBlocking {
+        val s = store(token = null)
+        s.add("v1", 1)
+        s.setBuyer(location)
+        s.completed()
+        s.add("v1", 1)
+        assertEquals(listOf("CartCreate", "CartCreate"), names)
+        assertNull(calls[1].second.getValue("input").jsonObject["buyerIdentity"])
+    }
+
     @Test
     fun userErrorsAreThrown() = runBlocking {
         val s = store { answer(it, cart = if (it == "CartCreate") null else cartJson, "Not enough stock") }

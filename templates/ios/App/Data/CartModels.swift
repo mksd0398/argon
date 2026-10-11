@@ -16,28 +16,34 @@ struct CartLine: Equatable, Sendable {
     var attributes: [CartAttribute] = []
     /// The discounts on this line, as amounts taken off.
     var discounts: [Money] = []
+    var sku: String? = nil
+    /// The variant's quantity rule: what the line's stepper moves by, and between.
+    var quantityRule: QuantityRule? = nil
+    /// The selling plan the line is bought on ("Deliver every month"); nil for a one-time purchase.
+    var sellingPlanName: String? = nil
+    /// A bundle's parts; empty for any other line.
+    var components: [CartLineComponent] = []
+}
+
+private enum MerchandiseKeys: String, CodingKey {
+    case id, title, sku, image, price, quantityRule, product
 }
 
 extension CartLine: Decodable {
     private enum CodingKeys: String, CodingKey {
-        case id, quantity, attributes, cost, discountAllocations, merchandise
-    }
-
-    private enum MerchandiseKeys: String, CodingKey {
-        case id, title, image, price, product
+        case id, quantity, attributes, cost, discountAllocations, sellingPlanAllocation, merchandise, lineComponents
     }
 
     private struct LineCost: Decodable {
         let totalAmount: Money
     }
 
-    private struct ProductRef: Decodable {
-        let handle: String
-        let title: String
-    }
-
     private struct Allocation: Decodable {
         let discountedAmount: Money
+    }
+
+    private struct PlanAllocation: Decodable {
+        let sellingPlan: SellingPlan
     }
 
     init(from decoder: Decoder) throws {
@@ -45,6 +51,8 @@ extension CartLine: Decodable {
         let variant = try c.nestedContainer(keyedBy: MerchandiseKeys.self, forKey: .merchandise)
         let product = try variant.decode(ProductRef.self, forKey: .product)
         let allocations = try c.decodeIfPresent([Allocation].self, forKey: .discountAllocations) ?? []
+        // only a bundle's line (ComponentizableCartLine) has components
+        let components = try c.decodeIfPresent([VariantLine<CartLineComponent>].self, forKey: .lineComponents) ?? []
         try self.init(
             id: c.decode(String.self, forKey: .id),
             quantity: c.decode(Int.self, forKey: .quantity),
@@ -56,27 +64,63 @@ extension CartLine: Decodable {
             price: variant.decode(Money.self, forKey: .price),
             total: c.decode(LineCost.self, forKey: .cost).totalAmount,
             attributes: c.decodeIfPresent([CartAttribute].self, forKey: .attributes) ?? [],
-            discounts: allocations.map { $0.discountedAmount }
+            discounts: allocations.map { $0.discountedAmount },
+            sku: variant.decodeIfPresent(String.self, forKey: .sku),
+            quantityRule: variant.decodeIfPresent(QuantityRule.self, forKey: .quantityRule),
+            sellingPlanName: c.decodeIfPresent(PlanAllocation.self, forKey: .sellingPlanAllocation)?.sellingPlan.name,
+            components: components.compactMap { $0.line }
         )
     }
 }
 
-/// A cart line node: a `CartLine` when its merchandise is a variant, else nil.
-private struct LineNode: Decodable {
-    let line: CartLine?
+/// A part of a bundle's cart line: `quantity` of a variant.
+struct CartLineComponent: Equatable, Sendable {
+    let id: String
+    let quantity: Int
+    let variantId: String
+    let variantTitle: String
+    let productHandle: String
+    let productTitle: String
+    let image: Img?
+}
+
+extension CartLineComponent: Decodable {
+    private enum CodingKeys: String, CodingKey {
+        case id, quantity, merchandise
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let variant = try c.nestedContainer(keyedBy: MerchandiseKeys.self, forKey: .merchandise)
+        let product = try variant.decode(ProductRef.self, forKey: .product)
+        try self.init(
+            id: c.decode(String.self, forKey: .id),
+            quantity: c.decode(Int.self, forKey: .quantity),
+            variantId: variant.decode(String.self, forKey: .id),
+            variantTitle: variant.decode(String.self, forKey: .title),
+            productHandle: product.handle,
+            productTitle: product.title,
+            image: variant.decodeIfPresent(Img.self, forKey: .image)
+        )
+    }
+}
+
+/// A cart line node (a `CartLine`, or a bundle's `CartLineComponent`): decoded when its merchandise is a variant, else nil.
+private struct VariantLine<Line: Decodable>: Decodable {
+    let line: Line?
 
     private enum CodingKeys: String, CodingKey {
         case merchandise
     }
 
-    private enum MerchandiseKeys: String, CodingKey {
+    private enum TypeKeys: String, CodingKey {
         case typename = "__typename"
     }
 
     init(from decoder: Decoder) throws {
-        let merchandise = try decoder.container(keyedBy: CodingKeys.self).nestedContainer(keyedBy: MerchandiseKeys.self, forKey: .merchandise)
+        let merchandise = try decoder.container(keyedBy: CodingKeys.self).nestedContainer(keyedBy: TypeKeys.self, forKey: .merchandise)
         let isVariant = try merchandise.decode(String.self, forKey: .typename) == "ProductVariant"
-        line = try isVariant ? CartLine(from: decoder) : nil
+        line = try isVariant ? Line(from: decoder) : nil
     }
 }
 
@@ -97,6 +141,9 @@ struct Cart: Equatable, Sendable {
     var deliveryGroups: [CartDeliveryGroup] = []
     /// What Shopify changed or couldn't apply in the mutation that returned this cart (empty from the Cart query).
     var warnings: [CartWarning] = []
+
+    /// The company (and its location) the cart is priced and checked out for; nil for a retail shopper.
+    var purchasingCompany: PurchasingCompany? { buyerIdentity?.purchasingCompany }
 }
 
 extension Cart: Decodable {
@@ -117,7 +164,7 @@ extension Cart: Decodable {
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         let cost = try c.decode(Cost.self, forKey: .cost)
-        let lines: [LineNode] = try c.nodes(.lines)
+        let lines: [VariantLine<CartLine>] = try c.nodes(.lines)
         try self.init(
             id: c.decode(String.self, forKey: .id),
             checkoutUrl: c.decode(String.self, forKey: .checkoutUrl),
@@ -160,6 +207,8 @@ struct CartBuyerIdentity: Decodable, Equatable, Sendable {
     let email: String?
     let phone: String?
     let countryCode: String?
+    /// Set once the cart's buyer is a company contact buying for a location (`CartStore.setBuyer`).
+    var purchasingCompany: PurchasingCompany? = nil
 }
 
 /// A delivery address on the cart; `address` is nil for an address type this app doesn't know.
@@ -250,11 +299,13 @@ struct CartLineUpdateInput: Encodable, Equatable, Sendable {
 }
 
 /// `customerAccessToken` is the Customer Account API access token: it attaches the signed-in customer.
+/// `companyLocationId` is the company location a B2B customer buys for (it needs the token beside it).
 struct CartBuyerIdentityInput: Encodable, Equatable, Sendable {
     var email: String? = nil
     var phone: String? = nil
     var countryCode: String? = nil
     var customerAccessToken: String? = nil
+    var companyLocationId: String? = nil
 }
 
 struct CartInput: Encodable, Equatable, Sendable {

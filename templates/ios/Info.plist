@@ -14,5 +14,11 @@
 	<string>$(API_VERSION)</string>
 	<key>PdpMetafields</key>
 	<string>$(PDP_METAFIELDS)</string>
+	<key>HomeTemplate</key>
+	<string>$(HOME_TEMPLATE)</string>
+	<key>CollectionTemplate</key>
+	<string>$(COLLECTION_TEMPLATE)</string>
+	<key>JudgemePublicToken</key>
+	<string>$(JUDGEME_PUBLIC_TOKEN)</string>
 </dict>
 </plist>

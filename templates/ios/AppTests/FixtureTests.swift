@@ -3,18 +3,19 @@ import XCTest
 
 /// Every contract fixture decoded through its facade method (the transport answers with the fixture), with key fields checked.
 final class FixtureTests: XCTestCase {
-    private static let cartId = "gid://shopify/Cart/c1-7469366f149b403dafd17bc5a9dab879?key=9c19aa7d7298298cf1b25c5af5542807"
+    private static let cartId = "gid://shopify/Cart/c1-4c87091c818643b9a327512a0358dbc4?key=292130afc0a10e41c4b2cbd1a1b0ded3"
     private static let covered: Set<String> = [
-        "Shop", "Localization", "ShopPolicies", "Menu", "Product", "VariantBySelectedOptions", "Catalog", "Products",
-        "ProductRecommendations", "Collection", "Collections", "Search", "PredictiveSearch", "StoreAvailability", "Locations",
-        "Page", "Pages", "Blogs", "Blog", "Article", "Articles", "Metaobject", "Metaobjects", "HomeScreen", "FallbackHome",
+        "Shop", "Localization", "ShopPolicies", "Menu", "Product", "ProductMetafields", "VariantBySelectedOptions", "Catalog",
+        "Products", "ProductRecommendations", "Collection", "Collections", "Search", "PredictiveSearch", "StoreAvailability",
+        "Locations", "Page", "Pages", "Blogs", "Blog", "Article", "Articles", "Metaobject", "Metaobjects", "HomeScreen",
+        "FallbackHome",
         "Cart", "CartCreate", "CartLinesAdd", "CartLinesUpdate", "CartLinesRemove", "CartBuyerIdentityUpdate",
         "CartDiscountCodesUpdate", "CartGiftCardCodesAdd", "CartGiftCardCodesRemove", "CartNoteUpdate", "CartAttributesUpdate",
         "CartDeliveryAddressesAdd", "CartDeliveryAddressesUpdate", "CartDeliveryAddressesRemove",
         "CartSelectedDeliveryOptionsUpdate",
         "Customer", "Orders", "Order", "CustomerAddresses", "CustomerUpdate", "CustomerAddressCreate", "CustomerAddressUpdate",
         "CustomerAddressDelete", "CustomerEmailMarketingSubscribe", "CustomerEmailMarketingUnsubscribe", "OrderReturnOptions",
-        "OrderRequestReturn",
+        "OrderRequestReturn", "CustomerCompanies", "CustomerStoreCredit",
     ]
 
     func testEveryFixtureHasADecodingTest() {
@@ -58,6 +59,12 @@ final class FixtureTests: XCTestCase {
         XCTAssertNil(policies.termsOfSale)
         XCTAssertEqual(policies.subscriptionPolicy?.handle, "subscription-policy")
         XCTAssertNil(policies.subscriptionPolicy?.id, "the subscription policy has no id")
+        XCTAssertEqual(
+            policies.all.map { $0.handle },
+            ["privacy-policy", "terms-of-service", "refund-policy", "shipping-policy", "subscription-policy"]
+        )
+        XCTAssertEqual(policies.policy("shipping-policy")?.title, "Shipping Policy")
+        XCTAssertNil(policies.policy("legal-notice"), "the shop has none")
     }
 
     @MainActor
@@ -79,11 +86,10 @@ final class FixtureTests: XCTestCase {
     @MainActor
     func testProduct() async throws {
         let server = StubServer()
-        let identifiers = [MetafieldIdentifier(namespace: "custom", key: "material")]
-        let found = try await server.storefront().product("men-crewneck", metafields: identifiers)
+        let found = try await server.storefront().product("men-crewneck")
         let product = try XCTUnwrap(found)
-        let sent = server.calls.first?.variables["metafields"] as? [[String: String]]
-        XCTAssertEqual(sent, [["namespace": "custom", "key": "material"]])
+        XCTAssertEqual(server.calls.first?.variables["handle"] as? String, "men-crewneck")
+        XCTAssertNil(server.calls.first?.variables["metafields"], "metafields are asked for apart (ProductMetafields)")
         XCTAssertEqual(product.handle, "men-crewneck")
         XCTAssertEqual(product.vendor, "Mock.shop")
         XCTAssertTrue(product.available)
@@ -98,8 +104,34 @@ final class FixtureTests: XCTestCase {
         XCTAssertEqual(product.media.count, 3)
         XCTAssertEqual(product.images.count, 3, "every media item is an image")
         XCTAssertEqual(product.priceRange.minVariantPrice, Money(amount: "120.0", currencyCode: "CAD"))
-        XCTAssertEqual(product.sellingPlanGroups, [])
-        XCTAssertTrue(product.metafields.isEmpty, "unset metafields come back null and are skipped")
+        XCTAssertNotNil(product.options[0].id, "a product's options have ids (a card's don't)")
+        XCTAssertFalse(product.requiresSellingPlan)
+        XCTAssertEqual(product.tags, ["men", "tops"])
+        XCTAssertNil(product.onlineStoreUrl, "not published to an online store")
+        XCTAssertNil(product.rating, "mock.shop has no reviews")
+        XCTAssertNil(product.ratingCount)
+        XCTAssertNil(product.variants.first?.quantityRule, "the selected variant's details come with variantBySelectedOptions")
+        XCTAssertEqual(product.variants.first?.sellingPlanAllocations, [])
+    }
+
+    @MainActor
+    func testProductMetafields() async throws {
+        let server = StubServer()
+        let api = server.storefront()
+        let identifiers = [MetafieldIdentifier(namespace: "custom", key: "material"), MetafieldIdentifier(namespace: "custom", key: "care")]
+        let metafields = try await api.productMetafields(handle: "men-crewneck", identifiers: identifiers)
+        XCTAssertEqual(
+            metafields,
+            [Metafield(namespace: "custom", key: "material", type: "single_line_text_field", value: "100% organic cotton")],
+            "the one the product has no value for comes back null and is left out"
+        )
+        XCTAssertEqual(server.calls.first?.variables["handle"] as? String, "men-crewneck")
+        let sent = server.calls.first?.variables["metafields"] as? [[String: String]]
+        XCTAssertEqual(sent, [["namespace": "custom", "key": "material"], ["namespace": "custom", "key": "care"]])
+
+        let none = try await api.productMetafields(handle: "men-crewneck", identifiers: [])
+        XCTAssertEqual(none, [])
+        XCTAssertEqual(server.names, ["ProductMetafields"], "nothing to ask for: no request")
     }
 
     @MainActor
@@ -112,10 +144,52 @@ final class FixtureTests: XCTestCase {
         let variant = try XCTUnwrap(found)
         XCTAssertEqual(variant.title, "Small / Olive")
         XCTAssertEqual(variant.options, ["Size": "Small", "Color": "Olive"])
-        XCTAssertNil(variant.sku)
+        XCTAssertEqual(variant.sku, "CREW-S-OLV")
         XCTAssertEqual(variant.price, Money(amount: "120.0", currencyCode: "CAD"))
         let sent = server.calls.first?.variables["selectedOptions"] as? [[String: String]]
         XCTAssertEqual(sent, [["name": "Color", "value": "Olive"], ["name": "Size", "value": "Small"]])
+
+        // the selected variant in full
+        XCTAssertEqual(variant.barcode, "0123456789012")
+        XCTAssertEqual(variant.quantityAvailable, 4)
+        XCTAssertFalse(variant.currentlyNotInStock)
+        XCTAssertEqual(variant.unitPrice, Money(amount: "60.0", currencyCode: "CAD"))
+        XCTAssertEqual(
+            variant.unitPriceMeasurement,
+            UnitPriceMeasurement(measuredType: "COUNT", quantityUnit: "ITEM", quantityValue: 2, referenceUnit: "ITEM", referenceValue: 1)
+        )
+        XCTAssertEqual(variant.quantityRule, QuantityRule(minimum: 2, maximum: 40, increment: 2))
+        XCTAssertEqual(variant.quantityPriceBreaks, [
+            QuantityPriceBreak(minimumQuantity: 10, price: Money(amount: "108.0", currencyCode: "CAD")),
+            QuantityPriceBreak(minimumQuantity: 20, price: Money(amount: "96.0", currencyCode: "CAD")),
+        ])
+        XCTAssertTrue(variant.requiresComponents)
+        XCTAssertEqual(variant.components.map { $0.quantity }, [1, 1])
+        let part = try XCTUnwrap(variant.components.first?.variant)
+        XCTAssertEqual(part.id, "gid://shopify/ProductVariant/43696932126742")
+        XCTAssertEqual(part.title, "Small / Olive")
+        XCTAssertEqual(part.price, Money(amount: "40.0", currencyCode: "CAD"))
+        XCTAssertEqual(part.product, ProductRef(handle: "men-t-shirt", title: "Men's T-shirt"))
+        XCTAssertNotNil(part.image)
+        let bundle = try XCTUnwrap(variant.groupedBy.first)
+        XCTAssertEqual(variant.groupedBy.count, 1)
+        XCTAssertEqual(bundle.id, "gid://shopify/ProductVariant/43696903847958")
+        XCTAssertEqual(bundle.title, "Weekend set")
+        XCTAssertEqual(bundle.price, Money(amount: "180.0", currencyCode: "CAD"))
+        XCTAssertEqual(bundle.product, ProductRef(handle: "hoodie-old", title: "Hoodie"))
+        XCTAssertTrue(bundle.image?.url.hasSuffix("3d4d46da1bdbda2bf52f92987e6d4108770eb0a8f233f63a279849fce731f5af.jpg") == true, "its product's image")
+        XCTAssertEqual(variant.sellingPlanAllocations, [
+            SellingPlanAllocation(
+                sellingPlan: SellingPlan(id: "gid://shopify/SellingPlan/4400001", name: "Deliver every month"),
+                priceAdjustments: [
+                    SellingPlanAllocation.PriceAdjustment(
+                        price: Money(amount: "108.0", currencyCode: "CAD"),
+                        compareAtPrice: Money(amount: "120.0", currencyCode: "CAD"),
+                        perDeliveryPrice: Money(amount: "108.0", currencyCode: "CAD")
+                    ),
+                ]
+            ),
+        ])
     }
 
     @MainActor
@@ -127,14 +201,52 @@ final class FixtureTests: XCTestCase {
         XCTAssertNil(page.items.first?.compareAt, "a 0.0 compare-at price is no discount")
         XCTAssertTrue(page.hasNextPage)
         XCTAssertEqual(page.endCursor, "eyJjIjoicHJpY2UiLCJ2IjoiMTIwLjAiLCJpIjoxMX0")
+
+        // what a card adds to the list
+        let card = try XCTUnwrap(page.items.first)
+        XCTAssertEqual(card.vendor, "Mock.shop")
+        XCTAssertEqual(card.maxPrice, Money(amount: "1000.0", currencyCode: "CAD"))
+        XCTAssertFalse(card.hasPriceRange)
+        XCTAssertEqual(card.options.map { $0.name }, ["Size"])
+        XCTAssertNil(card.options.first?.id, "a card's options carry names and swatches only")
+        XCTAssertEqual(card.colors, [], "no colour option")
+        XCTAssertEqual(card.firstVariant?.id, "gid://shopify/ProductVariant/43696961355798")
+        XCTAssertEqual(card.firstVariant?.available, true)
+        XCTAssertEqual(card.firstVariant?.quantityRule, QuantityRule(minimum: 0, maximum: nil, increment: 0))
+        XCTAssertEqual(card.firstVariant?.quantityRule?.min, 1, "mock.shop's 0 means 1")
+        XCTAssertNil(card.quickAddVariantId, "there is a size to choose")
+        XCTAssertNil(card.rating)
+        XCTAssertNil(card.ratingCount)
+        XCTAssertEqual(page.items[1].colors.count, 3)
     }
 
     @MainActor
     func testProducts() async throws {
         let server = StubServer()
-        let cards = try await server.storefront().productsByIds(["gid://shopify/Product/1"])
-        XCTAssertEqual(cards, [])
-        XCTAssertEqual(server.calls.first?.variables["ids"] as? [String], ["gid://shopify/Product/1"])
+        let ids = ["gid://shopify/Product/7982905098262", "gid://shopify/Product/1", "gid://shopify/Product/7982856273942"]
+        let cards = try await server.storefront().productsByIds(ids)
+        XCTAssertEqual(server.calls.first?.variables["ids"] as? [String], ids)
+        XCTAssertEqual(cards.map { $0.handle }, ["men-crewneck", "sweatpants"], "the id that is no product comes back null and is left out")
+
+        let crewneck = try XCTUnwrap(cards.first)
+        XCTAssertEqual(try XCTUnwrap(crewneck.rating), 4.6, accuracy: 0.0001)
+        XCTAssertEqual(crewneck.ratingCount, 128)
+        XCTAssertEqual(
+            crewneck.firstVariant,
+            CardVariant(
+                id: "gid://shopify/ProductVariant/43696905224214",
+                sku: "CREW-S-GRN",
+                available: true,
+                quantityRule: QuantityRule(minimum: 2, maximum: 40, increment: 2)
+            )
+        )
+        XCTAssertEqual(crewneck.colors.map { $0.name }, ["Green", "Olive", "Ocean"])
+        XCTAssertEqual(crewneck.colors.first?.swatch, Swatch(color: "#3F6B4F", image: nil))
+        XCTAssertFalse(crewneck.hasPriceRange)
+        XCTAssertNil(crewneck.quickAddVariantId, "sizes and colours to choose")
+        XCTAssertTrue(cards[1].hasPriceRange, "35 to 42")
+        XCTAssertNil(cards[1].rating)
+        XCTAssertEqual(cards[1].firstVariant?.sku, "")
     }
 
     @MainActor
@@ -150,10 +262,24 @@ final class FixtureTests: XCTestCase {
         XCTAssertEqual(collection.title, "Men")
         XCTAssertFalse(collection.description.isEmpty)
         XCTAssertNotNil(collection.image)
-        XCTAssertEqual(collection.products.filters, [])
         XCTAssertEqual(collection.products.items.count, 3)
         XCTAssertTrue(collection.products.hasNextPage)
         XCTAssertEqual(collection.products.endCursor, "eyJjIjoicG9zaXRpb24iLCJ2Ijo0LCJpIjo4MjYwfQ")
+        XCTAssertEqual(collection.products.items.first?.colors.first?.swatch?.color, "#81a69b")
+
+        let filters = collection.products.filters
+        XCTAssertEqual(filters.map { $0.id }, ["filter.v.availability", "filter.v.price", "filter.v.option.color", "filter.v.option.size"])
+        XCTAssertEqual(filters.map { $0.type }, ["LIST", "PRICE_RANGE", "LIST", "LIST"])
+        XCTAssertEqual(filters.map { $0.presentation }, ["TEXT", "TEXT", "SWATCH", "TEXT"])
+        let color = filters[2]
+        XCTAssertEqual(color.values.map { $0.label }, ["Green", "Olive", "Ocean"])
+        XCTAssertEqual(color.values[0].count, 9)
+        XCTAssertEqual(color.values[0].input, #"{"variantOption":{"name":"color","value":"Green"}}"#)
+        XCTAssertEqual(color.values[0].swatch, Swatch(color: "#3F6B4F", image: nil))
+        XCTAssertNil(color.values[1].swatch?.color)
+        XCTAssertEqual(color.values[1].swatch?.image?.width, 4096, "a swatch that is an image")
+        XCTAssertNil(color.values[2].swatch, "the store gave this value no swatch")
+        XCTAssertNil(filters[0].values[0].swatch)
     }
 
     @MainActor
@@ -299,6 +425,8 @@ final class FixtureTests: XCTestCase {
         let collections = try await StubServer().storefront().fallbackHome()
         XCTAssertEqual(collections.map { $0.handle }, ["men", "women", "unisex"])
         XCTAssertEqual(collections.map { $0.products.count }, [3, 3, 3])
+        XCTAssertEqual(collections.first?.products.first?.vendor, "Mock.shop")
+        XCTAssertEqual(collections.first?.products.first?.colors.map { $0.name }, ["Green", "Olive", "Ocean"])
     }
 
     // MARK: Cart
@@ -320,6 +448,13 @@ final class FixtureTests: XCTestCase {
         XCTAssertEqual(cart.buyerIdentity?.countryCode, "CA")
         XCTAssertEqual(cart.deliveryGroups, [])
         XCTAssertEqual(cart.warnings, [], "warnings come with mutations only")
+        XCTAssertNil(cart.purchasingCompany, "a retail cart")
+        let line = try XCTUnwrap(cart.lines.first)
+        XCTAssertEqual(line.id, "gid://shopify/CartLine/54972")
+        XCTAssertEqual(line.sku, "")
+        XCTAssertEqual(line.quantityRule, QuantityRule(minimum: 0, maximum: nil, increment: 0))
+        XCTAssertNil(line.sellingPlanName, "a one-time purchase")
+        XCTAssertEqual(line.components, [], "not a bundle")
     }
 
     @MainActor
@@ -464,34 +599,149 @@ final class FixtureTests: XCTestCase {
         let variables = try XCTUnwrap(server.calls.first?.variables)
         XCTAssertEqual(variables["reverse"] as? Bool, true, "newest first")
         XCTAssertEqual(variables["first"] as? Int, 20)
-        XCTAssertEqual(page.items.map { $0.name }, ["#1002", "#1001"])
-        XCTAssertEqual(page.items.first?.total, Money(amount: "130.0", currencyCode: "CAD"))
-        XCTAssertEqual(page.items.first?.number, 1002)
-        XCTAssertEqual(page.items.first?.images.count, 1)
-        XCTAssertEqual(page.items.last?.images, [], "a line without an image")
-        XCTAssertNotNil(page.items.last?.cancelledAt)
-        XCTAssertTrue(page.hasNextPage)
-        XCTAssertEqual(page.endCursor, "eyJsYXN0X2lkIjo2MDAwMDAxfQ==")
+        XCTAssertEqual(page.items.map { $0.name }, ["#1005", "#1004", "#1003", "#1002"])
+        XCTAssertFalse(page.hasNextPage)
+        XCTAssertEqual(page.endCursor, "eyJsYXN0X2lkIjoxMDAyfQ==")
+
+        let shipping = page.items[0]
+        XCTAssertEqual(shipping.total, Money(amount: "158.9", currencyCode: "CAD"))
+        XCTAssertEqual(shipping.number, 1005)
+        XCTAssertEqual(shipping.financialStatus, "PAID")
+        XCTAssertEqual(shipping.fulfillmentStatus, "IN_PROGRESS")
+        XCTAssertEqual(shipping.images.count, 2)
+        XCTAssertEqual(shipping.titles, ["Half Zip", "Workout Shirt"])
+        XCTAssertEqual(shipping.itemCount, 4)
+        XCTAssertEqual(shipping.latestShipmentStatus, "IN_TRANSIT")
+        XCTAssertEqual(shipping.estimatedDeliveryAt, "2026-10-14T18:00:00Z")
+        XCTAssertNil(shipping.latestFulfillmentDeliveryDate, "not delivered yet")
+
+        let delivered = page.items[1]
+        XCTAssertEqual(delivered.latestShipmentStatus, "DELIVERED")
+        XCTAssertNil(delivered.estimatedDeliveryAt)
+        XCTAssertEqual(delivered.latestFulfillmentDeliveryDate, "2026-09-25T13:05:00Z")
+        XCTAssertEqual(delivered.images.count, 3)
+
+        XCTAssertNil(page.items[2].latestShipmentStatus, "nothing has shipped")
+        XCTAssertEqual(page.items[2].fulfillmentStatus, "UNFULFILLED")
+        XCTAssertNil(page.items[2].cancelledAt)
+        XCTAssertEqual(page.items[3].cancelledAt, "2026-07-14T16:00:00Z")
+        XCTAssertEqual(page.items[3].itemCount, 1)
     }
 
     @MainActor
     func testOrder() async throws {
-        let found = try await StubServer().customerAccount().order("gid://shopify/Order/6000002")
+        let found = try await StubServer().customerAccount().order("gid://shopify/Order/6001004")
         let order = try XCTUnwrap(found)
-        XCTAssertEqual(order.name, "#1002")
-        XCTAssertEqual(order.confirmationNumber, "X7K2P9QZ1")
+        let cad = { (amount: String) in Money(amount: amount, currencyCode: "CAD") }
+        XCTAssertEqual(order.name, "#1004")
+        XCTAssertEqual(order.number, 1004)
+        XCTAssertEqual(order.confirmationNumber, "XK4R7T2PQ")
+        XCTAssertEqual(order.financialStatus, "PARTIALLY_REFUNDED")
         XCTAssertEqual(order.fulfillmentStatus, "FULFILLED")
-        XCTAssertEqual(order.subtotal, Money(amount: "108.0", currencyCode: "CAD"))
-        XCTAssertEqual(order.total, Money(amount: "130.0", currencyCode: "CAD"))
+        XCTAssertNil(order.cancelledAt)
+        XCTAssertEqual(order.statusPageUrl, "https://shopify.com/68817551382/account/orders/6001004")
+        XCTAssertEqual(order.subtotal, cad("230.0"))
+        XCTAssertEqual(order.totalShipping, cad("12.0"))
+        XCTAssertEqual(order.totalTax, cad("29.9"))
+        XCTAssertEqual(order.total, cad("271.9"))
+        XCTAssertEqual(order.totalRefunded, cad("35.0"))
         XCTAssertEqual(order.discounts, [.percentage(10)])
         XCTAssertEqual(order.shippingAddress?.zoneCode, "ON")
-        XCTAssertEqual(order.lines.first?.title, "Men's Crewneck")
-        XCTAssertEqual(order.lines.first?.price, Money(amount: "120.0", currencyCode: "CAD"))
-        XCTAssertEqual(order.lines.first?.total, Money(amount: "108.0", currencyCode: "CAD"))
+        XCTAssertEqual(order.billingAddress?.formatted.count, 5)
+
+        XCTAssertFalse(order.edited)
+        XCTAssertTrue(order.requiresShipping)
+        XCTAssertEqual(order.note, "Please leave the parcel at the front desk.")
+        XCTAssertEqual(order.poNumber, "PO-2291")
+        XCTAssertEqual(
+            order.purchasingCompany,
+            PurchasingCompany(
+                company: Company(id: "gid://shopify/Company/9100001", name: "Analytical Engines Ltd"),
+                location: CompanyLocation(id: "gid://shopify/CompanyLocation/9200001", name: "Ottawa head office")
+            )
+        )
+        XCTAssertEqual(order.shippingLine, OrderShippingLine(title: "Standard shipping", originalPrice: cad("12.0")))
+        XCTAssertEqual(
+            order.paymentInformation,
+            OrderPaymentInformation(
+                paymentStatus: "PARTIALLY_REFUNDED",
+                totalPaidAmount: cad("271.9"),
+                totalOutstandingAmount: cad("0.0"),
+                paymentCollectionUrl: nil,
+                paymentTerms: PaymentTerms(paymentTermsName: "Net 30", nextDueAt: "2026-10-21T09:40:00Z", overdue: false)
+            )
+        )
+        XCTAssertEqual(order.transactions, [
+            OrderTransaction(
+                id: "gid://shopify/OrderTransaction/7100001", kind: "SALE", status: "SUCCESS", type: "CARD",
+                processedAt: "2026-09-21T09:40:00Z", amount: cad("271.9"), cardBrand: "visa", last4: "4242"
+            ),
+            OrderTransaction(
+                id: "gid://shopify/OrderTransaction/7100002", kind: "REFUND", status: "SUCCESS", type: "CARD",
+                processedAt: "2026-10-02T10:15:00Z", amount: cad("35.0"), cardBrand: "visa", last4: "4242"
+            ),
+        ])
+
+        XCTAssertEqual(order.lines.map { $0.title }, ["Men's Crewneck", "Sweatpants", "Men's T-shirt"])
+        let line = try XCTUnwrap(order.lines.first)
+        XCTAssertEqual(line.id, "gid://shopify/LineItem/5000001")
+        XCTAssertEqual(line.variantTitle, "Medium / Olive")
+        XCTAssertEqual(line.sku, "MENCREWNECK-MO")
+        XCTAssertEqual(line.quantity, 1)
+        XCTAssertEqual(line.refundableQuantity, 1)
+        XCTAssertEqual(line.price, cad("120.0"))
+        XCTAssertEqual(line.total, cad("120.0"))
+        XCTAssertEqual(line.totalDiscount, cad("0.0"))
+        XCTAssertEqual(line.variantId, "gid://shopify/ProductVariant/43696905224214")
+        XCTAssertNotNil(line.image)
+        XCTAssertEqual(order.lines[1].refundableQuantity, 0, "already returned")
+
+        XCTAssertEqual(order.fulfillments.count, 1)
         let fulfillment = try XCTUnwrap(order.fulfillments.first)
         XCTAssertEqual(fulfillment.status, "SUCCESS")
-        XCTAssertEqual(fulfillment.tracking.first?.company, "Canada Post")
-        XCTAssertEqual(fulfillment.lines, [FulfillmentLine(lineItemId: "gid://shopify/LineItem/5000001", quantity: 1)])
+        XCTAssertEqual(fulfillment.latestShipmentStatus, "DELIVERED")
+        XCTAssertEqual(fulfillment.estimatedDeliveryAt, "2026-09-25T18:00:00Z")
+        XCTAssertFalse(fulfillment.isPickedUp)
+        XCTAssertEqual(fulfillment.tracking, [
+            TrackingInfo(
+                company: "Canada Post",
+                number: "7023210039414604",
+                url: "https://www.canadapost-postescanada.ca/track-reperage/en#/details/7023210039414604"
+            ),
+        ])
+        XCTAssertEqual(fulfillment.events.map { $0.status }, ["CONFIRMED", "IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED"])
+        XCTAssertEqual(fulfillment.events.last?.happenedAt, "2026-09-25T13:05:00Z")
+        XCTAssertEqual(fulfillment.lines, [
+            FulfillmentLine(lineItemId: "gid://shopify/LineItem/5000001", quantity: 1),
+            FulfillmentLine(lineItemId: "gid://shopify/LineItem/5000002", quantity: 2),
+            FulfillmentLine(lineItemId: "gid://shopify/LineItem/5000003", quantity: 1),
+        ])
+
+        XCTAssertEqual(order.refunds, [
+            OrderRefund(id: "gid://shopify/Refund/7300001", createdAt: "2026-10-02T10:15:00Z", returnName: "#1004-R1", totalRefunded: cad("35.0")),
+        ])
+        XCTAssertEqual(order.returns.count, 1)
+        let returned = try XCTUnwrap(order.returns.first)
+        XCTAssertEqual(returned.id, "gid://shopify/Return/3000001")
+        XCTAssertEqual(returned.name, "#1004-R1")
+        XCTAssertEqual(returned.status, "CLOSED")
+        XCTAssertEqual(returned.createdAt, "2026-09-27T17:20:00Z")
+        XCTAssertEqual(returned.closedAt, "2026-10-02T10:15:00Z")
+        XCTAssertNil(returned.decline)
+        XCTAssertEqual(returned.lines.count, 1)
+        let returnLine = try XCTUnwrap(returned.lines.first)
+        XCTAssertEqual(returnLine.id, "gid://shopify/ReturnLineItem/3100001")
+        XCTAssertEqual(returnLine.quantity, 2)
+        XCTAssertEqual(returnLine.reason, "Size was too small")
+        XCTAssertEqual(returnLine.lineItemId, "gid://shopify/LineItem/5000002")
+        XCTAssertEqual(returnLine.title, "Sweatpants")
+        XCTAssertEqual(returnLine.variantTitle, "Medium / Green")
+        XCTAssertNotNil(returnLine.image)
+        XCTAssertEqual(returned.exchangeLines.map { $0.id }, ["gid://shopify/ExchangeLineItem/3200001"])
+        XCTAssertEqual(returned.exchangeLines.first?.title, "Sweatpants")
+        XCTAssertEqual(returned.exchangeLines.first?.variantTitle, "Large / Green")
+        XCTAssertEqual(returned.exchangeLines.first?.quantity, 1)
+        XCTAssertTrue(order.hasReturnableItems)
     }
 
     @MainActor
@@ -564,23 +814,81 @@ final class FixtureTests: XCTestCase {
 
     @MainActor
     func testOrderReturnOptions() async throws {
-        let found = try await StubServer().customerAccount().returnOptions("gid://shopify/Order/6000002")
+        let server = StubServer()
+        let found = try await server.customerAccount().returnOptions("gid://shopify/Order/6001004")
         let options = try XCTUnwrap(found)
-        XCTAssertEqual(options.orderId, "gid://shopify/Order/6000002")
+        XCTAssertEqual(server.calls.first?.variables["id"] as? String, "gid://shopify/Order/6001004")
+        XCTAssertEqual(options.orderId, "gid://shopify/Order/6001004")
+        XCTAssertEqual(options.orderName, "#1004")
+        XCTAssertFalse(options.hasRestockingFee)
+        XCTAssertTrue(options.hasReturnShippingFee)
+        XCTAssertEqual(options.returnShippingMethods, ["MERCHANT_PROVIDED_LABEL"])
+        XCTAssertEqual(options.returnShippingMethodNote, "We email a prepaid label once the return is approved.")
+        XCTAssertEqual(options.fees, [
+            ReturnFee(kind: "ReturnShippingFee", title: "Return shipping", amount: Money(amount: "8.0", currencyCode: "CAD")),
+        ])
+        XCTAssertEqual(options.nonReturnableSummary, "Sweatpants were already returned.")
+
+        XCTAssertEqual(options.returnableItems.map { $0.lineItemId }, ["gid://shopify/LineItem/5000001", "gid://shopify/LineItem/5000003"])
         let item = try XCTUnwrap(options.returnableItems.first)
-        XCTAssertEqual(item.lineItemId, "gid://shopify/LineItem/5000001")
         XCTAssertEqual(item.quantity, 1)
-        XCTAssertEqual(item.reasons.map { $0.handle }, ["size-too-small", "not-as-described"])
-        XCTAssertEqual(options.returns, [])
+        XCTAssertEqual(item.title, "Men's Crewneck")
+        XCTAssertEqual(item.variantTitle, "Medium / Olive")
+        XCTAssertEqual(item.sku, "MENCREWNECK-MO")
+        XCTAssertEqual(item.productId, "gid://shopify/Product/7982905098262")
+        XCTAssertEqual(item.variantId, "gid://shopify/ProductVariant/43696905224214")
+        XCTAssertEqual(item.price, Money(amount: "120.0", currencyCode: "CAD"))
+        XCTAssertNotNil(item.image)
+        XCTAssertEqual(item.reasons.map { $0.handle }, ["size-too-small", "size-too-large", "not-as-described", "changed-my-mind", "damaged"])
+        XCTAssertEqual(item.reasons.first, ReturnReason(id: "gid://shopify/ReturnReasonDefinition/1", handle: "size-too-small", name: "Size was too small"))
+        XCTAssertEqual(options.returns, [
+            OrderReturn(id: "gid://shopify/Return/3000001", name: "#1004-R1", status: "CLOSED", createdAt: "2026-09-27T17:20:00Z"),
+        ])
     }
 
     @MainActor
     func testOrderRequestReturn() async throws {
         let server = StubServer()
-        let line = ReturnLineInput(lineItemId: "gid://shopify/LineItem/5000001", quantity: 1, returnReasonDefinitionId: "gid://shopify/ReturnReasonDefinition/1")
-        let requested = try await server.customerAccount().requestReturn("gid://shopify/Order/6000002", lines: [line])
+        let line = ReturnLineInput(
+            lineItemId: "gid://shopify/LineItem/5000001",
+            quantity: 1,
+            returnReasonDefinitionId: "gid://shopify/ReturnReasonDefinition/1",
+            customerNote: "Exchange for: Men's Crewneck - Large / Olive (SKU MENCREWNECK-LO)"
+        )
+        let requested = try await server.customerAccount().requestReturn("gid://shopify/Order/6001004", lines: [line])
+        XCTAssertEqual(server.calls.first?.variables["orderId"] as? String, "gid://shopify/Order/6001004")
         let sent = (server.calls.first?.variables["requestedLineItems"] as? [[String: Any]])?.first
+        XCTAssertEqual(sent?["lineItemId"] as? String, "gid://shopify/LineItem/5000001")
         XCTAssertEqual(sent?["quantity"] as? Int, 1)
-        XCTAssertEqual(requested, OrderReturn(id: "gid://shopify/Return/3000001", name: "#1002-R1", status: "REQUESTED"))
+        XCTAssertEqual(sent?["returnReasonDefinitionId"] as? String, "gid://shopify/ReturnReasonDefinition/1")
+        XCTAssertEqual(sent?["customerNote"] as? String, "Exchange for: Men's Crewneck - Large / Olive (SKU MENCREWNECK-LO)")
+        XCTAssertEqual(requested, OrderReturn(id: "gid://shopify/Return/3000002", name: "#1004-R2", status: "REQUESTED"))
+    }
+
+    @MainActor
+    func testCustomerCompanies() async throws {
+        let contacts = try await StubServer().customerAccount().companies()
+        XCTAssertEqual(contacts, [
+            CompanyContact(
+                id: "gid://shopify/CompanyContact/9000001",
+                title: "Purchasing lead",
+                company: Company(
+                    id: "gid://shopify/Company/9100001",
+                    name: "Analytical Engines Ltd",
+                    locations: [
+                        CompanyLocation(id: "gid://shopify/CompanyLocation/9200001", name: "Ottawa head office"),
+                        CompanyLocation(id: "gid://shopify/CompanyLocation/9200002", name: "Toronto warehouse"),
+                    ]
+                )
+            ),
+        ])
+    }
+
+    @MainActor
+    func testCustomerStoreCredit() async throws {
+        let accounts = try await StubServer().customerAccount().storeCredit()
+        XCTAssertEqual(accounts, [
+            StoreCreditAccount(id: "gid://shopify/StoreCreditAccount/9300001", balance: Money(amount: "25.0", currencyCode: "CAD")),
+        ])
     }
 }

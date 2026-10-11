@@ -80,6 +80,40 @@ final class StorefrontContextTests: XCTestCase {
     }
 
     @MainActor
+    func testTheBuyerGoesWithEveryStorefrontOperationAndForgetsWhatWasKept() async throws {
+        let server = StubServer()
+        let api = server.storefront()
+        _ = try await api.shop()
+        XCTAssertNil(server.calls[0].variables["buyer"], "no buyer: a retail shopper")
+
+        let buyer = Buyer(customerAccessToken: "tok", companyLocationId: "gid://shopify/CompanyLocation/1")
+        api.buyer = buyer
+        _ = try await api.shop()
+        _ = try await api.products()
+        _ = try await api.cart("gid://shopify/Cart/1")
+        XCTAssertEqual(server.names, ["Shop", "Shop", "Catalog", "Cart"], "the shop kept for a retail shopper isn't the buyer's")
+        for call in server.calls.dropFirst() {
+            XCTAssertEqual(
+                call.variables["buyer"] as? [String: String],
+                ["customerAccessToken": "tok", "companyLocationId": "gid://shopify/CompanyLocation/1"],
+                call.name
+            )
+        }
+
+        api.buyer = buyer
+        _ = try await api.shop()
+        XCTAssertEqual(server.names.count, 4, "the same buyer keeps what was kept")
+
+        api.buyer = Buyer(customerAccessToken: "tok")
+        _ = try await api.shop()
+        XCTAssertEqual(server.calls.last?.variables["buyer"] as? [String: String], ["customerAccessToken": "tok"], "no location: left out")
+        api.buyer = nil
+        _ = try await api.shop()
+        XCTAssertEqual(server.names.count, 6)
+        XCTAssertNil(server.calls.last?.variables["buyer"])
+    }
+
+    @MainActor
     func testProductsAreNotKept() async throws {
         let server = StubServer()
         let api = server.storefront()
@@ -102,6 +136,91 @@ final class APIErrorTests: XCTestCase {
         guard case let .graphql(messages)? = error else { return XCTFail("\(String(describing: error))") }
         XCTAssertEqual(messages, ["Throttled", "Unknown error"])
         XCTAssertEqual(error?.localizedDescription, "Throttled\nUnknown error")
+    }
+
+    // MARK: Fields the token may not read (ACCESS_DENIED)
+
+    /// `data` beside `errors`, decoded the way the facades decode responses.
+    private func answer(_ data: String, errors: String...) throws -> [String: Int?] {
+        let body = "{\"data\":\(data),\"errors\":[\(errors.joined(separator: ","))]}"
+        return try decodeResponse([String: Int?].self, from: Data(body.utf8), operation: "Test")
+    }
+
+    /// An ACCESS_DENIED error about the field at `path` (JSON array items).
+    private func denied(_ path: String, _ message: String = "Access denied for a field.") -> String {
+        "{\"message\":\"\(message)\",\"path\":[\(path)],\"extensions\":{\"code\":\"ACCESS_DENIED\"}}"
+    }
+
+    /// The messages of the ArgonAPIError.graphql `body` throws; nil when it throws anything else, or nothing.
+    private func refusal(_ body: () throws -> [String: Int?]) -> [String]? {
+        do {
+            _ = try body()
+            return nil
+        } catch ArgonAPIError.graphql(let messages) {
+            return messages
+        } catch {
+            return nil
+        }
+    }
+
+    func testDeniedFieldsUnderRootsThatCameBackLeaveTheDataUsable() throws {
+        let one = try answer(#"{"product":1,"shop":null}"#, errors: denied(#""product","variants","nodes",0,"quantityAvailable""#))
+        XCTAssertEqual(one, ["product": 1, "shop": nil], "a null root nobody was denied doesn't matter")
+        let several = try answer(
+            #"{"products":3,"collection":7}"#,
+            errors: denied(#""products","nodes",0,"rating""#), denied(#""products","nodes",1,"rating""#), denied(#""collection","metafield""#)
+        )
+        XCTAssertEqual(several, ["products": 3, "collection": 7])
+    }
+
+    func testADeniedRootFieldIsStillRefused() {
+        // the home screen's metaobject without metaobject access: nothing to show, so the fallback home takes over
+        XCTAssertEqual(
+            refusal { try answer(#"{"metaobject":null}"#, errors: denied(#""metaobject""#, "Access denied for metaobject field.")) },
+            ["Access denied for metaobject field."]
+        )
+        // a denied non-null field takes its whole root with it
+        XCTAssertEqual(
+            refusal { try answer(#"{"product":null,"shop":1}"#, errors: denied(#""product","metafields""#)) },
+            ["Access denied for a field."]
+        )
+    }
+
+    func testAccessDeniedBesideAnyOtherErrorIsRefused() {
+        XCTAssertEqual(
+            refusal { try answer(#"{"product":1}"#, errors: denied(#""product","rating""#), #"{"message":"Throttled","extensions":{"code":"THROTTLED"}}"#) },
+            ["Access denied for a field.", "Throttled"]
+        )
+        XCTAssertEqual(refusal { try answer(#"{"product":1}"#, errors: #"{"message":"Internal error"}"#) }, ["Internal error"])
+    }
+
+    func testAccessDeniedThatCantBePlacedIsRefused() {
+        let noPath = #"{"message":"Access denied","extensions":{"code":"ACCESS_DENIED"}}"#
+        XCTAssertEqual(refusal { try answer(#"{"product":1}"#, errors: noPath) }, ["Access denied"])
+        XCTAssertEqual(refusal { try answer(#"{"product":1}"#, errors: denied("0")) }, ["Access denied for a field."], "a path that starts with no field")
+        XCTAssertEqual(refusal { try answer(#"{"product":1}"#, errors: denied(#""shop","name""#)) }, ["Access denied for a field."], "a root that isn't in the data")
+        XCTAssertEqual(refusal { try answer("null", errors: denied(#""product","rating""#)) }, ["Access denied for a field."], "no data at all")
+    }
+
+    @MainActor
+    func testAVariantWhoseStockTheTokenMayNotReadStillLoads() async throws {
+        var data = try fixture("VariantBySelectedOptions")
+        var product = try XCTUnwrap(data["product"] as? [String: Any])
+        var variant = try XCTUnwrap(product["variantBySelectedOptions"] as? [String: Any])
+        variant["quantityAvailable"] = NSNull()
+        product["variantBySelectedOptions"] = variant
+        data["product"] = product
+        let error: [String: Any] = [
+            "message": "Access denied for quantityAvailable field. Required access: `unauthenticated_read_product_inventory` access scope.",
+            "path": ["product", "variantBySelectedOptions", "quantityAvailable"],
+            "extensions": ["code": "ACCESS_DENIED"],
+        ]
+        let body = String(decoding: try JSONSerialization.data(withJSONObject: ["data": data, "errors": [error]]), as: UTF8.self)
+        let api = StubServer(reply: { _, _ in body }).storefront()
+        let found = try await api.variantBySelectedOptions(productHandle: "men-crewneck", options: ["Size": "Small", "Color": "Olive"])
+        XCTAssertEqual(found?.title, "Small / Olive")
+        XCTAssertNil(found?.quantityAvailable, "no stock count, not a broken page")
+        XCTAssertEqual(found?.quantityRule?.min, 2)
     }
 
     @MainActor
@@ -152,7 +271,7 @@ final class APIErrorTests: XCTestCase {
             CartWarning(
                 code: "DISCOUNT_NOT_FOUND",
                 message: "Enter a valid discount code",
-                target: "gid://shopify/Cart/c1-7469366f149b403dafd17bc5a9dab879?key=9c19aa7d7298298cf1b25c5af5542807"
+                target: "gid://shopify/Cart/c1-4c87091c818643b9a327512a0358dbc4?key=292130afc0a10e41c4b2cbd1a1b0ded3"
             ),
         ])
     }
@@ -348,6 +467,41 @@ final class PolymorphicDecodingTests: XCTestCase {
         lines.append(["__typename": "CartLine", "id": "gid://shopify/CartLine/2", "quantity": 1, "merchandise": ["__typename": "GiftCard"]])
         cart["lines"] = ["nodes": lines]
         let text = String(decoding: try JSONSerialization.data(withJSONObject: cart), as: UTF8.self)
-        XCTAssertEqual(try decoded(Cart.self, text).lines.map { $0.id }, ["gid://shopify/CartLine/49959"])
+        XCTAssertEqual(try decoded(Cart.self, text).lines.map { $0.id }, ["gid://shopify/CartLine/54972"])
+    }
+
+    func testACartLineOnASellingPlanAndABundlesParts() throws {
+        var cart = try XCTUnwrap(try fixture("Cart")["cart"] as? [String: Any])
+        var lines = try XCTUnwrap((cart["lines"] as? [String: Any])?["nodes"] as? [[String: Any]])
+        let image: [String: Any] = ["url": "https://cdn.test/tee.jpg", "altText": NSNull(), "width": 10, "height": 10]
+        let tee: [String: Any] = [
+            "__typename": "ProductVariant", "id": "v-tee", "title": "Small", "image": image,
+            "product": ["handle": "tee", "title": "Tee"],
+        ]
+        lines[0]["__typename"] = "ComponentizableCartLine"
+        lines[0]["sellingPlanAllocation"] = ["sellingPlan": ["id": "gid://shopify/SellingPlan/1", "name": "Deliver every month"]]
+        lines[0]["lineComponents"] = [
+            ["id": "gid://shopify/CartLine/part-1", "quantity": 2, "merchandise": tee],
+            ["id": "gid://shopify/CartLine/part-2", "quantity": 1, "merchandise": ["__typename": "GiftCard"]],
+        ]
+        cart["lines"] = ["nodes": lines]
+        cart["buyerIdentity"] = [
+            "email": NSNull(), "phone": NSNull(), "countryCode": "CA",
+            "purchasingCompany": ["company": ["id": "c1", "name": "Analytical Engines Ltd"], "location": ["id": "l1", "name": "Ottawa head office"]],
+        ]
+        let text = String(decoding: try JSONSerialization.data(withJSONObject: cart), as: UTF8.self)
+        let decodedCart = try decoded(Cart.self, text)
+        let line = try XCTUnwrap(decodedCart.lines.first)
+        XCTAssertEqual(line.sellingPlanName, "Deliver every month")
+        XCTAssertEqual(line.components, [
+            CartLineComponent(
+                id: "gid://shopify/CartLine/part-1", quantity: 2, variantId: "v-tee", variantTitle: "Small",
+                productHandle: "tee", productTitle: "Tee", image: Img(url: "https://cdn.test/tee.jpg", alt: nil, width: 10, height: 10)
+            ),
+        ], "a part that isn't a variant is left out")
+        XCTAssertEqual(
+            decodedCart.purchasingCompany,
+            PurchasingCompany(company: Company(id: "c1", name: "Analytical Engines Ltd"), location: CompanyLocation(id: "l1", name: "Ottawa head office"))
+        )
     }
 }

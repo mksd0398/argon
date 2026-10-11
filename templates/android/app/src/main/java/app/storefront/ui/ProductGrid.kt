@@ -41,7 +41,7 @@ fun ProductGrid(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        items(items, key = { it.id }) { ProductCardView(it, onClick = { onOpen(it) }) }
+        items(items, key = { it.id }) { ProductCardView(it, onOpen = { onOpen(it) }) }
         if (hasNext) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Box(Modifier.fillMaxWidth().padding(8.dp), Alignment.Center) {
