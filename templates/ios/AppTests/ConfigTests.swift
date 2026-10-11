@@ -12,6 +12,8 @@ final class ConfigTests: XCTestCase {
         XCTAssertEqual(xcconfigKey("CollectionTemplate"), "COLLECTION_TEMPLATE")
         XCTAssertEqual(xcconfigKey("JudgemePublicToken"), "JUDGEME_PUBLIC_TOKEN")
         XCTAssertEqual(xcconfigKey("ShowVendor"), "SHOW_VENDOR")
+        XCTAssertEqual(xcconfigKey("Onboarding"), "ONBOARDING")
+        XCTAssertEqual(xcconfigKey("FreeShippingThreshold"), "FREE_SHIPPING_THRESHOLD")
     }
 
     func testReadsKeyValueLinesAndDropsTheEmptySubstitution() {

@@ -428,7 +428,7 @@ private struct GalleryContent: View {
                 ArgonButton(title: "Bottom bar", style: .secondary, size: .s) { bottomBar = true }
                     .argonFullScreenModal(isPresented: $bottomBar, title: "BottomBar") { BottomBarDemo() }
             }
-            ForEach([ArgonTopBarVariant.standard, .largeTitle, .centeredLogo, .search], id: \.self) { variant in
+            ForEach([ArgonTopBarVariant.standard, .largeTitle, .centeredLogo, .search, .overlay], id: \.self) { variant in
                 NavigationLink {
                     TopBarDemo(variant: variant)
                 } label: {
@@ -468,14 +468,40 @@ private struct GallerySection<Content: View>: View {
 private struct TopBarDemo: View {
     let variant: ArgonTopBarVariant
     @State private var search = ""
+    @State private var solid = false
 
     init(variant: ArgonTopBarVariant) {
         self.variant = variant
     }
 
     var body: some View {
-        List(1...30, id: \.self) { row in
-            Text("Row \(row)")
+        Group {
+            if variant == .overlay {
+                // Overlay: over a picture, then solid as the picture scrolls away
+                VStack(spacing: 0) {
+                    Color.clear
+                        .frame(height: 160)
+                        .background {
+                            // up to the top edge of the screen, under the bar and the status bar
+                            Color.gray
+                                .overlay {
+                                    AsyncImage(url: sampleImage) { image in
+                                        image.resizable().scaledToFill()
+                                    } placeholder: {
+                                        Color.clear
+                                    }
+                                }
+                                .clipped()
+                                .ignoresSafeArea(edges: .top)
+                        }
+                    ArgonSwitch(isOn: solid, label: "Solid") { solid = $0 }.padding()
+                    Spacer()
+                }
+            } else {
+                List(1...30, id: \.self) { row in
+                    Text("Row \(row)")
+                }
+            }
         }
         .argonTopBar(
             variant: variant,
@@ -485,7 +511,8 @@ private struct TopBarDemo: View {
                 ArgonTopBarAction(icon: .search, accessibilityLabel: "Search") {},
                 ArgonTopBarAction(icon: .bag, accessibilityLabel: "Bag", badge: 2) {},
             ],
-            searchText: $search
+            searchText: $search,
+            solid: solid ? 1 : 0
         )
     }
 }

@@ -349,10 +349,12 @@ struct QuantityPriceBreak: Decodable, Equatable, Sendable {
     let price: Money
 }
 
-/// A product's handle and title, where a variant is shown apart from its product (a bundle's part, a cart line).
+/// A product's handle and title, where a variant is shown apart from its product (a bundle's part, a cart line); its
+/// `id` too where the document selects it (a cart line).
 struct ProductRef: Decodable, Equatable, Sendable {
     let handle: String
     let title: String
+    var id: String? = nil
 }
 
 /// A variant named with its product: a part of a bundle, or the bundle a variant is part of. `image` is the variant's,
@@ -1120,13 +1122,16 @@ struct PurchasingCompany: Decodable, Equatable, Sendable {
 
 // MARK: - App types the screens build from the models above
 
-/// `hosts` is ordered: SHOP_DOMAIN first (relative links open against it), then the primary domain.
+/// `hosts` is ordered: SHOP_DOMAIN first (relative links open against it), then the primary domain. `shortDescription`
+/// and `slogan`: the brand's own words for itself (Shopify admin, Settings > Brand), nil when unset.
 struct Brand: Equatable {
     let name: String
     let logo: Img?
     let cover: Img?
     let accent: String?
     let hosts: [String]
+    var shortDescription: String? = nil
+    var slogan: String? = nil
 }
 
 extension Brand {
@@ -1139,8 +1144,32 @@ extension Brand {
             logo: shop.brand?.logo,
             cover: shop.brand?.coverImage,
             accent: shop.brand?.primaryColors.first?.background,
-            hosts: hosts
+            hosts: hosts,
+            shortDescription: shop.brand?.shortDescription,
+            slogan: shop.brand?.slogan
         )
+    }
+}
+
+/// One page of the first-launch welcome: a full-screen `image` (a URL) with a `heading` and a line of `text` over it.
+struct OnboardingPage: Equatable {
+    let image: String?
+    let heading: String
+    let text: String
+}
+
+enum Onboarding {
+    /// The three welcome pages, over `template`'s three stock banners: the shop in its own words (its brand's short
+    /// description, else its slogan, else a line with its name), then what the app is good for.
+    static func pages(brand: Brand, template: HomeTemplate, image: (HomeTemplate, Int) -> String? = StockImages.url) -> [OnboardingPage] {
+        let own = [brand.shortDescription, brand.slogan]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first { !$0.isEmpty }
+        return [
+            ("Welcome to \(brand.name)", own ?? "Everything from \(brand.name), in one app."),
+            ("Find it fast", "Search, filter and save what you love."),
+            ("Checkout in a few taps", "Track your orders and returns from your account."),
+        ].enumerated().map { index, words in OnboardingPage(image: image(template, index + 1), heading: words.0, text: words.1) }
     }
 }
 

@@ -324,6 +324,83 @@ final class CartStoreTests: XCTestCase {
         XCTAssertEqual(names.last, "CartLinesRemove")
     }
 
+    // MARK: Discount codes
+
+    /// The fixture cart carrying `codes`, each with whether it counts.
+    private func withCodes(_ codes: [String], applicable: (String) -> Bool = { _ in true }) -> [String: Any] {
+        var cart = cartJson
+        cart["discountCodes"] = codes.map { ["code": $0, "applicable": applicable($0)] as [String: Any] }
+        return cart
+    }
+
+    /// The codes each `CartDiscountCodesUpdate` sent, in order.
+    private var sentCodes: [[String]] {
+        calls.filter { $0.name == "CartDiscountCodesUpdate" }.map { $0.variables["discountCodes"] as? [String] ?? [] }
+    }
+
+    /// A store whose cart starts with `carried` codes; Shopify counts the codes in `valid` and no others.
+    @MainActor
+    private func discountStore(_ carried: [String] = [], valid: Set<String>) -> CartStore {
+        store(reply: { name in
+            guard name == "CartDiscountCodesUpdate" else { return try self.answer(name, cart: self.withCodes(carried)) }
+            let sent = self.calls.last?.variables["discountCodes"] as? [String] ?? []
+            return try self.answer(name, cart: self.withCodes(sent) { valid.contains($0) })
+        })
+    }
+
+    @MainActor
+    func testApplyingADiscountSendsTheWholeListWithTheNewCode() async throws {
+        let s = discountStore(["VIP"], valid: ["VIP", "WELCOME10"])
+        try await s.add("v1", quantity: 1)
+        let applied = try await s.applyDiscount(" WELCOME10 ")
+        XCTAssertTrue(applied)
+        XCTAssertEqual(sentCodes, [["VIP", "WELCOME10"]])
+        XCTAssertEqual(calls.last?.variables["cartId"] as? String, cartId)
+        XCTAssertEqual(s.cart?.discountCodes.map { $0.code }, ["VIP", "WELCOME10"])
+    }
+
+    @MainActor
+    func testACodeThatDoesNotApplyIsTakenOffAgain() async throws {
+        let s = discountStore(["VIP"], valid: ["VIP"])
+        try await s.add("v1", quantity: 1)
+        let applied = try await s.applyDiscount("NOPE")
+        XCTAssertFalse(applied)
+        XCTAssertEqual(sentCodes, [["VIP", "NOPE"], ["VIP"]], "sent with the code, then without it")
+        XCTAssertEqual(s.cart?.discountCodes.map { $0.code }, ["VIP"])
+    }
+
+    @MainActor
+    func testEnteringACodeAgainDoesNotListItTwice() async throws {
+        let s = discountStore(["VIP"], valid: ["VIP", "vip"])
+        try await s.add("v1", quantity: 1)
+        let applied = try await s.applyDiscount("vip")
+        XCTAssertTrue(applied)
+        XCTAssertEqual(sentCodes, [["vip"]])
+    }
+
+    @MainActor
+    func testRemovingADiscountSendsTheListWithoutIt() async throws {
+        let s = discountStore(["VIP", "WELCOME10"], valid: ["VIP", "WELCOME10"])
+        try await s.add("v1", quantity: 1)
+        try await s.removeDiscount("welcome10")
+        XCTAssertEqual(sentCodes, [["VIP"]])
+        XCTAssertEqual(s.cart?.discountCodes.map { $0.code }, ["VIP"])
+        try await s.removeDiscount("VIP")
+        XCTAssertEqual(sentCodes.last, [], "the last one leaves an empty list")
+    }
+
+    @MainActor
+    func testADiscountNeedsACartAndACode() async throws {
+        let s = discountStore(valid: ["WELCOME10"])
+        let withoutCart = try await s.applyDiscount("WELCOME10")
+        XCTAssertFalse(withoutCart, "no cart")
+        try await s.removeDiscount("WELCOME10")
+        try await s.add("v1", quantity: 1)
+        let withoutCode = try await s.applyDiscount("  ")
+        XCTAssertFalse(withoutCode, "no code")
+        XCTAssertEqual(sentCodes, [])
+    }
+
     @MainActor
     func testRapidAddsShareOneCart() async throws {
         let s = store(reply: { name in

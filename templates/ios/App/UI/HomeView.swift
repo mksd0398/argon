@@ -60,6 +60,9 @@ struct HomeView: View {
     @State private var loaded: (buyer: String?, content: HomeContent)? = nil
     @State private var error: String? = nil
     @State private var attempt = 0
+    // How solid the fashion home's bar is: its page sets it as the hero scrolls. Only the bar reads it, so only the bar
+    // is redrawn. Solid until there is a hero under it (while the home loads, or fails).
+    @State private var barSolid = 1.0
     @Environment(Router.self) private var router
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.argonTheme) private var theme
@@ -71,7 +74,7 @@ struct HomeView: View {
         VStack(spacing: 0) {
             if let content = loaded?.content {
                 switch template {
-                case .fashion: HomeFashion(content: content, onOpen: onOpen)
+                case .fashion: HomeFashion(content: content, onOpen: onOpen, solid: $barSolid)
                 case .beauty: HomeBeauty(content: content, onOpen: onOpen)
                 case .grocery: HomeGrocery(content: content, onOpen: onOpen)
                 case .b2b: HomeB2B(content: content, onOpen: onOpen)
@@ -84,7 +87,7 @@ struct HomeView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(theme.colors.paper)
-        .modifier(HomeTopBar(template: template, brand: AppGraph.brand.value) { router.open(.search("")) })
+        .modifier(HomeTopBar(template: template, brand: AppGraph.brand.value, solid: $barSolid) { router.open(.search("")) })
         // A load that failed offline or behind the lock screen runs again when the app is back, without a tap.
         .onChange(of: scenePhase) { _, phase in
             if phase == .active, error != nil { attempt += 1 }
@@ -106,10 +109,12 @@ struct HomeView: View {
 }
 
 /// Each template's top bar: fashion centres the logo, beauty has it at the start, both with a search button; grocery and
-/// B2B show a search field. The shop's name stands in for a missing logo.
+/// B2B show a search field. The shop's name stands in for a missing logo. Fashion's lies over its hero: clear at `solid`
+/// 0, the normal bar at 1.
 private struct HomeTopBar: ViewModifier {
     let template: HomeTemplate
     let brand: Brand?
+    @Binding var solid: Double
     let onSearch: () -> Void
 
     @ViewBuilder
@@ -118,7 +123,7 @@ private struct HomeTopBar: ViewModifier {
         let logo = (brand?.logo?.url).flatMap { URL(string: $0) }
         let search = [ArgonTopBarAction(icon: .search, accessibilityLabel: "Search", action: onSearch)]
         switch template {
-        case .fashion: content.argonTopBar(variant: .centeredLogo, title: name, logoUrl: logo, trailing: search)
+        case .fashion: content.argonTopBar(variant: .overlay, title: name, logoUrl: logo, trailing: search, solid: solid)
         case .beauty: content.argonTopBar(title: name, logoUrl: logo, trailing: search)
         case .grocery: searchBar(content, "Search products")
         case .b2b: searchBar(content, "Search by name or SKU")

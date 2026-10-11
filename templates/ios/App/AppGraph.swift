@@ -17,6 +17,14 @@ enum AppGraph {
     /// Whether product cards and the product page show the vendor (`SHOW_VENDOR`, false unless it is `true`): many
     /// stores' vendor is their own name on every product, or an internal label.
     static let showVendor = info("ShowVendor").trimmingCharacters(in: .whitespaces).lowercased() == "true"
+    /// Whether a first launch starts with the welcome pages (`ONBOARDING`, true unless it is `false`).
+    static let onboarding = info("Onboarding").trimmingCharacters(in: .whitespaces).lowercased() != "false"
+    /// The order value from which the store ships for free, in the shop's currency (`FREE_SHIPPING_THRESHOLD`); nil when
+    /// unset or not a number above zero: the cart then shows no free-shipping progress.
+    static let freeShippingThreshold: Double? = Double(info("FreeShippingThreshold").trimmingCharacters(in: .whitespaces))
+        .flatMap { $0 > 0 && $0.isFinite ? $0 : nil }
+    /// The app's name, as under its icon (`APP_NAME`).
+    static let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? ""
 
     private static let client = Storefront(domain: shopDomain, token: storefrontToken, apiVersion: apiVersion, loadDocument: AppGraph.document)
 
@@ -59,6 +67,7 @@ enum AppGraph {
 
     @MainActor static let wishlist = WishlistStore(defaults: .standard)
     @MainActor static let recentlyViewed = RecentlyViewedStore(defaults: .standard)
+    @MainActor static let onboardingStore = OnboardingStore(defaults: .standard)
     @MainActor static let cart = CartStore(
         api: AppGraph.storefront,
         defaults: .standard,
