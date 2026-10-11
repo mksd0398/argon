@@ -96,6 +96,7 @@ private struct SignedOut: View {
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, theme.spacing.l)
+                Privacy().padding(theme.spacing.l)
             }
             .padding(.vertical, theme.spacing.l)
         }
@@ -109,6 +110,9 @@ private struct SignedOut: View {
         Task {
             do {
                 try await AppGraph.auth.signIn()
+                // analytics' `login`: signIn() also returns quietly when the browser was closed or the callback refused,
+                // which leave the shopper signed out
+                if AppGraph.auth.signedIn { AppGraph.analytics.track(.login) }
             } catch {
                 failure = error.localizedDescription
             }
@@ -147,6 +151,22 @@ private struct DebugRows: View {
     }
 }
 
+/// "Privacy", for anyone, signed in or not: the switch that lets the app share what the shopper does in it with the
+/// store's analytics (`AppGraph.analytics` reports only while it is on). On until they turn it off.
+@MainActor
+private struct Privacy: View {
+    @Environment(\.argonTheme) private var theme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            SectionHeader(title: "Privacy")
+            ArgonSwitch(isOn: AppGraph.analyticsConsent.allowed, label: "Share usage data") { AppGraph.analyticsConsent.set($0) }
+                .frame(minHeight: 44)
+            Text("Helps improve the app and the offers you see.").font(theme.type.caption).foregroundStyle(theme.colors.muted)
+        }
+    }
+}
+
 // MARK: Signed in
 
 /// What the signed-in screen shows. Only `customer` has to load: the rest is left out when its call fails.
@@ -165,6 +185,8 @@ private func loadAccount() async throws -> Account {
     async let credit = optional("store credit") { try await creditBalances(api.storeCredit()) }
     async let policies = loadPolicies()
     let customer = try await api.customer()
+    // analytics learns who the customer is where they are loaded; the sample account is nobody
+    if !AppGraph.sampleAccount { AppGraph.analytics.identify(customer.analyticsUser()) }
     return await Account(customer: customer, latestOrder: order ?? nil, credit: credit ?? [], policies: policies)
 }
 
@@ -214,6 +236,7 @@ private struct SignedIn: View {
                         DebugRows()
                     }
                     .buttonStyle(.plain)
+                    Privacy()
                     VStack(spacing: spacing.s) {
                         ArgonButton(title: "Sign out", style: .secondary, fullWidth: true) { signOut() }
                         // no API deletes a customer account, so the store's contact page takes the request (Apple and Google require the entry)
@@ -318,6 +341,7 @@ private func signOut() {
     let signedIn = AppGraph.auth.signedIn
     AppGraph.sampleAccount = false
     if !signedIn { return }
+    AppGraph.analytics.identify(nil)
     Task {
         // The cart first, so it goes even if the logout call fails or hangs: one the customer was attached to would still
         // check out as them (shopify.dev Checkout Kit "Authenticate checkouts": clear the stored tokens and authenticated

@@ -10,6 +10,8 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import app.storefront.auth.AuthStore
 import app.storefront.auth.TokenCrypto
+import app.storefront.data.Analytics
+import app.storefront.data.AnalyticsConsentStore
 import app.storefront.data.Brand
 import app.storefront.data.BuyerStore
 import app.storefront.data.CartStore
@@ -17,11 +19,15 @@ import app.storefront.data.CollectionTemplate
 import app.storefront.data.CustomerAccountApi
 import app.storefront.data.HomeTemplate
 import app.storefront.data.JudgeMe
+import app.storefront.data.LogSink
 import app.storefront.data.OnboardingStore
 import app.storefront.data.RecentlyViewedStore
 import app.storefront.data.Storefront
 import app.storefront.data.StorefrontApi
 import app.storefront.data.WishlistStore
+import app.storefront.data.firebaseSink
+import app.storefront.data.metaSink
+import app.storefront.data.moEngageSink
 import app.storefront.data.sampleTransport
 import app.storefront.data.toBrand
 import app.storefront.ui.TabState
@@ -53,7 +59,22 @@ class StorefrontApp : Application(), SingletonImageLoader.Factory {
     override fun onCreate() {
         super.onCreate()
         AppGraph.assets = assets
-        AppGraph.wishlist = WishlistStore(prefs("wishlist"), AppGraph.scope)
+        AppGraph.analyticsConsent = AnalyticsConsentStore(prefs("analytics"), AppGraph.scope)
+        // Every sink the app has. A provider's factory starts its SDK and returns its sink; in an app without the
+        // provider it is a stub that returns null (app/build.gradle.kts picks which of the two is compiled in).
+        AppGraph.analytics = Analytics(
+            listOfNotNull(
+                if (BuildConfig.DEBUG) LogSink() else null,
+                firebaseSink(this),
+                metaSink(this),
+                moEngageSink(this),
+            ),
+            allowed = { AppGraph.analyticsConsent.allowed.value },
+        )
+        // A provider's SDK collects on its own too, so each is switched with the choice: started off (the manifest), and
+        // told the choice once it is read and each time it changes.
+        AppGraph.scope.launch { AppGraph.analytics.follow(AppGraph.analyticsConsent.choice) }
+        AppGraph.wishlist = WishlistStore(prefs("wishlist"), AppGraph.scope, track = AppGraph.analytics::track)
         AppGraph.recentlyViewed = RecentlyViewedStore(prefs("recent"), AppGraph.scope)
         AppGraph.onboardingStore = OnboardingStore(prefs("onboarding"), AppGraph.scope)
         AppGraph.auth = AuthStore(
@@ -70,6 +91,8 @@ class StorefrontApp : Application(), SingletonImageLoader.Factory {
             AppGraph.storefront,
             prefs("cart"),
             accessToken = { AppGraph.auth.validAccessToken() },
+            track = AppGraph.analytics::track,
+            cartAttributes = AppGraph.analytics::cartAttributes,
         )
         AppGraph.buyer = BuyerStore(
             AppGraph.storefront,
@@ -136,7 +159,7 @@ object AppGraph {
     /** Where product lists keep sort and filter (`COLLECTION_TEMPLATE`); top when unset or unknown. */
     val collectionTemplate: CollectionTemplate = CollectionTemplate.of(BuildConfig.COLLECTION_TEMPLATE)
 
-    /** The store's Judge.me public token (`JUDGEME_PUBLIC_TOKEN`); empty hides reviews. */
+    /** The store's Judge.me public token (`JUDGEME_PUBLIC_TOKEN`); empty: reviews without their star breakdown ([judgeMe]). */
     val judgeMeToken: String = BuildConfig.JUDGEME_PUBLIC_TOKEN
 
     /**
@@ -161,6 +184,12 @@ object AppGraph {
 
     /** Outlives every screen: a tap that starts a write (wishlist, cart) finishes even if the screen goes away. */
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    /** Whether the shopper shares usage data (the Account screen's "Privacy" switch); [analytics] reports only while they do. */
+    internal lateinit var analyticsConsent: AnalyticsConsentStore
+
+    /** Where every screen and store reports what the shopper does: `analytics.track(event)`. */
+    internal lateinit var analytics: Analytics
 
     internal lateinit var wishlist: WishlistStore
     internal lateinit var recentlyViewed: RecentlyViewedStore
@@ -208,16 +237,17 @@ object AppGraph {
     }
 
     /**
-     * Product reviews (Judge.me); null without a [judgeMeToken]: the store then shows none. The demo store's app has
-     * bundled sample reviews instead (`assets/sample/JudgeMeWidget.sample.html`, which the CLI copies for mock.shop only).
+     * Product reviews (Judge.me). Without a [judgeMeToken] they are read the way Judge.me's own storefront widget reads
+     * them, and a store that has none shows none (see [JudgeMe]). The demo store's app has bundled sample reviews
+     * instead (`assets/sample/JudgeMeWidget.sample.html`, which the CLI copies for mock.shop only).
      */
-    val judgeMe: JudgeMe? by lazy {
+    val judgeMe: JudgeMe by lazy {
         val sample = "sample/JudgeMeWidget.sample.html"
         when {
             judgeMeToken.isNotBlank() -> JudgeMe(shopDomain, judgeMeToken, http)
             runCatching { assets.open(sample).close() }.isSuccess ->
                 JudgeMe(shopDomain, "", http, sample = { assets.open(sample).bufferedReader().use { it.readText() } })
-            else -> null
+            else -> JudgeMe(shopDomain, "", http)
         }
     }
 

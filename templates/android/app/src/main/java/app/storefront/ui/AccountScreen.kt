@@ -52,6 +52,7 @@ import app.storefront.data.Money
 import app.storefront.data.OrderSummary
 import app.storefront.data.Policy
 import app.storefront.data.Route
+import app.storefront.data.analyticsUser
 import app.storefront.ui.account.ErrorText
 import app.storefront.ui.account.Panel
 import app.storefront.ui.account.accountName
@@ -60,6 +61,7 @@ import app.storefront.ui.account.creditBalances
 import app.storefront.ui.account.initials
 import app.storefront.ui.account.isSubscribed
 import app.storefront.ui.orders.OrderCard
+import java.io.IOException
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -167,6 +169,7 @@ private fun SignedOut(nav: NavController) {
         val policies by produceState(emptyList<Policy>()) { value = loadPolicies() }
         StoreRows(policies, nav)
         DebugRows(nav)
+        Privacy(Modifier.padding(spacing.l))
     }
 }
 
@@ -190,6 +193,34 @@ private fun DebugRows(nav: NavController) {
     }
 }
 
+/**
+ * "Privacy", for anyone, signed in or not: the switch that lets the app share what the shopper does in it with the
+ * store's analytics (`AppGraph.analytics` reports only while it is on). On until they turn it off.
+ */
+@Composable
+private fun Privacy(modifier: Modifier) {
+    val allowed by AppGraph.analyticsConsent.allowed.collectAsState()
+    Column(modifier) {
+        SectionHeader("Privacy")
+        ArgonSwitch(
+            allowed,
+            { on ->
+                // on the app's scope: leaving the tab doesn't drop the change
+                AppGraph.scope.launch {
+                    // a failed write leaves the switch as it was; it must not crash the app
+                    try {
+                        AppGraph.analyticsConsent.set(on)
+                    } catch (e: IOException) {
+                        Log.w("Account", "usage data choice not saved", e)
+                    }
+                }
+            },
+            label = "Share usage data",
+        )
+        Text("Helps improve the app and the offers you see.", style = ArgonTheme.type.caption, color = ArgonTheme.colors.muted)
+    }
+}
+
 // Signed in
 
 /** What the signed-in screen shows. Only [customer] has to load: the rest is left out when its call fails. */
@@ -201,7 +232,10 @@ private suspend fun loadAccount(): Account = coroutineScope {
     val order = async { optional("latest order") { api.orders().items.firstOrNull() } }
     val credit = async { optional("store credit") { creditBalances(api.storeCredit()) }.orEmpty() }
     val policies = async { loadPolicies() }
-    Account(api.customer(), order.await(), credit.await(), policies.await())
+    val customer = api.customer()
+    // analytics learns who the customer is where they are loaded; the sample account is nobody
+    if (!AppGraph.sampleAccount.value) AppGraph.analytics.identify(customer.analyticsUser())
+    Account(customer, order.await(), credit.await(), policies.await())
 }
 
 @Composable
@@ -241,6 +275,7 @@ private fun SignedIn(account: Account, nav: NavController) {
             )
             DebugRows(nav)
         }
+        Privacy(gutter)
         Column(gutter, verticalArrangement = Arrangement.spacedBy(spacing.s)) {
             ArgonButton("Sign out", style = ArgonButtonStyle.Secondary, fullWidth = true) { signOut() }
             // no API deletes a customer account, so the store's contact page takes the request (Apple and Google require the entry)
@@ -323,6 +358,7 @@ private fun signOut() {
     val signedIn = AppGraph.auth.signedIn.value
     AppGraph.sampleAccount.value = false
     if (!signedIn) return
+    AppGraph.analytics.identify(null)
     AppGraph.scope.launch {
         try {
             // the cart too: one the customer was attached to would still check out as them (shopify.dev

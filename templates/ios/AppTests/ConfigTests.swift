@@ -14,6 +14,19 @@ final class ConfigTests: XCTestCase {
         XCTAssertEqual(xcconfigKey("ShowVendor"), "SHOW_VENDOR")
         XCTAssertEqual(xcconfigKey("Onboarding"), "ONBOARDING")
         XCTAssertEqual(xcconfigKey("FreeShippingThreshold"), "FREE_SHIPPING_THRESHOLD")
+        XCTAssertEqual(xcconfigKey("MetaAppId"), "META_APP_ID")
+        XCTAssertEqual(xcconfigKey("MetaClientToken"), "META_CLIENT_TOKEN")
+        XCTAssertEqual(xcconfigKey("MoengageWorkspaceId"), "MOENGAGE_WORKSPACE_ID")
+        XCTAssertEqual(xcconfigKey("MoengageDataCenter"), "MOENGAGE_DATA_CENTER")
+        XCTAssertEqual(xcconfigKey("ServerPurchase"), "SERVER_PURCHASE")
+    }
+
+    /// An Xcode build (the one these tests run in) takes the values through Info.plist: it has to name each analytics key
+    /// `AppGraph` asks for, whatever the store's value is, an empty one too.
+    func testInfoPlistNamesTheAnalyticsKeys() {
+        for key in ["MetaAppId", "MetaClientToken", "MoengageWorkspaceId", "MoengageDataCenter", "ServerPurchase"] {
+            XCTAssertNotNil(Bundle.main.object(forInfoDictionaryKey: key) as? String, "Info.plist has no \(key)")
+        }
     }
 
     func testReadsKeyValueLinesAndDropsTheEmptySubstitution() {

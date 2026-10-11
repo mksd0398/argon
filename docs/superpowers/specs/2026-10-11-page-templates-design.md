@@ -273,6 +273,75 @@ Top bar "Cart". One scrolling list, then a pinned summary.
 
 Models: `CartLine` gains `subtotal`, `unitPrice`, `compareAtUnitPrice: Money?`, `discounts: [CartDiscount(amount, label)]`, `productId`. New config key `FREE_SHIPPING_THRESHOLD` → `AppGraph.freeShippingThreshold: Double?`.
 
+## Round 3 (2026-10-11): analytics (Google Analytics, Meta, MoEngage), reviews without a token
+
+### Analytics core (both platforms, no SDK): `data/Analytics.kt`, `Data/Analytics.swift`
+
+One hub that every screen and store reports into; providers plug in behind it.
+
+- `AnalyticsItem(productId, variantId?, name, brand?, category?, variant?, price: Double?, quantity: Int = 1)`. Ids are the numeric tail of the Shopify gid ("gid://shopify/Product/123" → "123"): what Google's and Meta's catalogs use.
+- `AnalyticsEvent` (a sealed type, one case per event; the wire name is GA4's):
+
+| Case | GA4 name | Fired from |
+|---|---|---|
+| `ScreenView(screen)` | `screen_view` | every navigation destination (one place on Android: the nav controller's destination listener; a `trackScreen(name)` view modifier on iOS) |
+| `ViewItemList(listId?, listName, items)` | `view_item_list` | a collection's first page; search results |
+| `ViewItem(item, currency)` | `view_item` | the product page, once the product is loaded |
+| `Search(term)` | `search` | a submitted search |
+| `AddToWishlist(item, currency)` | `add_to_wishlist` | `WishlistStore` when a product is added |
+| `AddToCart(item, currency)` | `add_to_cart` | `CartStore`, after Shopify accepted the change (covers the product page, quick add and the cart's steppers going up) |
+| `RemoveFromCart(item, currency)` | `remove_from_cart` | `CartStore`, after a line was removed or its quantity went down |
+| `ViewCart(items, value, currency)` | `view_cart` | the cart screen, each time it is opened with a cart |
+| `BeginCheckout(items, value, currency, coupon?)` | `begin_checkout` | when the checkout sheet is presented (not from the pixel event: the app has the whole cart) |
+| `AddShippingInfo(value, currency)` | `add_shipping_info` | Checkout Kit pixel event `checkout_shipping_info_submitted` |
+| `AddPaymentInfo(value, currency)` | `add_payment_info` | Checkout Kit pixel event `payment_info_submitted` |
+| `Purchase(orderId, value, currency, tax?, shipping?, coupon?, items)` | `purchase` | Checkout Kit's completed callback (`orderDetails`), not the pixel event, so it is sent once |
+| `Login` | `login` | a completed sign-in |
+
+  `orderId` is the numeric tail of `orderDetails.id`; it is GA4's `transaction_id` and the tail of Meta's event id (`purchase-<orderId>`), the same on the server (below), which is what stops double counting.
+- `AnalyticsUser(id, email?, phone?, firstName?, lastName?)`: the signed-in customer (numeric id), or null after sign-out.
+- `interface AnalyticsSink { track(event); identify(user?); suspend cartAttributes(): Map<String, String>; setEnabled(allowed) }` (defaults: nothing, empty). The hub calls `setEnabled` on every sink with each known value of the consent choice (the stored one once it is read, then every change; never a placeholder before that, which would switch the SDKs off and on at each launch and lose what they had queued): a provider SDK collects on its own (automatic events, advertising id, sessions), so the switch has to stop the SDK itself. Firebase and Meta start off through manifest / Info.plist defaults and are turned on at runtime; each SDK remembers what it was last told. MoEngage is stopped with its enable/disable-SDK switch (its data-tracking opt-out keeps collecting). Meta's dashboard toggle "Automatic event logging for the Facebook SDK" overrides the app's flag, so a store must leave it alone.
+- `Analytics(sinks, allowed: () -> Boolean)`: `track` and `identify` do nothing while `allowed()` is false and never throw into the caller (a sink's exception is logged). `cartAttributes()` merges the sinks' maps, plus `_argon_platform` = `android` | `ios` when that merged map is not empty; empty when not allowed.
+- Consent: `AnalyticsConsentStore` (a persisted flag, on by default) and a switch "Share usage data" under a "Privacy" heading on the Account screen, with the note "Helps improve the app and the offers you see." ponytail: one switch, on by default; a store selling in the EU needs a prompt before the first event, and iOS's tracking prompt (ATT) is not shown, so Meta gets no advertising id on iOS.
+- `LogSink`: debug builds only; one line per event (`Analytics: add_to_cart {…}`) to logcat / the Xcode console. It is how the events are checked without any provider account.
+- `CartStore` passes `analytics.cartAttributes()` as `CartInput.attributes` when it creates a cart (never afterwards: a cart mutation changes the checkout URL, see the Round 2 fix). They become the order's note attributes, which the server reads.
+- Tests: the pure mappers (cart line → item, completed order → `Purchase`, pixel event name → event), `Analytics` gating on consent and surviving a throwing sink, `CartStore` emitting add/remove with the right quantities and sending the attributes on cart creation only.
+
+### Providers (SDKs), each compiled in only when it is configured
+
+| Provider | Configured by | Android | iOS |
+|---|---|---|---|
+| Google Analytics 4 | `android/app/google-services.json`, `ios/App/GoogleService-Info.plist` (Firebase's own files) | Firebase Analytics | `FirebaseAnalytics` |
+| Meta | `META_APP_ID`, `META_CLIENT_TOKEN` | `facebook-core` (App Events) | `FacebookCore` |
+| MoEngage | `MOENGAGE_WORKSPACE_ID`, `MOENGAGE_DATA_CENTER` (1...6, default 1) | `moe-android-sdk` | `MoEngage-iOS-SDK` |
+
+- Android: `app/build.gradle.kts` decides from the files and keys above. For each provider it adds the dependency and one of two source folders: `src/<provider>/java` (the real `FirebaseSink` / `MetaSink` / `MoEngageSink`) or `src/no<Provider>/java` (a stub of the same factory function returning null). `AppGraph` calls the three factories; no reflection. The Google services plugin is applied only when `google-services.json` exists. An app with none configured carries no SDK.
+- iOS: the CLI writes the package dependencies into `Package.swift` for the chosen providers; each sink's file is wrapped in `#if canImport(<module>)`. (Xcode users add the same packages in Xcode; the README says which.)
+- Mapping: GA4 gets the names above with `items`. Meta gets its standard events (`fb_mobile_content_view`, `fb_mobile_search`, `fb_mobile_add_to_cart`, `fb_mobile_add_to_wishlist`, `fb_mobile_initiated_checkout`, `fb_mobile_add_payment_info`, `fb_mobile_purchase` through `logPurchase`) with `fb_content_id` (the variant's id when the item has one, else the product's: a catalog Shopify syncs to Meta lists variants; the server sends the same), `fb_content_type` = `product`, `fb_currency`, and `event_id` on the purchase. MoEngage gets the names its Shopify Web SDK integration uses for the same actions where documented, else Title Case ("Product Viewed"); never the `Shopify - …` names, which the store's own webhooks already send for app orders. Plus user attributes from `identify` (unique id, email, mobile, first and last name) and its logout.
+- `cartAttributes()`: Meta gives `_meta_anon_id`, `_meta_extinfo` (the Conversions API's `extinfo` array as JSON) and `_meta_tracking` (`1`/`0`). Firebase gives `_ga_app_instance_id` only with `SERVER_PURCHASE` (next point).
+- **The purchase is reported to Google Analytics by one side only.** GA4 de-duplicates purchases by `transaction_id` on web streams, not on app streams, so an app and a server both sending it would count every order twice. Config key `SERVER_PURCHASE` (false by default; the CLI sets it true only with an explicit `--server`): when false the Firebase sink sends `purchase` and puts nothing on the cart; when true it stops sending `purchase` and puts `_ga_app_instance_id` on the cart. The attribute on an order is what tells the server to report it, so no mix of app versions can count an order twice. Meta is not affected: the app always sends its purchase with `event_id` `purchase-<orderId>`, the server sends the same id, and Meta counts one. MoEngage always gets the purchase from the app.
+- Purchase value: GA4 `value` is the order total minus tax and shipping (with `tax` and `shipping` as their own parameters); Meta's amount is the order total. The app and the server use the same rule.
+- MoEngage push and in-app messages are not in this round (they need FCM/APNs keys).
+
+### CLI
+Flags and prompts (all optional; the prompt is one multi-select "Analytics"): `--firebase-android=<google-services.json>`, `--firebase-ios=<GoogleService-Info.plist>` (copied in), `--meta-app-id`, `--meta-client-token`, `--moengage-workspace-id`, `--moengage-data-center`. New config keys `META_APP_ID`, `META_CLIENT_TOKEN`, `MOENGAGE_WORKSPACE_ID`, `MOENGAGE_DATA_CENTER`, empty by default, and `SERVER_PURCHASE` (false). `server/` is written when Firebase or Meta is configured or with `--server`; only an explicit `--server` sets `SERVER_PURCHASE=true`.
+
+### Server side: `server/` (a Cloudflare Worker, one file, no dependencies)
+Argon has no backend, and the keys that let a server report a sale (GA4's API secret, Meta's access token) must never be in an app. So the purchase, the one event ad platforms want from a server, is sent by a small Worker the store deploys:
+- `POST /webhooks/orders` receives Shopify's `orders/create` webhook, checks `X-Shopify-Hmac-Sha256` against `SHOPIFY_WEBHOOK_SECRET` (401 otherwise), and ignores orders without the `_argon_platform` note attribute (the store's web pixels already report web orders).
+- GA4: Measurement Protocol `purchase` for the app stream (`firebase_app_id` + `api_secret`, `app_instance_id` from `_ga_app_instance_id`), `transaction_id` = the order's id.
+- Meta: Conversions API `Purchase` with `action_source: "app"`, `event_id` = `purchase-<order id>`, hashed email and phone, `external_id`, `anon_id`, `app_data` from the attributes.
+- Secrets are Worker secrets (`wrangler secret put`): `SHOPIFY_WEBHOOK_SECRET`, `GA4_API_SECRET_ANDROID`, `GA4_API_SECRET_IOS` (each GA4 stream has its own), `GA4_FIREBASE_APP_ID_ANDROID`, `GA4_FIREBASE_APP_ID_IOS`, `META_DATASET_ID`, `META_ACCESS_TOKEN`. A provider without its secrets is skipped; Google is also skipped for an order without `_ga_app_instance_id` (the app reported that one itself).
+- Meta is sent first, then Google. A failure answers 500 so Shopify retries: Meta de-duplicates the repeat, and Google is only reached once Meta is through, so a retry never sends Google a purchase it already took.
+- Only the purchase goes through the server. GA4 does not de-duplicate anything on an app stream, so every other event comes from the app alone.
+- Tests (`node --test`, `fetch` stubbed): the signature check, the skip rule, both payloads from a recorded order.
+
+### Reviews without a token
+With `JUDGEME_PUBLIC_TOKEN` empty (and no sample file), `JudgeMe` reads the endpoint Judge.me's own storefront widget pages through: `GET https://api.judge.me/reviews/reviews_for_widget?url=<shop>&shop_domain=<shop>&platform=shopify&page=&per_page=&product_id=<numeric id>` → `{ html, total_count, page }`, where `html` holds the same `jdgm-rev` blocks the token route returns (no summary header). The count is `total_count`; the average is the product's `rating` metafield when the store exposes it, else the mean of the reviews when they all fit on the loaded pages, else not shown; no star breakdown. The endpoint is not a documented API (a `ponytail:` comment says so); the token stays the supported route. A store without Judge.me answers with zero reviews, and the section stays hidden as before.
+
+### Free shipping in the shop's currency only
+The progress row is shown only when the cart's currency is the shop's (`shop.paymentSettings.currencyCode`): the threshold is a number in that currency.
+
 ## Not in this change
 
 Order editing, payment-method management, subscriptions management, native sign-in, review photo upload, wishlist sync to the account, push notifications, gift cards in the cart.

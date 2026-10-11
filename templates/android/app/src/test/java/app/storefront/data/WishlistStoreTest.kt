@@ -65,4 +65,16 @@ class WishlistStoreTest {
         first.coroutineContext[Job]!!.cancelAndJoin() // the process ends: its DataStore is closed
         store().assertIds("a")
     }
+
+    @Test
+    fun savingAProductReportsItToAnalyticsAndTakingItOutDoesNot() = runBlocking {
+        val events = mutableListOf<AnalyticsEvent>()
+        val s = WishlistStore(PreferenceDataStoreFactory.create(scope = scope) { File(tmp.root, "wishlist.preferences_pb") }, scope) { events += it }
+        val saved = AnalyticsEvent.AddToWishlist(AnalyticsItem(productId = "1", name = "Hoodie", price = 90.0), "CAD")
+        s.toggle("gid://shopify/Product/1", saved)
+        assertEquals(listOf<AnalyticsEvent>(saved), events)
+        s.toggle("gid://shopify/Product/1", saved) // taken out again
+        s.toggle("gid://shopify/Product/2") // a caller that doesn't describe the product
+        assertEquals(listOf<AnalyticsEvent>(saved), events)
+    }
 }

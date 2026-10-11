@@ -59,24 +59,24 @@ final class CartViewTests: XCTestCase {
     // MARK: Free shipping
 
     func testFreeShippingSaysWhatIsLeftAndHowFarTheCartIs() throws {
-        let below = try XCTUnwrap(freeShipping(subtotal: usd("120.0"), threshold: 150))
+        let below = try XCTUnwrap(freeShipping(subtotal: usd("120.0"), threshold: 150, shopCurrency: "USD"))
         assertAmount(below.remaining, "30.00")
         XCTAssertEqual(below.remaining.currencyCode, "USD")
         XCTAssertEqual(below.progress, 0.8, accuracy: 1e-6)
         XCTAssertFalse(below.reached)
 
-        let empty = try XCTUnwrap(freeShipping(subtotal: usd("0.0"), threshold: 150))
+        let empty = try XCTUnwrap(freeShipping(subtotal: usd("0.0"), threshold: 150, shopCurrency: "USD"))
         assertAmount(empty.remaining, "150.00")
         XCTAssertEqual(empty.progress, 0)
 
-        let cents = try XCTUnwrap(freeShipping(subtotal: usd("149.99"), threshold: 150))
+        let cents = try XCTUnwrap(freeShipping(subtotal: usd("149.99"), threshold: 150, shopCurrency: "USD"))
         assertAmount(cents.remaining, "0.01")
         XCTAssertFalse(cents.reached, "a cent short is not there yet")
     }
 
     func testFreeShippingIsReachedAtTheThresholdAndStaysReachedAboveIt() throws {
         for amount in ["150.0", "150.00", "324.0"] {
-            let reached = try XCTUnwrap(freeShipping(subtotal: usd(amount), threshold: 150))
+            let reached = try XCTUnwrap(freeShipping(subtotal: usd(amount), threshold: 150, shopCurrency: "USD"))
             XCTAssertTrue(reached.reached, amount)
             assertAmount(reached.remaining, "0")
             XCTAssertEqual(reached.progress, 1, amount)
@@ -84,11 +84,18 @@ final class CartViewTests: XCTestCase {
     }
 
     func testAStoreWithoutAThresholdShowsNoFreeShipping() {
-        XCTAssertNil(freeShipping(subtotal: usd("120.0"), threshold: nil))
-        XCTAssertNil(freeShipping(subtotal: usd("120.0"), threshold: 0), "zero is no threshold")
-        XCTAssertNil(freeShipping(subtotal: usd("120.0"), threshold: -5))
-        XCTAssertNil(freeShipping(subtotal: usd("120.0"), threshold: Double.nan))
-        XCTAssertNil(freeShipping(subtotal: usd("lots"), threshold: 150), "an amount that can't be read")
+        XCTAssertNil(freeShipping(subtotal: usd("120.0"), threshold: nil, shopCurrency: "USD"))
+        XCTAssertNil(freeShipping(subtotal: usd("120.0"), threshold: 0, shopCurrency: "USD"), "zero is no threshold")
+        XCTAssertNil(freeShipping(subtotal: usd("120.0"), threshold: -5, shopCurrency: "USD"))
+        XCTAssertNil(freeShipping(subtotal: usd("120.0"), threshold: Double.nan, shopCurrency: "USD"))
+        XCTAssertNil(freeShipping(subtotal: usd("lots"), threshold: 150, shopCurrency: "USD"), "an amount that can't be read")
+    }
+
+    func testFreeShippingIsOnlyForACartInTheShopsOwnCurrency() {
+        XCTAssertNotNil(freeShipping(subtotal: usd("120.0"), threshold: 150, shopCurrency: "USD"), "the threshold is a number in the shop's currency")
+        XCTAssertNil(freeShipping(subtotal: usd("120.0"), threshold: 150, shopCurrency: "CAD"), "120 USD says nothing of 150 CAD")
+        XCTAssertNil(freeShipping(subtotal: usd("324.0"), threshold: 150, shopCurrency: "CAD"), "the same holds above the number")
+        XCTAssertNil(freeShipping(subtotal: usd("120.0"), threshold: 150, shopCurrency: nil), "the shop's currency isn't known yet")
     }
 
     // MARK: Lines

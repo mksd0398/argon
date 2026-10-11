@@ -27,14 +27,15 @@ struct FreeShipping: Equatable {
     var reached: Bool { !remaining.isPositive() }
 }
 
-/// Free shipping for a cart worth `subtotal` (its total after discounts) in a store that ships free from `threshold`;
-/// nil for a store without one (`FREE_SHIPPING_THRESHOLD` unset), or an amount that can't be read.
-/// ponytail: the threshold is one number, compared with the cart in whatever currency the shopper buys in. Upgrade: one
-/// threshold per currency, if stores selling in several ask for it.
-func freeShipping(subtotal: Money, threshold: Double?) -> FreeShipping? {
+/// Free shipping for a cart worth `subtotal` (its total after discounts) in a store that ships free from `threshold`, a
+/// number in `shopCurrency`; nil for a store without one (`FREE_SHIPPING_THRESHOLD` unset), an amount that can't be
+/// read, a cart in another currency, and until the shop's currency is known.
+/// ponytail: the threshold is one number, in the shop's own currency: a shopper buying in another one sees no progress.
+/// Upgrade: one threshold per currency, if stores selling in several ask for it.
+func freeShipping(subtotal: Money, threshold: Double?, shopCurrency: String?) -> FreeShipping? {
     // the threshold through its text: a Decimal made from a Double keeps the Double's binary error (49.99 isn't 49.99)
-    guard let threshold = threshold, threshold > 0, threshold.isFinite, let goal = Decimal(string: String(threshold)),
-          let have = Decimal(string: subtotal.amount) else { return nil }
+    guard subtotal.currencyCode == shopCurrency, let threshold = threshold, threshold > 0, threshold.isFinite,
+          let goal = Decimal(string: String(threshold)), let have = Decimal(string: subtotal.amount) else { return nil }
     let progress = NSDecimalNumber(decimal: have / goal).doubleValue
     return FreeShipping(
         remaining: Money(amount: "\(max(goal - have, 0))", currencyCode: subtotal.currencyCode),
@@ -92,6 +93,10 @@ private func checkoutMessage(_ error: CheckoutError) -> String {
 }
 
 /// Shopify's checkout for `url` (`CartStore.checkoutUrl`) as a sheet: see `View.checkoutSheet`.
+///
+/// Analytics hears of the whole way from here: `begin_checkout` as the sheet opens (the app has the whole cart), the
+/// shipping and payment steps from the checkout's web pixel events, and the purchase from the completed order, which
+/// comes once (the pixel's `checkout_completed` is left alone).
 private struct CheckoutPresenter: ViewModifier {
     @Binding var isPresented: Bool
     let url: URL?
@@ -105,7 +110,13 @@ private struct CheckoutPresenter: ViewModifier {
                 CheckoutSheet(checkout: url)
                     .onCancel { isPresented = false }
                     // the sheet stays open on the order confirmation until the shopper closes it (onCancel)
-                    .onComplete { _ in Task { await AppGraph.cart.completed() } }
+                    .onComplete { event in
+                        AppGraph.analytics.track(purchase(event.orderDetails))
+                        Task { await AppGraph.cart.completed() }
+                    }
+                    .onPixelEvent { event in
+                        if let step = checkoutStep(event) { AppGraph.analytics.track(step) }
+                    }
                     .onFail { error in
                         // the cart is kept; one Shopify no longer has (expired, already paid) is dropped by loading it again
                         if case .checkoutExpired = error { Task { _ = try? await AppGraph.cart.load() } }
@@ -114,6 +125,9 @@ private struct CheckoutPresenter: ViewModifier {
                     }
                     .ignoresSafeArea()
             }
+        }
+        .onChange(of: isPresented) { _, presented in
+            if presented, let cart = AppGraph.cart.cart { AppGraph.analytics.track(beginCheckout(cart)) }
         }
     }
 
@@ -150,6 +164,8 @@ struct CartView: View {
     @State private var checkout: URL? = nil
     @State private var checkingOut = false
     @State private var alsoLike: [ProductCard] = []
+    // the currency of the shop's own prices, which `FREE_SHIPPING_THRESHOLD` is a number in; nil until the shop has answered
+    @State private var shopCurrency: String? = nil
     @State private var keyboardUp = false
     @Environment(Router.self) private var router
     @Environment(\.argonTheme) private var theme
@@ -180,6 +196,8 @@ struct CartView: View {
         // Warm up checkout once the shopper is looking at a non-empty cart, and again after every change to it.
         .task(id: cart) { await preload(cart) }
         .task(id: firstProduct) { await suggest(firstProduct) }
+        // the shop is fetched once for the whole app, so this is rarely a call; when it can't be asked, the row stays away
+        .task { if let shop = try? await AppGraph.storefront.shop() { shopCurrency = shop.paymentSettings.currencyCode } }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in keyboardUp = true }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in keyboardUp = false }
         .argonModal(
@@ -196,10 +214,11 @@ struct CartView: View {
 
     private func content(_ cart: Cart) -> some View {
         let gutter = theme.spacing.l
+        let shipping = freeShipping(subtotal: cart.total, threshold: AppGraph.freeShippingThreshold, shopCurrency: shopCurrency)
         return VStack(spacing: 0) {
             ScrollView {
                 VStack(spacing: theme.spacing.l) {
-                    if let shipping = freeShipping(subtotal: cart.total, threshold: AppGraph.freeShippingThreshold) {
+                    if let shipping = shipping {
                         FreeShippingBar(shipping: shipping).padding(.horizontal, gutter)
                     }
                     LazyVStack(spacing: theme.spacing.l) {
@@ -283,6 +302,8 @@ struct CartView: View {
             if !Task.isCancelled { failure = error.localizedDescription }
         }
         loading = false
+        // analytics' `view_cart`: once per visit, of the cart as it is now (the last known one when the load failed)
+        if !Task.isCancelled, let cart = AppGraph.cart.cart, !cart.lines.isEmpty { AppGraph.analytics.track(viewCart(cart)) }
     }
 
     /// The sleep is a debounce: tapping the stepper quickly restarts this task, so only the last cart is preloaded.

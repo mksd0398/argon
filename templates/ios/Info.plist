@@ -26,6 +26,38 @@
 	<string>$(ONBOARDING)</string>
 	<key>FreeShippingThreshold</key>
 	<string>$(FREE_SHIPPING_THRESHOLD)</string>
+	<key>MetaAppId</key>
+	<string>$(META_APP_ID)</string>
+	<key>MetaClientToken</key>
+	<string>$(META_CLIENT_TOKEN)</string>
+	<key>MoengageWorkspaceId</key>
+	<string>$(MOENGAGE_WORKSPACE_ID)</string>
+	<key>MoengageDataCenter</key>
+	<string>$(MOENGAGE_DATA_CENTER)</string>
+	<key>ServerPurchase</key>
+	<string>$(SERVER_PURCHASE)</string>
+	<!-- Analytics. The keys the providers' SDKs read themselves; nothing reads them in an app without the SDK.
+	     Meta's app (META_APP_ID, META_CLIENT_TOKEN): -->
+	<key>FacebookAppID</key>
+	<string>$(META_APP_ID)</string>
+	<key>FacebookClientToken</key>
+	<string>$(META_CLIENT_TOKEN)</string>
+	<key>FacebookDisplayName</key>
+	<string>$(APP_NAME)</string>
+	<!-- An SDK collects nothing by itself until the app turns it on, which it does while the shopper shares usage
+	     data (AnalyticsSink.setEnabled): Meta's own events and the advertising id, Google Analytics' collection. -->
+	<key>FacebookAutoLogAppEventsEnabled</key>
+	<false/>
+	<key>FacebookAdvertiserIDCollectionEnabled</key>
+	<false/>
+	<key>FIREBASE_ANALYTICS_COLLECTION_ENABLED</key>
+	<false/>
+	<!-- The app reports each screen itself (trackScreen), so Firebase's own screen_view per view controller is off.
+	     So is its swizzling of the app delegate, as Firebase asks of a SwiftUI app. -->
+	<key>FirebaseAutomaticScreenReportingEnabled</key>
+	<false/>
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<false/>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

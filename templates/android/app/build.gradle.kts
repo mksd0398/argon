@@ -20,6 +20,21 @@ fun javaString(v: String) = "\"" + v.replace("\\", "\\\\").replace("\"", "\\\"")
 fun resourceString(v: String) = v.replace("\\", "\\\\").replace("'", "\\'").replace("\"", "\\\"")
     .let { if (it.startsWith("@") || it.startsWith("?")) "\\" + it else it }
 
+// The analytics providers. Each is compiled into the app only when the store set it up: its SDK, and src/<provider>/java
+// (the sink that feeds it, and the sink's factory) in place of src/no<Provider>/java (the same factory, returning null).
+// An app with none set up carries no analytics SDK at all.
+val firebase = file("google-services.json").exists() // Firebase's own file, from its console
+val meta = config("META_APP_ID").isNotBlank()
+val moengage = config("MOENGAGE_WORKSPACE_ID").isNotBlank()
+if (meta && config("META_CLIENT_TOKEN").isBlank()) {
+    throw GradleException("META_APP_ID is set but META_CLIENT_TOKEN is empty — the Facebook SDK needs both (shopify.properties)")
+}
+if (moengage && config("MOENGAGE_DATA_CENTER").trim() !in listOf("", "1", "2", "3", "4", "5", "6")) {
+    throw GradleException("MOENGAGE_DATA_CENTER must be 1 to 6: the N of the workspace's dashboard-0N.moengage.com (shopify.properties)")
+}
+// Google's plugin turns google-services.json into the resources Firebase starts from; it fails a build without the file.
+if (firebase) apply(plugin = libs.plugins.google.services.get().pluginId)
+
 android {
     namespace = "app.storefront"
     compileSdk = 36
@@ -36,10 +51,20 @@ android {
             "API_VERSION", "APP_NAME", "BUNDLE_ID", "PDP_METAFIELDS",
             "HOME_TEMPLATE", "COLLECTION_TEMPLATE", "JUDGEME_PUBLIC_TOKEN", "SHOW_VENDOR",
             "ONBOARDING", "FREE_SHIPPING_THRESHOLD",
+            "META_APP_ID", "META_CLIENT_TOKEN", "MOENGAGE_WORKSPACE_ID", "MOENGAGE_DATA_CENTER", "SERVER_PURCHASE",
         )) buildConfigField("String", key, javaString(config(key)))
         resValue("string", "app_name", resourceString(config("APP_NAME")))
         manifestPlaceholders["authScheme"] = "shop.${config("SHOP_ID")}.app"
+        // where the Facebook SDK reads them; empty, and read by nothing, in an app without Meta
+        manifestPlaceholders["metaAppId"] = config("META_APP_ID").trim()
+        manifestPlaceholders["metaClientToken"] = config("META_CLIENT_TOKEN").trim()
     }
+
+    sourceSets["main"].kotlin.srcDirs(
+        "src/${if (firebase) "firebase" else "noFirebase"}/java",
+        "src/${if (meta) "meta" else "noMeta"}/java",
+        "src/${if (moengage) "moengage" else "noMoengage"}/java",
+    )
 
     buildFeatures {
         compose = true
@@ -63,5 +88,11 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
+    if (firebase) {
+        implementation(platform(libs.firebase.bom))
+        implementation(libs.firebase.analytics)
+    }
+    if (meta) implementation(libs.facebook.core)
+    if (moengage) implementation(libs.moengage)
     testImplementation(libs.junit)
 }

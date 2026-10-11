@@ -50,6 +50,7 @@ import app.argon.ui.components.ArgonSpinner
 import app.argon.ui.components.ArgonTextArea
 import app.storefront.AppGraph
 import app.storefront.data.JudgeMe
+import app.storefront.data.Product
 import app.storefront.data.Review
 import app.storefront.data.ReviewPage
 import app.storefront.data.ReviewSummary
@@ -65,14 +66,22 @@ import kotlinx.coroutines.launch
 // Block 11 of the product page: the product's Judge.me reviews (summary, list, "Load more") and the sheet to write one.
 
 /**
- * The stars beside the product's title: the reviews' own [summary] once it has loaded with reviews, else the product's
- * rating metafields ([rating], [ratingCount]). Null for a product nobody has reviewed.
+ * The stars beside the product's title: the reviews' own [summary] once it has loaded with reviews and an average, else
+ * the product's rating metafields ([rating], [ratingCount]). Null for a product nobody has reviewed.
  */
 internal fun shownRating(summary: ReviewSummary?, rating: Double?, ratingCount: Int?): Pair<Double, Int?>? = when {
-    summary != null && summary.count > 0 -> summary.average to summary.count
+    summary?.average != null && summary.count > 0 -> summary.average to summary.count
     rating != null && ratingCount != 0 -> rating to ratingCount
     else -> null
 }
+
+/**
+ * The average of reviews that come without one (Judge.me without a token): the product's [rating] metafield when the
+ * store exposes it (0 is none), else the mean of the [loaded] reviews once they are all [count] of them, else null: the
+ * block then shows the count and the reviews, no stars.
+ */
+internal fun reviewAverage(rating: Double?, count: Int, loaded: List<Review>): Double? =
+    rating?.takeIf { it > 0 } ?: loaded.takeIf { it.isNotEmpty() && count <= it.size }?.map { it.rating }?.average()
 
 /** "1 star", "4 stars". */
 internal fun starsLabel(stars: Int): String = if (stars == 1) "1 star" else "$stars stars"
@@ -121,11 +130,17 @@ internal class ReviewsState(
     private val send: suspend (ReviewForm) -> Unit,
     /** The demo store's bundled sample reviews: the block says so, and nothing a shopper writes is sent. */
     val isSample: Boolean = false,
+    /** The product's `rating` metafield: the average of reviews that come without one ([reviewAverage]). */
+    private val rating: Double? = null,
+    /** Without a Judge.me token nobody has said the store has reviews: the block then waits for a first one ([isShown]). */
+    private val hidesEmpty: Boolean = false,
 ) {
-    constructor(judgeMe: JudgeMe, productId: String) : this(
-        load = { page -> judgeMe.reviews(productId, page) },
-        send = { form -> judgeMe.submit(productId, form.name.trim(), form.email.trim(), form.rating, form.title.trim(), form.body.trim()) },
+    constructor(judgeMe: JudgeMe, product: Product) : this(
+        load = { page -> judgeMe.reviews(product.id, page) },
+        send = { form -> judgeMe.submit(product.id, form.name.trim(), form.email.trim(), form.rating, form.title.trim(), form.body.trim()) },
         isSample = judgeMe.isSample,
+        rating = product.rating,
+        hidesEmpty = judgeMe.isTokenless,
     )
 
     // java.util.logging: it reaches logcat on Android and also runs in JVM tests
@@ -147,6 +162,9 @@ internal class ReviewsState(
     var isLoaded by mutableStateOf(false)
         private set
 
+    /** Whether the page has the block at all: always, but without a token only once there is a review to show. */
+    val isShown: Boolean get() = !hidesEmpty || items.isNotEmpty()
+
     /** The first page, once. */
     suspend fun loadFirst() {
         if (!isLoaded) loadMore()
@@ -160,9 +178,9 @@ internal class ReviewsState(
         try {
             val next = load(page + 1)
             page += 1
-            next.summary?.let { summary = it }
             // a review that slid onto the next page while a new one came in is not shown twice
             items = (items + next.reviews).distinctBy { it.id }
+            next.summary?.let { summary = it.copy(average = it.average ?: reviewAverage(rating, it.count, items)) }
             hasMore = next.hasNextPage
             isLoaded = true
         } catch (e: CancellationException) {
@@ -180,9 +198,9 @@ internal class ReviewsState(
 }
 
 /**
- * The reviews block: the summary (average, stars, count, a bar per star), "Write a review" ([onWrite]), the reviews
- * loaded so far, then "Load more" ([onLoadMore]) while there are more. A load that failed shows a quiet line with Retry
- * (also [onLoadMore]); it never takes the page down.
+ * The reviews block: the summary (average, stars, count, a bar per star, as far as the reviews carry them), "Write a
+ * review" ([onWrite]), the reviews loaded so far, then "Load more" ([onLoadMore]) while there are more. A load that
+ * failed shows a quiet line with Retry (also [onLoadMore]); it never takes the page down.
  * ponytail: the loaded reviews are all in this one list item (five a page, a few pages at most in practice). Upgrade:
  * one lazy item per review, for stores whose shoppers page through hundreds.
  */
@@ -217,7 +235,10 @@ internal fun ProductReviews(reviews: ReviewsState, modifier: Modifier = Modifier
     }
 }
 
-/** The average with its stars and "128 reviews", beside one bar per star from 5 down to 1. */
+/**
+ * The average with its stars and "128 reviews", beside one bar per star from 5 down to 1. Reviews read without a token
+ * have no bars, and until their average is known ([reviewAverage]) only "128 reviews".
+ */
 @Composable
 private fun SummaryView(summary: ReviewSummary) {
     val spacing = ArgonTheme.spacing
@@ -225,22 +246,26 @@ private fun SummaryView(summary: ReviewSummary) {
     val colors = ArgonTheme.colors
     Row(horizontalArrangement = Arrangement.spacedBy(spacing.xl), verticalAlignment = Alignment.CenterVertically) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
-            Text(averageLabel(summary.average), style = type.display, color = colors.ink)
-            ArgonRating(summary.average, size = ArgonSize.M)
+            summary.average?.let { average ->
+                Text(averageLabel(average), style = type.display, color = colors.ink)
+                ArgonRating(average, size = ArgonSize.M)
+            }
             Text(reviewCountLabel(summary.count), style = type.caption, color = colors.muted)
         }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.s)) {
-            for (stars in 5 downTo 1) {
-                val count = summary.histogram[stars] ?: 0
-                Row(
-                    // read as one line: "5 stars, 96 reviews"
-                    Modifier.clearAndSetSemantics { contentDescription = "${starsLabel(stars)}, ${reviewCountLabel(count)}" },
-                    horizontalArrangement = Arrangement.spacedBy(spacing.s),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("$stars", Modifier.widthIn(min = 12.dp), style = type.caption, color = colors.muted, textAlign = TextAlign.Center)
-                    ArgonProgressBar(histogramShare(summary, stars), Modifier.weight(1f))
-                    Text("$count", Modifier.widthIn(min = 28.dp), style = type.caption, color = colors.muted, textAlign = TextAlign.End)
+        if (summary.histogram.isNotEmpty()) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.s)) {
+                for (stars in 5 downTo 1) {
+                    val count = summary.histogram[stars] ?: 0
+                    Row(
+                        // read as one line: "5 stars, 96 reviews"
+                        Modifier.clearAndSetSemantics { contentDescription = "${starsLabel(stars)}, ${reviewCountLabel(count)}" },
+                        horizontalArrangement = Arrangement.spacedBy(spacing.s),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("$stars", Modifier.widthIn(min = 12.dp), style = type.caption, color = colors.muted, textAlign = TextAlign.Center)
+                        ArgonProgressBar(histogramShare(summary, stars), Modifier.weight(1f))
+                        Text("$count", Modifier.widthIn(min = 28.dp), style = type.caption, color = colors.muted, textAlign = TextAlign.End)
+                    }
                 }
             }
         }

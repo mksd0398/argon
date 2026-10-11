@@ -25,8 +25,9 @@ internal fun json(text: String): JsonObject = Json.parseToJsonElement(text).json
 internal fun fixtureStorefront() = StorefrontApi({ name, _ -> fixture(name) })
 
 /**
- * Every fixture in contract/fixtures, decoded through the facade call that runs its operation, with its key fields checked.
- * A new fixture without a case here fails.
+ * Every operation's fixture in contract/fixtures, decoded through the facade call that runs it, with its key fields
+ * checked. A new fixture without a case here fails. (JudgeMeReviews.json is Judge.me's answer, not an operation's:
+ * JudgeMeTest reads it.)
  */
 @RunWith(Parameterized::class)
 class ContractFixturesTest(private val operation: String) {
@@ -34,7 +35,7 @@ class ContractFixturesTest(private val operation: String) {
         @JvmStatic
         @Parameterized.Parameters(name = "{0}")
         fun operations(): List<String> = File(ContractFixturesTest::class.java.getResource("/fixtures")!!.toURI())
-            .list()!!.filter { it.endsWith(".json") }.map { it.removeSuffix(".json") }.sorted()
+            .list()!!.filter { it.endsWith(".json") && !it.startsWith("JudgeMe") }.map { it.removeSuffix(".json") }.sorted()
     }
 
     private val ran = mutableListOf<String>()

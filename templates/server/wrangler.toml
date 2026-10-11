@@ -1,0 +1,9 @@
+# The Worker's name, and the first part of its address: https://<name>.<your subdomain>.workers.dev
+# Change it if the Cloudflare account already has a Worker called this: deploying would replace that one.
+name = "argon-purchases"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+# Keeps the Worker's logs in the Cloudflare dashboard (a provider that refuses a purchase is logged)
+[observability]
+enabled = true

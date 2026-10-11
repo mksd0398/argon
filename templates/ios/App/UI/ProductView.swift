@@ -70,6 +70,8 @@ private func loadProduct(_ handle: String) async throws -> Product {
     // The Product query loads variants(first: 250), the Storefront API's page ceiling. A selection past those is not in
     // the list: the page then goes by variantBySelectedOptions alone (ProductState.loadVariant).
     guard let product = try await AppGraph.storefront.product(handle) else { throw NotFound(what: "Product") }
+    // once per load: coming back to a page that is kept is not another view
+    AppGraph.analytics.track(.viewItem(product.analyticsItem(), currency: product.analyticsCurrency))
     return product
 }
 
@@ -144,8 +146,8 @@ final class ProductState {
     /// "Recently viewed": the products opened before this one.
     private(set) var recent: [ProductCard]? = nil
 
-    /// The product's reviews; nil when the store has no Judge.me token.
-    let reviews: ReviewsState?
+    /// The product's reviews; without a Judge.me token their block shows only once it has some (`ReviewsState.isShown`).
+    let reviews: ReviewsState
 
     /// The gallery's page: choosing an option brings its variant's image here.
     var galleryPage = 0
@@ -157,7 +159,7 @@ final class ProductState {
     init(product: Product) {
         self.product = product
         selection = initialSelection(product.variants)
-        reviews = AppGraph.judgeMe.map { ReviewsState(judgeMe: $0, productId: product.id) }
+        reviews = ReviewsState(judgeMe: AppGraph.judgeMe, product: product)
     }
 
     func select(_ option: String, _ value: String) {
@@ -229,7 +231,7 @@ final class ProductState {
                 }
             }
             group.addTask { @MainActor in await self.loadRecent() }
-            group.addTask { @MainActor in await self.reviews?.loadFirst() }
+            group.addTask { @MainActor in await self.reviews.loadFirst() }
         }
     }
 
@@ -323,7 +325,9 @@ struct ProductView: View {
                 icon: saved ? .heartFilled : .heart,
                 accessibilityLabel: saved ? "Remove from wishlist" : "Save to wishlist"
             ) {
-                Task { await AppGraph.wishlist.toggle(product.id) }
+                Task {
+                    await AppGraph.wishlist.toggle(product.id, added: .addToWishlist(product.analyticsItem(), currency: product.analyticsCurrency))
+                }
             })
         }
         let count = AppGraph.cart.cart?.totalQuantity ?? 0
@@ -394,9 +398,7 @@ private struct ProductContent: View {
             GalleryViewer(images: product.images, title: product.title, start: viewerPage ?? 0)
         }
         .argonBottomSheet(isPresented: $writingReview, detents: [.large]) {
-            if let reviews = state.reviews {
-                ReviewSheet(form: $reviewForm, onDismiss: { writingReview = false }, submit: { try await reviews.submit($0) })
-            }
+            ReviewSheet(form: $reviewForm, onDismiss: { writingReview = false }, submit: { try await state.reviews.submit($0) })
         }
         .checkoutSheet(isPresented: $state.checkingOut, url: state.checkout) { failure in
             state.checkout = nil
@@ -417,7 +419,7 @@ private struct ProductContent: View {
             viewerPage = $0
         }
         // the stars lead to the reviews, when the page has them
-        ProductTitle(product: product, summary: state.reviews?.summary, onRating: state.reviews == nil ? nil : showReviews)
+        ProductTitle(product: product, summary: state.reviews.summary, onRating: state.reviews.isShown ? showReviews : nil)
         ProductPrice(variant: variant, price: state.price, quantity: state.quantity, companyName: AppGraph.buyer.company?.companyName)
         ProductOptions(options: visibleOptions(product), selection: state.selection, variants: product.variants) { option, value in
             state.select(option, value)
@@ -459,7 +461,8 @@ private struct ProductContent: View {
             state.toggleDetails($0)
         }
         TrustRow(onOpen: open).padding(.horizontal, theme.spacing.l).padding(.top, theme.spacing.xl)
-        if let reviews = state.reviews {
+        let reviews = state.reviews
+        if reviews.isShown {
             ProductReviews(reviews: reviews, onWrite: { writingReview = true }, onLoadMore: { Task { await reviews.loadMore() } })
                 .id(ProductBlock.reviews)
         }

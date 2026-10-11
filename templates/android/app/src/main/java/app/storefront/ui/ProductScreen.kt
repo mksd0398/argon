@@ -47,6 +47,7 @@ import app.argon.ui.components.ArgonRating
 import app.argon.ui.components.ArgonTopBar
 import app.argon.ui.components.ArgonTopBarAction
 import app.storefront.AppGraph
+import app.storefront.data.AnalyticsEvent
 import app.storefront.data.Metafield
 import app.storefront.data.MetafieldIdentifier
 import app.storefront.data.Product
@@ -57,6 +58,8 @@ import app.storefront.data.SellingPlanAllocation
 import app.storefront.data.ShopPolicies
 import app.storefront.data.Variant
 import app.storefront.data.Variants
+import app.storefront.data.analyticsCurrency
+import app.storefront.data.analyticsItem
 import app.storefront.ui.product.AddPhase
 import app.storefront.ui.product.ChosenPrice
 import app.storefront.ui.product.DESCRIPTION
@@ -144,7 +147,10 @@ private const val ADDED_MILLIS = 2000L
 private suspend fun loadProduct(handle: String): Product {
     // The Product query loads variants(first: 250), the Storefront API's page ceiling. A selection past those is not in
     // the list: the page then goes by variantBySelectedOptions alone (ProductState.loadVariant).
-    return AppGraph.storefront.product(handle) ?: error("Product not found")
+    val product = AppGraph.storefront.product(handle) ?: error("Product not found")
+    // once per load: coming back to a page that is kept is not another view
+    AppGraph.analytics.track(AnalyticsEvent.ViewItem(product.analyticsItem(), product.analyticsCurrency))
+    return product
 }
 
 /**
@@ -228,8 +234,8 @@ internal class ProductState(val product: Product) {
     var recent by mutableStateOf<List<ProductCard>?>(null)
         private set
 
-    /** The product's reviews; null when the store has no Judge.me token. */
-    val reviews: ReviewsState? = AppGraph.judgeMe?.let { ReviewsState(it, product.id) }
+    /** The product's reviews; without a Judge.me token their block shows only once it has some ([ReviewsState.isShown]). */
+    val reviews = ReviewsState(AppGraph.judgeMe, product)
 
     fun select(option: String, value: String) {
         selection = selection + (option to value)
@@ -284,7 +290,7 @@ internal class ProductState(val product: Product) {
             launch { if (complementary == null) complementary = quietly("complementary products") { recommended("COMPLEMENTARY") } }
             launch { if (related == null) related = quietly("related products") { recommended("RELATED") } }
             launch { loadRecent() }
-            launch { reviews?.loadFirst() }
+            launch { reviews.loadFirst() }
         }
     }
 
@@ -375,7 +381,7 @@ private fun ProductTopBar(product: Product?, nav: NavController) {
                     AppGraph.scope.launch {
                         // a failed write leaves the heart as it was; it must not crash the app
                         try {
-                            AppGraph.wishlist.toggle(product.id)
+                            AppGraph.wishlist.toggle(product.id, AnalyticsEvent.AddToWishlist(product.analyticsItem(), product.analyticsCurrency))
                         } catch (e: IOException) {
                             Log.w("Wishlist", "toggle failed", e)
                         }
@@ -433,7 +439,7 @@ private fun ProductContent(state: ProductState, nav: NavController) {
             when (block) {
                 ProductBlock.Gallery -> ProductGallery(product.images, product.title, gallery, galleryTags(variant)) { viewerPage = it }
                 // the stars lead to the reviews, when the page has them
-                ProductBlock.Title -> ProductTitle(product, state.reviews?.summary, onRating = showReviews.takeIf { state.reviews != null })
+                ProductBlock.Title -> ProductTitle(product, state.reviews.summary, onRating = showReviews.takeIf { state.reviews.isShown })
                 ProductBlock.Price -> ProductPrice(variant, state.price, state.quantity, company?.companyName)
                 ProductBlock.Options -> ProductOptions(visibleOptions(product), state.selection, product.variants) { option, value ->
                     state.select(option, value)
@@ -457,8 +463,8 @@ private fun ProductContent(state: ProductState, nav: NavController) {
                 ProductBlock.Bundle -> ProductBundle(variant, onOpen = open)
                 ProductBlock.Details -> ProductDetails(product.descriptionHtml, state.metafields.orEmpty(), state.policies, state.openDetails) { state.toggleDetails(it) }
                 ProductBlock.Trust -> TrustRow(open, gutter)
-                ProductBlock.Reviews -> state.reviews?.let { reviews ->
-                    ProductReviews(reviews, onWrite = { writingReview = true }, onLoadMore = { screen.launch { reviews.loadMore() } })
+                ProductBlock.Reviews -> if (state.reviews.isShown) {
+                    ProductReviews(state.reviews, onWrite = { writingReview = true }, onLoadMore = { screen.launch { state.reviews.loadMore() } })
                 }
                 ProductBlock.PairsWith -> ProductRail("Pairs well with", state.complementary.orEmpty(), ProductCardStyle.Compact, onOpen = open)
                 ProductBlock.AlsoLike -> ProductRail("You may also like", state.related.orEmpty(), ProductCardStyle.Standard, onOpen = open)
@@ -469,7 +475,7 @@ private fun ProductContent(state: ProductState, nav: NavController) {
 
     // outside the list: an overlay must not go away with the block that opened it
     GalleryViewer(product.images, product.title, viewerPage) { viewerPage = null }
-    state.reviews?.let { reviews -> ReviewSheet(writingReview, { writingReview = false }, reviews::submit) }
+    ReviewSheet(writingReview, { writingReview = false }, state.reviews::submit)
 }
 
 /** Block 2: the vendor, the title, and the rating ([shownRating]); [onRating] makes the stars a way to the reviews. */

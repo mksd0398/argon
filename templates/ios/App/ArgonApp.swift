@@ -6,6 +6,8 @@ import SwiftUI
 // This file imports Checkout Kit, whose public `Image` would clash with SwiftUI's: no unqualified `Image` here.
 @main
 struct ArgonApp: SwiftUI.App {
+    @UIApplicationDelegateAdaptor(Launch.self) private var launch
+
     init() {
         // .web = the store's own checkout branding (Checkout Kit's default is a generic light/dark theme)
         ShopifyCheckoutSheetKit.configure {
@@ -16,6 +18,18 @@ struct ArgonApp: SwiftUI.App {
 
     var body: some Scene {
         WindowGroup { AppRoot() }
+    }
+}
+
+/// Builds `AppGraph.analytics` as the app finishes launching: that is when the providers' SDKs (Firebase, Meta, MoEngage)
+/// ask to be started, which its sinks do. `ArgonApp.init` is too early for them: there is no `UIApplication` yet.
+private final class Launch: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        _ = AppGraph.analytics
+        return true
     }
 }
 

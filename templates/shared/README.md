@@ -34,10 +34,13 @@ One key list, two files with the same key names. Edit, then rebuild.
 | `PDP_METAFIELDS` | Product metafields to list on the product page, comma-separated `namespace.key` (e.g. `custom.material,custom.care`). Empty shows none |
 | `HOME_TEMPLATE` | Home screen layout: `fashion`, `beauty`, `grocery` or `b2b` |
 | `COLLECTION_TEMPLATE` | Collection layout: `top` (sticky sort and filter bar) or `bottom` (floating bar) |
-| `JUDGEME_PUBLIC_TOKEN` | Judge.me *public* API token, for product reviews. Empty hides reviews |
+| `JUDGEME_PUBLIC_TOKEN` | Judge.me *public* API token, for product reviews. Empty still shows them, with less detail |
 | `SHOW_VENDOR` | `true` shows the vendor on product cards and the product page. `false` (the default) hides it, as Shopify's own themes do |
 | `ONBOARDING` | `true` (the default) shows a three-page welcome the first time the app opens. `false` skips it |
 | `FREE_SHIPPING_THRESHOLD` | The cart total from which shipping is free, as a number in the shop's currency (e.g. `150`). The cart shows the progress towards it. Empty hides the bar |
+| `META_APP_ID`, `META_CLIENT_TOKEN` | The Meta app's ID and client token, for [analytics](#analytics). Both empty leaves Meta out |
+| `MOENGAGE_WORKSPACE_ID`, `MOENGAGE_DATA_CENTER` | The MoEngage workspace ID and its data center, `1` to `6`. An empty workspace ID leaves MoEngage out |
+| `SERVER_PURCHASE` | Who reports the purchase to Google Analytics: the app (`false`, the default) or `server/` (`true`). Read [Purchases from a server](#purchases-from-a-server-server) before turning it on |
 
 - iOS: `ios/Config.xcconfig` (`KEY = value`)
 - Android: `android/shopify.properties` (`KEY=value`)
@@ -76,6 +79,8 @@ Both apps carry every template; `HOME_TEMPLATE` and `COLLECTION_TEMPLATE` pick t
 
 Set `JUDGEME_PUBLIC_TOKEN` to the **public** token from Judge.me admin → Settings → Integrations → View API tokens. The product page then shows the rating summary and the reviews, and takes new ones. Never use the private token: anything in the config files ships inside the app.
 
+Without a token the app reads the reviews through the endpoint Judge.me's own storefront widget uses. It shows the list and the count, but no star breakdown, and the average only when the rating metafield below is exposed or every review is loaded; a product with no reviews yet shows no reviews section. That endpoint is not a documented API and can change without notice, so set the token when you can. A store without Judge.me shows no reviews either way.
+
 Rating stars on product cards come from the standard `reviews.rating` and `reviews.rating_count` product metafields, which Judge.me keeps up to date. They appear once those two definitions have **Storefront API access** on (Settings → Custom data → Products).
 
 ### B2B
@@ -85,6 +90,61 @@ When the signed-in customer is a contact of a company (Shopify B2B), the apps ru
 ### Returns and exchanges
 
 The order page offers **Return or exchange items** when the store has self-serve returns on (Settings → Customer accounts) and something is returnable. Shopify's Customer Account API takes return requests only, so an exchange is sent as a return whose note names the wanted variant; complete it from the return in Shopify admin.
+
+## Analytics
+
+The apps can report to Google Analytics, Meta and MoEngage. Each is off until it is configured, and an app with none configured carries no analytics SDK.
+
+| Provider | Configured by | Where it comes from |
+|---|---|---|
+| Google Analytics 4 | `android/app/google-services.json` and `ios/App/GoogleService-Info.plist` | Firebase console → Project settings → Your apps: add an Android app and an iOS app with this project's `BUNDLE_ID`, and download each one's file. The project needs Google Analytics turned on |
+| Meta | `META_APP_ID`, `META_CLIENT_TOKEN` | Meta for Developers → the app: its app ID, and the client token under App settings → Advanced |
+| MoEngage | `MOENGAGE_WORKSPACE_ID`, `MOENGAGE_DATA_CENTER` | MoEngage dashboard → Settings: the workspace ID. The data center is the number in the dashboard's address (`dashboard-03.moengage.com` is `3`) |
+
+A Firebase file must be for this app's `BUNDLE_ID`: Google Analytics gets nothing from an app whose ID is not the one in its file.
+
+- **Android** needs nothing more: the build adds an SDK when its file or its keys are there.
+- **iOS with Xcode**: add the provider's Swift package to the App target (File → Add Package Dependencies). For Google Analytics also add `-ObjC` to the App target's Other Linker Flags (Build Settings): Firebase's package asks for it.
+- **iOS with xtool**: `ios/Package.swift` already has the packages of the providers Argon was given. To add one later, add its package and its product there, next to Checkout Kit's. Firebase's file also goes in `ios/xtool.yml` (`- App/GoogleService-Info.plist`) and in the app target's `exclude` list, and the target needs `linkerSettings: [.unsafeFlags(["-Xlinker", "-ObjC"])]`; Meta's SDK reads three keys from `ios/Xtool-Info.plist`: `FacebookAppID`, `FacebookClientToken` and `FacebookDisplayName`.
+
+| Provider | Swift package | Product |
+|---|---|---|
+| Google Analytics | `https://github.com/firebase/firebase-ios-sdk`, 13.0.1 or later | `FirebaseAnalytics` |
+| Meta | `https://github.com/facebook/facebook-ios-sdk`, 18.1.1 or later | `FacebookCore` |
+| MoEngage | `https://github.com/moengage/apple-sdk`, 11.3.0 or later | `MoEngage-iOS-SDK` |
+
+Firebase 13 needs Xcode 26.2 or later (Swift 6.2.1 with xtool); with an older Xcode, use its 12.x releases.
+
+MoEngage's SDK does not build for the Intel (x86_64) simulator: with MoEngage in the app, run it on an Apple silicon Mac's simulator or on a device.
+
+### What is reported
+
+Every screen and store reports to one hub, `Analytics`, and each provider plugs in behind it. The events, under Google Analytics' names: `screen_view`, `view_item_list`, `view_item`, `search`, `add_to_wishlist`, `add_to_cart`, `remove_from_cart`, `view_cart`, `begin_checkout`, `add_shipping_info`, `add_payment_info`, `purchase` and `login`. Meta gets its standard app events where it has one (product views, search, wishlist, cart, checkout, payment details, purchase), and MoEngage its own event names and the signed-in customer's id, email, phone and name. Product ids are Shopify's numeric ids, the ones Google's and Meta's catalogues use.
+
+Debug builds print one line per event (`Analytics: add_to_cart {…}`) to logcat or the Xcode console. It is how to check the events without any provider account.
+
+MoEngage push notifications and in-app messages are not included: they need FCM and APNs keys.
+
+### Consent
+
+The Account screen has a **Share usage data** switch under Privacy, on by default. While it is off, the apps report nothing and each provider's SDK is switched off as well (they collect on their own otherwise). In Meta's Events Manager leave the "Automatic event logging for the Facebook SDK" toggle untouched: set there, it overrides the shopper's choice. It is one switch: a store that sells in the EU needs a prompt before the first event, and the apps don't show iOS's tracking prompt (ATT), so Meta gets no advertising id on iOS.
+
+### Purchases from a server (`server/`)
+
+Argon writes this folder when Google Analytics or Meta is configured (or with `--server`). The keys that let a server report a sale, Google Analytics' API secrets and Meta's access token, must never be inside an app, so one small Cloudflare Worker holds them, and you deploy it to your own account.
+
+Shopify tells the Worker about every new order, and it reports the ones placed in the app as a purchase, with the ids the app uses: Meta's event id is `purchase-<order id>`, and Google Analytics' `transaction_id` is the order's numeric id. It knows an app order by the attributes the app puts on a cart when it creates it (`_argon_platform`, and each provider's ids), which Shopify passes on as the order's additional details. They are put on once: a customer who switches "Share usage data" off after creating a cart is still reported for that cart.
+
+Only the purchase goes through the server; every other event comes from the app alone. Who reports the purchase:
+
+- **Meta: the app and the server, both.** Meta counts the two once, by the event id.
+- **Google Analytics: one side only**, because it would count a purchase from each. `SERVER_PURCHASE` picks the side.
+  - `false`, the default: the app reports the purchase itself, and the server sends Google Analytics nothing.
+  - `true`: the app leaves the purchase to the server. Argon sets it when the project is generated with `--server`; to switch later, set it in both config files and release that version of the apps.
+
+Turn `SERVER_PURCHASE` on only once the Worker is deployed with the Google Analytics secrets: from then on Google Analytics gets the apps' purchases through the Worker or not at all.
+
+`server/README.md` has the deploy steps and where each secret is found.
 
 ## Demo store (`mock.shop`)
 

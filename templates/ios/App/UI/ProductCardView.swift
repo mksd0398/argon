@@ -33,18 +33,18 @@ private enum CurrencyFormat {
     }
 }
 
-/// Heart toggle for the product with id `productId`: filled while it is in the wishlist. A 36 pt disc centred in the
-/// 44 pt touch target, so the disc sits 4 pt inside whatever corner the button is aligned to.
+/// Heart toggle for the product `card`: filled while it is in the wishlist. A 36 pt disc centred in the 44 pt touch
+/// target, so the disc sits 4 pt inside whatever corner the button is aligned to.
 @MainActor
 struct WishlistHeart: View {
-    let productId: String
+    let card: ProductCard
     @Environment(\.argonTheme) private var theme
 
     var body: some View {
-        let saved = AppGraph.wishlist.contains(productId)
+        let saved = AppGraph.wishlist.contains(card.id)
         let label: String = saved ? "Remove from wishlist" : "Save to wishlist"
         Button {
-            Task { await AppGraph.wishlist.toggle(productId) }
+            Task { await AppGraph.wishlist.toggle(card.id, added: .addToWishlist(card.analyticsItem(), currency: card.price.currencyCode)) }
         } label: {
             ArgonIcon(name: saved ? .heartFilled : .heart, size: 17, tint: theme.colors.ink)
                 .frame(width: 36, height: 36)
@@ -103,7 +103,7 @@ struct ProductCardView: View {
                     }
                     .padding(theme.spacing.s)
                 }
-                .overlay(alignment: .topTrailing) { WishlistHeart(productId: card.id) }
+                .overlay(alignment: .topTrailing) { WishlistHeart(card: card) }
             if AppGraph.showVendor && !card.vendor.trimmingCharacters(in: .whitespaces).isEmpty {
                 Text(card.vendor).font(theme.type.caption).foregroundStyle(theme.colors.muted).lineLimit(1)
             }

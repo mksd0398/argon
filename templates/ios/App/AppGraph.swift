@@ -12,7 +12,7 @@ enum AppGraph {
     /// Which home page and which collection page the app shows; an unknown value is the default.
     static let homeTemplate = HomeTemplate(config: info("HomeTemplate"))
     static let collectionTemplate = CollectionTemplate(config: info("CollectionTemplate"))
-    /// Judge.me's public token; empty hides reviews.
+    /// Judge.me's public token; empty: reviews without their star breakdown (`judgeMe`).
     static let judgeMeToken = info("JudgemePublicToken").trimmingCharacters(in: .whitespaces)
     /// Whether product cards and the product page show the vendor (`SHOW_VENDOR`, false unless it is `true`): many
     /// stores' vendor is their own name on every product, or an internal label.
@@ -23,6 +23,16 @@ enum AppGraph {
     /// unset or not a number above zero: the cart then shows no free-shipping progress.
     static let freeShippingThreshold: Double? = Double(info("FreeShippingThreshold").trimmingCharacters(in: .whitespaces))
         .flatMap { $0 > 0 && $0.isFinite ? $0 : nil }
+    /// Meta's app id and client token (`META_APP_ID`, `META_CLIENT_TOKEN`); without both the app reports nothing to Meta.
+    static let metaAppId = info("MetaAppId").trimmingCharacters(in: .whitespaces)
+    static let metaClientToken = info("MetaClientToken").trimmingCharacters(in: .whitespaces)
+    /// The MoEngage workspace (`MOENGAGE_WORKSPACE_ID`; empty: nothing is reported to MoEngage) and the number of its
+    /// data center, 1 to 6 (`MOENGAGE_DATA_CENTER`; empty is 1).
+    static let moEngageWorkspaceId = info("MoengageWorkspaceId").trimmingCharacters(in: .whitespaces)
+    static let moEngageDataCenter = info("MoengageDataCenter").trimmingCharacters(in: .whitespaces)
+    /// Whether the store's server reports the purchase to Google Analytics, and the app leaves it out (`SERVER_PURCHASE`,
+    /// false unless it is `true`): Google Analytics would count one from each.
+    static let serverPurchase = info("ServerPurchase").trimmingCharacters(in: .whitespaces).lowercased() == "true"
     /// The app's name, as under its icon (`APP_NAME`).
     static let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? ""
 
@@ -57,21 +67,45 @@ enum AppGraph {
     /// Whether there is an account to show: a signed-in customer, or the sample one.
     @MainActor static var hasAccount: Bool { auth.signedIn || sampleAccount }
 
-    /// Product reviews; nil when the store has no Judge.me token (no reviews anywhere). The demo store's app has bundled
-    /// sample reviews instead (`JudgeMeWidget.sample.html`, which the CLI copies for mock.shop only).
-    static let judgeMe: JudgeMe? = {
+    /// Product reviews (Judge.me). Without a `judgeMeToken` they are read the way Judge.me's own storefront widget reads
+    /// them, and a store that has none shows none (see `JudgeMe`). The demo store's app has bundled sample reviews
+    /// instead (`JudgeMeWidget.sample.html`, which the CLI copies for mock.shop only).
+    static let judgeMe: JudgeMe = {
         if !judgeMeToken.isEmpty { return JudgeMe(shopDomain: shopDomain, token: judgeMeToken) }
-        guard let url = SampleAccount.reviewsURL else { return nil }
+        guard let url = SampleAccount.reviewsURL else { return JudgeMe(shopDomain: shopDomain, token: "") }
         return JudgeMe(shopDomain: shopDomain, token: "", sample: { try String(contentsOf: url, encoding: .utf8) })
     }()
 
-    @MainActor static let wishlist = WishlistStore(defaults: .standard)
+    /// Whether the shopper shares usage data (the Account screen's "Privacy" switch); `analytics` reports only while they do.
+    /// Each change of the choice goes on to the providers' SDKs. The type is written out because this and `analytics`
+    /// name each other.
+    @MainActor static let analyticsConsent: AnalyticsConsentStore = AnalyticsConsentStore(
+        defaults: .standard,
+        changed: { AppGraph.analytics.consentChanged() }
+    )
+
+    /// Where every screen and store reports what the shopper does: `analytics.track(event)`. `sinks` is every sink the
+    /// app has: a provider's factory joins the list; it returns nil when the provider isn't configured, or its Swift
+    /// package isn't in the app. A factory starts its provider's SDK, so this is built as the app launches (`ArgonApp`).
+    @MainActor static let analytics = Analytics(
+        sinks: [
+            logSink(),
+            firebaseSink(),
+            metaSink(),
+            moEngageSink(),
+        ].compactMap { $0 },
+        allowed: { AppGraph.analyticsConsent.allowed }
+    )
+
+    @MainActor static let wishlist = WishlistStore(defaults: .standard, track: { AppGraph.analytics.track($0) })
     @MainActor static let recentlyViewed = RecentlyViewedStore(defaults: .standard)
     @MainActor static let onboardingStore = OnboardingStore(defaults: .standard)
     @MainActor static let cart = CartStore(
         api: AppGraph.storefront,
         defaults: .standard,
-        accessToken: { try await AppGraph.auth.validAccessToken() }
+        accessToken: { try await AppGraph.auth.validAccessToken() },
+        track: { AppGraph.analytics.track($0) },
+        cartAttributes: { await AppGraph.analytics.cartAttributes() }
     )
 
     /// The company a signed-in B2B customer buys for: it puts `storefront` and `cart` in that company's context.

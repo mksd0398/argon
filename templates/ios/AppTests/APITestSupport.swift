@@ -16,12 +16,12 @@ func fixtureText(_ name: String, type: String = "json") throws -> String {
     return try String(contentsOf: url, encoding: .utf8)
 }
 
-/// The names of all the fixtures in the test bundle.
+/// The names of all the Shopify fixtures in the test bundle (Judge.me's answers are not GraphQL operations).
 func fixtureNames() -> Set<String> {
     let bundle = Bundle(for: FixtureBundle.self)
     let urls = (bundle.urls(forResourcesWithExtension: "json", subdirectory: "Fixtures") ?? [])
         + (bundle.urls(forResourcesWithExtension: "json", subdirectory: nil) ?? [])
-    return Set(urls.map { $0.deletingPathExtension().lastPathComponent })
+    return Set(urls.map { $0.deletingPathExtension().lastPathComponent }.filter { !$0.hasPrefix("JudgeMe") })
 }
 
 /// Fixture <name>'s `data` as JSONSerialization objects, to build other answers from.

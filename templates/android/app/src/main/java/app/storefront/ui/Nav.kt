@@ -20,6 +20,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -45,6 +46,7 @@ import app.argon.ui.components.ArgonTopBarAction
 import app.argon.ui.gallery.ArgonGallery
 import app.storefront.AppGraph
 import app.storefront.BuildConfig
+import app.storefront.data.AnalyticsEvent
 import app.storefront.data.Route
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -120,6 +122,9 @@ fun NavController.open(route: Route) {
     }
 }
 
+/** A route's short, stable name for analytics: "product/{handle}" is "product", "search?q={q}" is "search". */
+internal fun screenName(route: String): String = route.substringBefore('/').substringBefore('?')
+
 /** The back arrow for a pushed screen's `ArgonTopBar` (its `leading`). */
 fun NavController.backAction() = ArgonTopBarAction(ArgonIconName.Back, "Back") { popBackStack() }
 
@@ -166,6 +171,21 @@ private fun AppNav(startTab: AppTab? = null) {
             nav.openTab(startTab.route)
         }
         AppGraph.tabs.selections.collect { nav.openTab(it.route) }
+    }
+    // Analytics' `screen_view`, from the one place every screen passes through. By back stack entry: tapping the tab that
+    // is already open navigates to the same entry, which is not another view.
+    DisposableEffect(nav) {
+        var shown: String? = null
+        val listener = NavController.OnDestinationChangedListener { controller, destination, _ ->
+            val entry = controller.currentBackStackEntry?.id
+            val route = destination.route
+            if (entry != shown && route != null) {
+                shown = entry
+                AppGraph.analytics.track(AnalyticsEvent.ScreenView(screenName(route)))
+            }
+        }
+        nav.addOnDestinationChangedListener(listener)
+        onDispose { nav.removeOnDestinationChangedListener(listener) }
     }
     Scaffold(
         // each screen's own Scaffold handles the system bars; this one only reserves room for the tab bar

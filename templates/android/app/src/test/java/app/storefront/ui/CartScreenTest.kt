@@ -11,6 +11,7 @@ import java.util.Locale
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -54,17 +55,17 @@ class CartScreenTest {
 
     @Test
     fun freeShippingSaysWhatIsLeftAndHowFarTheCartIs() {
-        val below = freeShipping(usd("120.0"), 150.0)!!
+        val below = freeShipping(usd("120.0"), 150.0, "USD")!!
         assertAmount("30.00", below.remaining)
         assertEquals("USD", below.remaining.currencyCode)
         assertEquals(0.8f, below.progress, 1e-6f)
         assertFalse(below.reached)
 
-        val empty = freeShipping(usd("0.0"), 150.0)!!
+        val empty = freeShipping(usd("0.0"), 150.0, "USD")!!
         assertAmount("150.00", empty.remaining)
         assertEquals(0f, empty.progress, 0f)
 
-        val cents = freeShipping(usd("149.99"), 150.0)!!
+        val cents = freeShipping(usd("149.99"), 150.0, "USD")!!
         assertAmount("0.01", cents.remaining)
         assertFalse("a cent short is not there yet", cents.reached)
     }
@@ -72,7 +73,7 @@ class CartScreenTest {
     @Test
     fun freeShippingIsReachedAtTheThresholdAndStaysReachedAboveIt() {
         for (amount in listOf("150.0", "150.00", "324.0")) {
-            val reached = freeShipping(usd(amount), 150.0)!!
+            val reached = freeShipping(usd(amount), 150.0, "USD")!!
             assertTrue(amount, reached.reached)
             assertAmount("0", reached.remaining)
             assertEquals(amount, 1f, reached.progress, 0f)
@@ -81,11 +82,19 @@ class CartScreenTest {
 
     @Test
     fun aStoreWithoutAThresholdShowsNoFreeShipping() {
-        assertNull(freeShipping(usd("120.0"), null))
-        assertNull("zero is no threshold", freeShipping(usd("120.0"), 0.0))
-        assertNull(freeShipping(usd("120.0"), -5.0))
-        assertNull(freeShipping(usd("120.0"), Double.NaN))
-        assertNull("an amount that can't be read", freeShipping(usd("lots"), 150.0))
+        assertNull(freeShipping(usd("120.0"), null, "USD"))
+        assertNull("zero is no threshold", freeShipping(usd("120.0"), 0.0, "USD"))
+        assertNull(freeShipping(usd("120.0"), -5.0, "USD"))
+        assertNull(freeShipping(usd("120.0"), Double.NaN, "USD"))
+        assertNull("an amount that can't be read", freeShipping(usd("lots"), 150.0, "USD"))
+    }
+
+    @Test
+    fun freeShippingIsOnlyForACartInTheShopsOwnCurrency() {
+        assertNotNull("the threshold is a number in the shop's currency", freeShipping(usd("120.0"), 150.0, "USD"))
+        assertNull("120 USD says nothing of 150 CAD", freeShipping(usd("120.0"), 150.0, "CAD"))
+        assertNull("the same holds above the number", freeShipping(usd("324.0"), 150.0, "CAD"))
+        assertNull("the shop's currency isn't known yet", freeShipping(usd("120.0"), 150.0, null))
     }
 
     // Lines

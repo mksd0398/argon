@@ -5,12 +5,21 @@ import SwiftUI
 
 // Block 11 of the product page: the product's Judge.me reviews (summary, list, "Load more") and the sheet to write one.
 
-/// The stars beside the product's title: the reviews' own `summary` once it has loaded with reviews, else the product's
-/// rating metafields (`rating`, `ratingCount`). Nil for a product nobody has reviewed.
+/// The stars beside the product's title: the reviews' own `summary` once it has loaded with reviews and an average, else
+/// the product's rating metafields (`rating`, `ratingCount`). Nil for a product nobody has reviewed.
 func shownRating(_ summary: ReviewSummary?, rating: Double?, ratingCount: Int?) -> (value: Double, count: Int?)? {
-    if let summary = summary, summary.count > 0 { return (summary.average, summary.count) }
+    if let summary = summary, let average = summary.average, summary.count > 0 { return (average, summary.count) }
     if let rating = rating, ratingCount != 0 { return (rating, ratingCount) }
     return nil
+}
+
+/// The average of reviews that come without one (Judge.me without a token): the product's `rating` metafield when the
+/// store exposes it (0 is none), else the mean of the `loaded` reviews once they are all `count` of them, else nil: the
+/// block then shows the count and the reviews, no stars.
+func reviewAverage(rating: Double?, count: Int, loaded: [Review]) -> Double? {
+    if let rating = rating, rating > 0 { return rating }
+    if loaded.isEmpty || count > loaded.count { return nil }
+    return Double(loaded.reduce(0) { $0 + $1.rating }) / Double(loaded.count)
 }
 
 /// "1 star", "4 stars".
@@ -93,14 +102,30 @@ final class ReviewsState {
     private let send: (ReviewForm) async throws -> Void
     /// The demo store's bundled sample reviews: the block says so, and nothing a shopper writes is sent.
     let isSample: Bool
+    /// The product's `rating` metafield: the average of reviews that come without one (`reviewAverage`).
+    private let rating: Double?
+    /// Without a Judge.me token nobody has said the store has reviews: the block then waits for a first one (`isShown`).
+    private let hidesEmpty: Bool
 
-    init(load: @escaping (_ page: Int) async throws -> ReviewPage, send: @escaping (ReviewForm) async throws -> Void, isSample: Bool = false) {
+    /// Whether the page has the block at all: always, but without a token only once there is a review to show.
+    var isShown: Bool { !hidesEmpty || !items.isEmpty }
+
+    init(
+        load: @escaping (_ page: Int) async throws -> ReviewPage,
+        send: @escaping (ReviewForm) async throws -> Void,
+        isSample: Bool = false,
+        rating: Double? = nil,
+        hidesEmpty: Bool = false
+    ) {
         self.load = load
         self.send = send
         self.isSample = isSample
+        self.rating = rating
+        self.hidesEmpty = hidesEmpty
     }
 
-    convenience init(judgeMe: JudgeMe, productId: String) {
+    convenience init(judgeMe: JudgeMe, product: Product) {
+        let productId = product.id
         self.init(
             load: { page in try await judgeMe.reviews(productId: productId, page: page) },
             send: { form in
@@ -114,7 +139,9 @@ final class ReviewsState {
                     body: trimmed(form.body)
                 )
             },
-            isSample: judgeMe.isSample
+            isSample: judgeMe.isSample,
+            rating: product.rating,
+            hidesEmpty: judgeMe.isTokenless
         )
     }
 
@@ -131,10 +158,13 @@ final class ReviewsState {
         do {
             let next = try await load(page + 1)
             page += 1
-            if let summary = next.summary { self.summary = summary }
             // a review that slid onto the next page while a new one came in is not shown twice
             var seen = Set(items.map { $0.id })
             items += next.reviews.filter { seen.insert($0.id).inserted }
+            if let summary = next.summary {
+                let average = summary.average ?? reviewAverage(rating: rating, count: summary.count, loaded: items)
+                self.summary = ReviewSummary(average: average, count: summary.count, histogram: summary.histogram)
+            }
             hasMore = next.hasNextPage
             isLoaded = true
         } catch {
@@ -155,9 +185,9 @@ final class ReviewsState {
 
 // MARK: - Views
 
-/// The reviews block: the summary (average, stars, count, a bar per star), "Write a review" (`onWrite`), the reviews
-/// loaded so far, then "Load more" (`onLoadMore`) while there are more. A load that failed shows a quiet line with Retry
-/// (also `onLoadMore`); it never takes the page down.
+/// The reviews block: the summary (average, stars, count, a bar per star, as far as the reviews carry them), "Write a
+/// review" (`onWrite`), the reviews loaded so far, then "Load more" (`onLoadMore`) while there are more. A load that
+/// failed shows a quiet line with Retry (also `onLoadMore`); it never takes the page down.
 /// ponytail: the loaded reviews are all built at once (five a page, a few pages at most in practice). Upgrade: a lazy
 /// stack, for stores whose shoppers page through hundreds.
 @MainActor
@@ -201,7 +231,8 @@ struct ProductReviews: View {
     }
 }
 
-/// The average with its stars and "128 reviews", beside one bar per star from 5 down to 1.
+/// The average with its stars and "128 reviews", beside one bar per star from 5 down to 1. Reviews read without a token
+/// have no bars, and until their average is known (`reviewAverage`) only "128 reviews".
 @MainActor
 private struct SummaryView: View {
     let summary: ReviewSummary
@@ -210,27 +241,31 @@ private struct SummaryView: View {
     var body: some View {
         HStack(spacing: theme.spacing.xl) {
             VStack(spacing: theme.spacing.xs) {
-                Text(averageLabel(summary.average)).font(theme.type.display).foregroundStyle(theme.colors.ink)
-                ArgonRating(value: summary.average, size: .m)
+                if let average = summary.average {
+                    Text(averageLabel(average)).font(theme.type.display).foregroundStyle(theme.colors.ink)
+                    ArgonRating(value: average, size: .m)
+                }
                 Text(reviewCountLabel(summary.count)).font(theme.type.caption).foregroundStyle(theme.colors.muted)
             }
-            VStack(spacing: theme.spacing.s) {
-                ForEach([5, 4, 3, 2, 1], id: \.self) { stars in
-                    let count = summary.histogram[stars] ?? 0
-                    // read as one line: "5 stars, 96 reviews"
-                    let line = "\(starsLabel(stars)), \(reviewCountLabel(count))"
-                    HStack(spacing: theme.spacing.s) {
-                        Text(verbatim: "\(stars)").frame(minWidth: 12)
-                        ArgonProgressBar(value: histogramShare(summary, stars))
-                        Text(verbatim: "\(count)").frame(minWidth: 28, alignment: .trailing)
+            if !summary.histogram.isEmpty {
+                VStack(spacing: theme.spacing.s) {
+                    ForEach([5, 4, 3, 2, 1], id: \.self) { stars in
+                        let count = summary.histogram[stars] ?? 0
+                        // read as one line: "5 stars, 96 reviews"
+                        let line = "\(starsLabel(stars)), \(reviewCountLabel(count))"
+                        HStack(spacing: theme.spacing.s) {
+                            Text(verbatim: "\(stars)").frame(minWidth: 12)
+                            ArgonProgressBar(value: histogramShare(summary, stars))
+                            Text(verbatim: "\(count)").frame(minWidth: 28, alignment: .trailing)
+                        }
+                        .font(theme.type.caption)
+                        .foregroundStyle(theme.colors.muted)
+                        .accessibilityElement()
+                        .accessibilityLabel(line)
                     }
-                    .font(theme.type.caption)
-                    .foregroundStyle(theme.colors.muted)
-                    .accessibilityElement()
-                    .accessibilityLabel(line)
                 }
+                .frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: .infinity)
         }
     }
 }

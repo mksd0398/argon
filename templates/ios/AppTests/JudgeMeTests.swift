@@ -1,6 +1,15 @@
 import XCTest
 @testable import ArgonStorefront
 
+/// The `html` of what Judge.me's own storefront widget is answered with (Fixtures/JudgeMeReviews.json): two reviews.
+private func tokenlessHtml() throws -> String {
+    try XCTUnwrap(try fixture("JudgeMeReviews")["html"] as? String)
+}
+
+/// The same answer for a product nobody has reviewed.
+private let noReviews = #"{"html":"<div class='jdgm-rev-widg__reviews'></div> <div class='jdgm-paginate' data-per-page='5' "#
+    + #"data-url='https://api.judge.me/reviews/reviews_for_widget' style=\"display: none;\"></div>","total_count":0,"page":"1"}"#
+
 /// The Judge.me widget's HTML (Fixtures/JudgeMeWidget.html has its real markup shape) read into reviews.
 final class JudgeMeHtmlTests: XCTestCase {
     private func widget() throws -> String { try fixtureText("JudgeMeWidget", type: "html") }
@@ -8,7 +17,7 @@ final class JudgeMeHtmlTests: XCTestCase {
     func testTheSummaryAndItsHistogram() throws {
         let page = JudgeMeHtml.parse(try widget(), page: 1, perPage: 5)
         let summary = try XCTUnwrap(page.summary)
-        XCTAssertEqual(summary.average, 4.33, accuracy: 0.0001)
+        XCTAssertEqual(try XCTUnwrap(summary.average), 4.33, accuracy: 0.0001)
         XCTAssertEqual(summary.count, 12)
         XCTAssertEqual(summary.histogram, [5: 8, 4: 2, 3: 1, 2: 0, 1: 1], "the row that clears the filter has no rating and is skipped")
     }
@@ -81,6 +90,38 @@ final class JudgeMeHtmlTests: XCTestCase {
         ], "double-quoted markup reads the same; the date falls back to data-content; reviews without a rating or an id are skipped")
     }
 
+    func testTheTokenlessHtmlIsTheReviewBlocksWithoutASummary() throws {
+        let page = JudgeMeHtml.parse(try tokenlessHtml(), page: 1, perPage: 5)
+        XCTAssertNil(page.summary, "no average, no count, no histogram")
+        XCTAssertEqual(page.reviews, [
+            Review(
+                id: "22222222-aaaa-4bbb-8ccc-000000000001",
+                rating: 5,
+                title: "Holds its shape & its colour",
+                body: "Third month of wearing the navy one most days. The cuffs haven't stretched.\nWould buy it again.",
+                author: "Mira K.",
+                verified: true,
+                date: "2026-10-06T09:15:42Z",
+                pictures: ["https://review-images.judgeme.com/example-store/1791700031__crewneck-navy__original.jpeg?quality=80&width=1024"],
+                reply: nil
+            ),
+            Review(
+                id: "22222222-aaaa-4bbb-8ccc-000000000002",
+                rating: 4,
+                title: "Good, runs warm",
+                body: "Nice weight. Too warm for me indoors.",
+                author: "Tomas R.",
+                verified: false,
+                // its timestamp has `data-content` only
+                date: "2026-09-19T17:48:03Z",
+                pictures: [],
+                reply: "Thanks Tomas! The lighter knit is back in spring."
+            ),
+        ])
+        let none = try XCTUnwrap(try json(noReviews)["html"] as? String)
+        XCTAssertEqual(JudgeMeHtml.parse(none, page: 1, perPage: 5).reviews, [], "the block around the reviews is not one of them")
+    }
+
     func testHtmlBecomesPlainText() {
         XCTAssertEqual(JudgeMeHtml.text("<p>One</p><p>Two<br>Three<br/>Four</p>"), "One\nTwo\nThree\nFour")
         XCTAssertEqual(JudgeMeHtml.text("  <b>Fish</b> &amp; chips &lt;3 &gt; &quot;hi&quot; it&#39;s&nbsp;fine &mdash; ok "), "Fish & chips <3 > \"hi\" it's fine \u{2014} ok")
@@ -105,12 +146,12 @@ final class JudgeMeTests: XCTestCase {
         super.tearDown()
     }
 
-    private func client(_ body: String, status: Int = 200) -> JudgeMe {
+    private func client(_ body: String, status: Int = 200, token: String = "public-token") -> JudgeMe {
         StubProtocol.body = body
         StubProtocol.status = status
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [StubProtocol.self]
-        return JudgeMe(shopDomain: "shop.test", token: "public-token", session: URLSession(configuration: configuration))
+        return JudgeMe(shopDomain: "shop.test", token: token, session: URLSession(configuration: configuration))
     }
 
     /// URLSession hands a protocol the body as a stream.
@@ -210,5 +251,93 @@ final class JudgeMeTests: XCTestCase {
 
         try await sample.submit(productId: "gid://shopify/Product/1", name: "Ada", email: "ada@example.com", rating: 5, title: "Lovely", body: "Soft")
         XCTAssertNil(StubProtocol.lastRequest)
+        XCTAssertFalse(sample.isTokenless, "a sample is not a store without a token")
+    }
+
+    // MARK: Without a token
+
+    func testWithoutATokenTheReviewsComeFromTheWidgetsOwnEndpoint() async throws {
+        XCTAssertFalse(client("{}").isTokenless)
+        let judgeMe = client(try fixtureText("JudgeMeReviews"), token: "")
+        XCTAssertTrue(judgeMe.isTokenless)
+
+        let product = "gid://shopify/Product/7982905098262"
+        let page = try await judgeMe.reviews(productId: product)
+        XCTAssertEqual(page.summary, ReviewSummary(average: nil, count: 2, histogram: [:]), "the count alone: no average, no breakdown")
+        XCTAssertEqual(page.reviews, JudgeMeHtml.parse(try tokenlessHtml(), page: 1, perPage: 5).reviews)
+        XCTAssertEqual(page.reviews.count, 2)
+        XCTAssertEqual(page.page, 1)
+        XCTAssertFalse(page.hasNextPage)
+
+        let request = try XCTUnwrap(StubProtocol.lastRequest)
+        let url = try XCTUnwrap(request.url.flatMap { URLComponents(url: $0, resolvingAgainstBaseURL: false) })
+        XCTAssertEqual(request.httpMethod, "GET")
+        XCTAssertEqual(url.host, "api.judge.me")
+        XCTAssertEqual(url.path, "/reviews/reviews_for_widget")
+        var query: [String: String] = [:]
+        for item in url.queryItems ?? [] { query[item.name] = item.value }
+        XCTAssertEqual(query, [
+            "url": "shop.test", "shop_domain": "shop.test", "platform": "shopify", "page": "1", "per_page": "5", "product_id": "7982905098262",
+        ])
+        XCTAssertNil(request.value(forHTTPHeaderField: "X-Api-Token"))
+
+        let first = try await judgeMe.reviews(productId: product, page: 1, perPage: 1)
+        XCTAssertTrue(first.hasNextPage, "2 reviews, 1 a page")
+        let second = try await judgeMe.reviews(productId: product, page: 2, perPage: 1)
+        XCTAssertFalse(second.hasNextPage)
+
+        // writing a review never needed the token
+        try await judgeMe.submit(productId: product, name: "Ada", email: "ada@example.com", rating: 5, title: "Lovely", body: "Soft")
+        let sent = try XCTUnwrap(StubProtocol.lastRequest)
+        XCTAssertEqual(sent.httpMethod, "POST")
+        XCTAssertEqual(sent.url?.absoluteString, "https://api.judge.me/api/v1/reviews")
+    }
+
+    func testAProductWithoutReviewsIsAnEmptyPageAndTheNextProductIsStillAskedFor() async throws {
+        let judgeMe = client(noReviews, token: "")
+        let page = try await judgeMe.reviews(productId: "gid://shopify/Product/1")
+        XCTAssertEqual(page, ReviewPage(summary: ReviewSummary(average: nil, count: 0, histogram: [:]), reviews: [], page: 1, hasNextPage: false))
+        StubProtocol.lastRequest = nil
+        _ = try await judgeMe.reviews(productId: "gid://shopify/Product/2")
+        XCTAssertNotNil(StubProtocol.lastRequest, "no reviews is an answer too: the next product is asked for")
+    }
+
+    func testAnyOtherAnswerTurnsTheTokenlessEndpointOffForTheRunWithoutAnError() async throws {
+        let answers: [(status: Int, body: String)] = [
+            (404, #"{"error":"Not found"}"#),
+            (500, ""),
+            (200, "<html>Not here</html>"),
+            (200, "[]"),
+            (200, #"{"widget":"<div></div>"}"#),
+            (200, #"{"html":"<div class='jdgm-rev-widg__reviews'></div>"}"#),
+            (200, #"{"html":null,"total_count":0}"#),
+            (200, #"{"html":"<div class='jdgm-rev-widg__reviews'></div>","total_count":"many"}"#),
+        ]
+        for answer in answers {
+            let what = "\(answer.status) \(answer.body)"
+            let judgeMe = client(answer.body, status: answer.status, token: "")
+            let first = try await judgeMe.reviews(productId: "gid://shopify/Product/1")
+            XCTAssertEqual(first, ReviewPage(summary: nil, reviews: [], page: 1, hasNextPage: false), what)
+            XCTAssertNotNil(StubProtocol.lastRequest, what)
+            StubProtocol.lastRequest = nil
+            let second = try await judgeMe.reviews(productId: "gid://shopify/Product/2", page: 2)
+            XCTAssertEqual(second, ReviewPage(summary: nil, reviews: [], page: 2, hasNextPage: false), what)
+            XCTAssertNil(StubProtocol.lastRequest, "\(what): asked once, then left alone")
+        }
+    }
+
+    func testBeingOfflineIsNoAnswerTheNextCallAsksAgain() async throws {
+        let judgeMe = client(try fixtureText("JudgeMeReviews"), token: "")
+        StubProtocol.failure = URLError(.notConnectedToInternet)
+        do {
+            _ = try await judgeMe.reviews(productId: "gid://shopify/Product/1")
+            XCTFail("expected a network error")
+        } catch ArgonAPIError.network {
+        } catch {
+            XCTFail("\(error)")
+        }
+        StubProtocol.failure = nil
+        let page = try await judgeMe.reviews(productId: "gid://shopify/Product/1")
+        XCTAssertEqual(page.reviews.count, 2)
     }
 }
