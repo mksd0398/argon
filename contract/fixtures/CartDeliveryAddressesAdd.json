@@ -66,7 +66,16 @@
               "totalAmount": {
                 "amount": "360.0",
                 "currencyCode": "CAD"
-              }
+              },
+              "subtotalAmount": {
+                "amount": "360.0",
+                "currencyCode": "CAD"
+              },
+              "amountPerQuantity": {
+                "amount": "120.0",
+                "currencyCode": "CAD"
+              },
+              "compareAtAmountPerQuantity": null
             },
             "discountAllocations": [],
             "sellingPlanAllocation": null,
@@ -91,6 +100,7 @@
                 "increment": 0
               },
               "product": {
+                "id": "gid://shopify/Product/7982905098262",
                 "handle": "men-crewneck",
                 "title": "Men's Crewneck"
               }

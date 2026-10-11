@@ -142,7 +142,8 @@ test("live: Storefront documents run against mock.shop", { skip: !process.env.AR
   await call("CartAttributesUpdate", { cartId, attributes: [{ key: "source", value: "app" }] });
   await call("CartDiscountCodesUpdate", { cartId, discountCodes: ["WELCOME10"] }); // unknown code: a cart warning
   await call("CartBuyerIdentityUpdate", { cartId, buyerIdentity: { countryCode: "CA" } });
-  assert.equal((await call("Cart", { id: cartId })).cart.totalQuantity, 3);
+  // not recorded: the fixture also carries an automatic discount and a compare-at price, which mock.shop has no data for
+  assert.equal((await call("Cart", { id: cartId }, { record: false })).cart.totalQuantity, 3);
   await call("CartGiftCardCodesAdd", { cartId, giftCardCodes: ["ABCD1234EFGH5678"] });
   await call("CartGiftCardCodesRemove", { cartId, appliedGiftCardIds: ["gid://shopify/AppliedGiftCard/1"] });
   // mock.shop answers the delivery mutations with a "not supported" user error (its carts never reach checkout)

@@ -32,7 +32,7 @@
         "currencyCode": "CAD"
       },
       "totalAmount": {
-        "amount": "360.0",
+        "amount": "324.0",
         "currencyCode": "CAD"
       }
     },
@@ -45,11 +45,32 @@
           "attributes": [],
           "cost": {
             "totalAmount": {
+              "amount": "324.0",
+              "currencyCode": "CAD"
+            },
+            "subtotalAmount": {
               "amount": "360.0",
+              "currencyCode": "CAD"
+            },
+            "amountPerQuantity": {
+              "amount": "120.0",
+              "currencyCode": "CAD"
+            },
+            "compareAtAmountPerQuantity": {
+              "amount": "150.0",
               "currencyCode": "CAD"
             }
           },
-          "discountAllocations": [],
+          "discountAllocations": [
+            {
+              "__typename": "CartAutomaticDiscountAllocation",
+              "discountedAmount": {
+                "amount": "36.0",
+                "currencyCode": "CAD"
+              },
+              "title": "Buy 3, save 10%"
+            }
+          ],
           "sellingPlanAllocation": null,
           "merchandise": {
             "__typename": "ProductVariant",
@@ -72,6 +93,7 @@
               "increment": 0
             },
             "product": {
+              "id": "gid://shopify/Product/7982905098262",
               "handle": "men-crewneck",
               "title": "Men's Crewneck"
             }

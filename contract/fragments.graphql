@@ -127,8 +127,13 @@ fragment Cart on Cart {
       id
       quantity
       attributes { key value }
-      cost { totalAmount { ...Money } }
-      discountAllocations { __typename discountedAmount { ...Money } }
+      cost {
+        totalAmount { ...Money }
+        subtotalAmount { ...Money }
+        amountPerQuantity { ...Money }
+        compareAtAmountPerQuantity { ...Money }
+      }
+      discountAllocations(lineLevelOnly: false) { ...CartDiscount }
       sellingPlanAllocation { sellingPlan { id name } }
       merchandise {
         __typename
@@ -139,7 +144,7 @@ fragment Cart on Cart {
           image { ...Image }
           price { ...Money }
           quantityRule { ...QuantityRule }
-          product { handle title }
+          product { id handle title }
         }
       }
       ... on ComponentizableCartLine {
@@ -154,6 +159,14 @@ fragment Cart on Cart {
       }
     }
   }
+}
+
+fragment CartDiscount on CartDiscountAllocation {
+  __typename
+  discountedAmount { ...Money }
+  ... on CartCodeDiscountAllocation { code }
+  ... on CartAutomaticDiscountAllocation { title }
+  ... on CartCustomDiscountAllocation { title }
 }
 
 fragment CartDeliveryGroups on Cart {
