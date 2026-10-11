@@ -30,13 +30,14 @@ Enums, same names on both platforms: `HomeTemplate { fashion, beauty, grocery, b
 
 ## Data contract (already in `contract/`, fixtures in `contract/fixtures/`)
 
-54 operations (40 Storefront, 14 Customer Account). What changed since phase 2:
+55 operations (41 Storefront, 14 Customer Account). What changed since phase 2:
 
 - **Every Storefront operation** takes `$buyer: BuyerInput` in `@inContext(country:, language:, buyer:)`.
 - **`ProductCard`** (fragment, so every product list): `vendor`, `priceRange.maxVariantPrice`, `options(first: 3) { name optionValues { name swatch } }`, `firstVariant: selectedOrFirstAvailableVariant { id sku availableForSale quantityRule }`, `rating` / `ratingCount` (the standard `reviews.rating` and `reviews.rating_count` metafields).
 - **`Filter`**: `presentation` (`IMAGE` | `SWATCH` | `TEXT`), `values.swatch { color image { previewImage } }`.
 - **`Cart`**: `buyerIdentity.purchasingCompany { company location }`; per line `sellingPlanAllocation.sellingPlan`, merchandise `sku` and `quantityRule`, and `lineComponents` on `ComponentizableCartLine` (a bundle's parts).
-- **`Product`**: `tags`, `onlineStoreUrl`, `rating`, `ratingCount`.
+- **`Product`**: `tags`, `onlineStoreUrl`, `rating`, `ratingCount`. It no longer selects `metafields(identifiers:)` or `sellingPlanGroups`: a token without the permission gets `ACCESS_DENIED` on those non-null fields, which nulls the whole product (seen live on 2026-10-11, on the released app too).
+- **`ProductMetafields`** (new): `product { id metafields(identifiers:) }`, for the Details block only. `productMetafields(handle, identifiers) -> [Metafield]`: no request for an empty list, nulls dropped; the page ignores its failure.
 - **`VariantBySelectedOptions`**: the selected variant in full: `barcode`, `quantityAvailable`, `currentlyNotInStock`, `unitPrice`, `unitPriceMeasurement`, `quantityRule`, `quantityPriceBreaks`, `requiresComponents`, `components`, `groupedBy`, `sellingPlanAllocations`.
 - **`FallbackHome`**: 8 collections.
 - **Customer Account**: `Order` (payment, transactions, shipping line, PO number, purchasing company, fulfilment events, refunds, returns with exchange items, `returnInformation`), `Orders` (item count, first titles and images, shipment status, delivery date), `OrderReturnOptions` (fees, shipping method, non-returnable summary, line details), new `CustomerCompanies` and `CustomerStoreCredit`.
@@ -164,10 +165,10 @@ Top bar: back, share (the `onlineStoreUrl`, else `https://<domain>/products/<han
 3. **Price**: `PriceView` (L). Unit price ("$6.00 / item", from `unitPrice` and `unitPriceMeasurement`). In a company context: tag "Your price for <company>". Volume pricing table from `quantityPriceBreaks` ("10+" → price each), the row matching the quantity highlighted. Quantity rule line: "Minimum 2 · Maximum 40 · Sold in multiples of 2" (only the parts that differ from 1 / none).
 4. **Options**: per option (not the lone `Title: Default Title`): label with the selected value; colour options as `ArgonSwatch` (M), others as `ArgonTag` choices; values that make no available variant with the rest of the selection are struck/disabled but still selectable (to reach "Sold out"). Selecting an option whose image belongs to a variant scrolls the gallery to it.
 5. **Availability**: "Only N left" (warning colour) when `quantityAvailable` is 1...5; "Ships when back in stock" when `currentlyNotInStock`; "In stock" otherwise when available; pickup line "Pickup available at <location>" from `storeAvailability` when there is one.
-6. **Purchase options** (when the product has selling plans): `ArgonRadioGroup`: "One-time purchase" (hidden when `requiresSellingPlan`) and each plan with its price.
+6. **Purchase options** (when the selected variant has `sellingPlanAllocations`): `ArgonRadioGroup`: "One-time purchase" (hidden when `requiresSellingPlan`) and each plan with its price.
 7. **Quantity + Buy now**: `ArgonQuantityStepper` on the quantity rule; "Buy now" (secondary, full width): adds, then opens checkout.
 8. **Bundle**: "This bundle includes": each component's image, product title, variant title, "× n". "Also sold in": `groupedBy` rows opening that product.
-9. **Details**: `ArgonAccordion`s: Description (first one open), Details (the `PDP_METAFIELDS`), Shipping policy, Returns policy (bodies from `policies()`).
+9. **Details**: `ArgonAccordion`s: Description (first one open), Details (the `PDP_METAFIELDS`, from `productMetafields`; hidden when empty or refused), Shipping policy, Returns policy (bodies from `policies()`).
 10. `TrustRow`.
 11. **Reviews** (when `judgeMeToken` is set): summary (average, `ArgonRating`, count, five histogram bars with `ArgonProgressBar`), "Write a review" (a sheet: star picker, title, review, name, email → `submit`; success message "Thanks. Your review appears once it's approved."), the reviews (rating, title, body, author, "Verified" tag, date, photos, store reply), "Load more". A failed load shows a quiet "Reviews couldn't load" with Retry; it never blocks the page.
 12. **Pairs well with**: `recommendations(intent: COMPLEMENTARY)`, `compact` cards with `QuickAdd`.

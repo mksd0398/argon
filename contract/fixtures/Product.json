@@ -489,13 +489,6 @@
         }
       ]
     },
-    "sellingPlanGroups": {
-      "nodes": []
-    },
-    "metafields": [
-      null,
-      null
-    ],
     "rating": null,
     "ratingCount": null
   }

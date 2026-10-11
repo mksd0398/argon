@@ -35,9 +35,9 @@ test("resolveDocument: omits unused fragments and leaves inline fragments alone"
   assert.doesNotMatch(doc, /fragment (Image|ProductCard|CollectionCard|Unused) on/);
 });
 
-test("loadContract: 54 documents, operation name equals key, fragments resolved from the document's own API", async () => {
+test("loadContract: 55 documents, operation name equals key, fragments resolved from the document's own API", async () => {
   const contract = await loadContract();
-  assert.equal(contract.size, 54);
+  assert.equal(contract.size, 55);
   const customer = new Set(readdirSync(join(CONTRACT, "customer")).map((f) => f.replace(/\.graphql$/, "")));
   const definedIn = (file) => new Set([...readFileSync(join(CONTRACT, file), "utf8").matchAll(/^fragment (\w+) on /gm)].map((m) => m[1]));
   const fragments = { storefront: definedIn("fragments.graphql"), customer: definedIn("customer/fragments.graphql") };
@@ -117,7 +117,8 @@ test("live: Storefront documents run against mock.shop", { skip: !process.env.AR
   await call("Products", { ids: products.slice(0, 3).map((p) => p.id) }, { record: false });
   // men-crewneck: the product the v0.1 app tests expect (Size and Color, first variant Small / Green); both metafields unset
   const metafields = [{ namespace: "custom", key: "material" }, { namespace: "custom", key: "care" }];
-  const { product } = await call("Product", { handle: "men-crewneck", metafields });
+  const { product } = await call("Product", { handle: "men-crewneck" });
+  await call("ProductMetafields", { handle: product.handle, metafields }, { record: false }); // mock.shop has neither set
   const [variant, other] = product.variants.nodes;
   await call("VariantBySelectedOptions", { handle: product.handle, selectedOptions: other.selectedOptions }, { record: false });
   await call("ProductRecommendations", { productId: product.id, intent: "RELATED" });
