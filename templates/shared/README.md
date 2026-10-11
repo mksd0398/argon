@@ -34,7 +34,7 @@ One key list, two files with the same key names. Edit, then rebuild.
 | `PDP_METAFIELDS` | Product metafields to list on the product page, comma-separated `namespace.key` (e.g. `custom.material,custom.care`). Empty shows none |
 | `HOME_TEMPLATE` | Home screen layout: `fashion`, `beauty`, `grocery` or `b2b` |
 | `COLLECTION_TEMPLATE` | Collection layout: `top` (sticky sort and filter bar) or `bottom` (floating bar) |
-| `JUDGEME_PUBLIC_TOKEN` | Judge.me *public* API token, for product reviews. Empty hides reviews |
+| `JUDGEME_PUBLIC_TOKEN` | Judge.me *public* API token, for product reviews. Empty still shows them, with less detail |
 | `SHOW_VENDOR` | `true` shows the vendor on product cards and the product page. `false` (the default) hides it, as Shopify's own themes do |
 | `ONBOARDING` | `true` (the default) shows a three-page welcome the first time the app opens. `false` skips it |
 | `FREE_SHIPPING_THRESHOLD` | The cart total from which shipping is free, as a number in the shop's currency (e.g. `150`). The cart shows the progress towards it. Empty hides the bar |
@@ -78,6 +78,8 @@ Both apps carry every template; `HOME_TEMPLATE` and `COLLECTION_TEMPLATE` pick t
 ### Reviews (Judge.me)
 
 Set `JUDGEME_PUBLIC_TOKEN` to the **public** token from Judge.me admin → Settings → Integrations → View API tokens. The product page then shows the rating summary and the reviews, and takes new ones. Never use the private token: anything in the config files ships inside the app.
+
+Without a token the app reads the reviews through the endpoint Judge.me's own storefront widget uses. It shows the list and the count, but no star breakdown, and the average only when the rating metafield below is exposed or every review is loaded; a product with no reviews yet shows no reviews section. That endpoint is not a documented API and can change without notice, so set the token when you can. A store without Judge.me shows no reviews either way.
 
 Rating stars on product cards come from the standard `reviews.rating` and `reviews.rating_count` product metafields, which Judge.me keeps up to date. They appear once those two definitions have **Storefront API access** on (Settings → Custom data → Products).
 

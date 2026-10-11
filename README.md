@@ -137,7 +137,7 @@ Every app carries all of them; two config keys pick what it shows, so switching 
 - **Onboarding** (`ONBOARDING`, `true` by default): three full-screen pages over the home template's stock photos, shown once before the tabs, with Skip, and Sign in on the last page when login is configured. `false` turns it off.
 - **Cart**: a progress bar towards free shipping when `FREE_SHIPPING_THRESHOLD` is set (an amount in the shop's currency; the demo sets 150), a discount code field with the applied codes as removable tags, each line's compare-at price and discounts, "You may also like", and a summary with Subtotal, Discounts, You save and Total.
 - **Colour swatches** use Shopify's swatch data, and fall back to the colour's name ("Peacock Blue" is shown blue) for stores that have none.
-- **Reviews** come from [Judge.me](https://judge.me)'s Widget API with the store's *public* token (`JUDGEME_PUBLIC_TOKEN`, from Judge.me admin → Settings → Integrations → View API tokens), drawn natively. Leave it empty to hide reviews. Never use the private token: it would ship inside the app.
+- **Reviews** come from [Judge.me](https://judge.me)'s Widget API with the store's *public* token (`JUDGEME_PUBLIC_TOKEN`, from Judge.me admin → Settings → Integrations → View API tokens), drawn natively. Without a token the apps read the reviews through the endpoint Judge.me's own storefront widget uses: the list and the count, with no star breakdown, and the average only when the store exposes the rating metafield or every review is loaded. That endpoint is not a documented API, so set the token when you can. A store without Judge.me shows no reviews. Never use the private token: it would ship inside the app.
 - **B2B**: when the signed-in customer is a company contact, every price is the company location's catalogue price, with quantity rules and volume pricing on the product page.
 - **Returns and exchanges** use Shopify's self-serve returns. The Customer Account API takes return requests only, so an exchange is sent as a return whose note names the wanted variant; the merchant completes it in admin.
 
@@ -227,7 +227,7 @@ Edit them under **Content → Metaobjects**. The home screen is the `mobile_scre
 | `--bundle-id=ID` | Bundle / application ID. Default `com.<store>.<project>`. |
 | `--home=TEMPLATE` | Home screen: `fashion` (default), `beauty`, `grocery` or `b2b`. |
 | `--collection=TEMPLATE` | Collection layout: `top` (default) or `bottom`. |
-| `--judgeme-token=TOKEN` | Judge.me public API token. Omit to hide reviews. |
+| `--judgeme-token=TOKEN` | Judge.me public API token. Without it reviews still show, with less detail. |
 | `--firebase-android=FILE` | Google Analytics: the path to the Android app's `google-services.json`. Copied to `android/app/`. |
 | `--firebase-ios=FILE` | Google Analytics: the path to the iOS app's `GoogleService-Info.plist`. Copied to `ios/App/`. |
 | `--meta-app-id=ID` | Meta: the app ID. Needs `--meta-client-token` too. |

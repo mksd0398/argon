@@ -4,6 +4,8 @@
 
 ### Added
 
+- **Reviews without a Judge.me token:** with `JUDGEME_PUBLIC_TOKEN` empty the apps read the reviews through the endpoint Judge.me's own storefront widget uses (the list and the count; no star breakdown). It is not a documented API, so the token stays the supported route. Android so far.
+- **Free shipping only in the shop's currency:** the cart's free-shipping row is hidden when the shopper buys in another currency, because `FREE_SHIPPING_THRESHOLD` is a number in the shop's own. Android so far.
 - **Analytics: Google Analytics, Meta and MoEngage**, off unless asked for. An app carries a provider's SDK only when that provider is configured.
   - CLI: `--firebase-android` and `--firebase-ios` (Firebase's own files, copied in), `--meta-app-id` and `--meta-client-token`, `--moengage-workspace-id` and `--moengage-data-center`, or one "Analytics" question when run interactively. New config keys `META_APP_ID`, `META_CLIENT_TOKEN`, `MOENGAGE_WORKSPACE_ID`, `MOENGAGE_DATA_CENTER`, empty by default, and `SERVER_PURCHASE`, `false` by default.
   - Firebase's files are checked against the app's bundle ID before they are copied. A file for another app stops the run with both ids, because Google Analytics would get nothing from it.
