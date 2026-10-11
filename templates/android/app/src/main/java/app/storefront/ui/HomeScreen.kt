@@ -117,12 +117,19 @@ fun HomeScreen(nav: NavController) {
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { if (error != null) attempt++ }
 
     val onOpen: (Route) -> Unit = { nav.open(it) }
-    Scaffold(topBar = { HomeTopBar(template, brand) { nav.open(Route.Search("")) } }) { padding ->
+    val topBar: @Composable (solid: Float) -> Unit = { solid -> HomeTopBar(template, brand, solid) { nav.open(Route.Search("")) } }
+    // The fashion page runs up under the status bar and lays its bar over its hero, so it is not in a scaffold; while it
+    // loads (or fails) there is no hero yet, and it has the scaffold and the solid bar of the others.
+    if (template == HomeTemplate.Fashion && content != null) {
+        HomeFashion(content, onOpen, topBar)
+        return
+    }
+    Scaffold(topBar = { topBar(1f) }) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             val failure = error
             when {
                 content != null -> when (template) {
-                    HomeTemplate.Fashion -> HomeFashion(content, onOpen)
+                    HomeTemplate.Fashion -> Unit // above
                     HomeTemplate.Beauty -> HomeBeauty(content, onOpen)
                     HomeTemplate.Grocery -> HomeGrocery(content, onOpen)
                     HomeTemplate.B2B -> HomeB2B(content, onOpen)
@@ -136,15 +143,16 @@ fun HomeScreen(nav: NavController) {
 
 /**
  * Each template's top bar: fashion centres the logo, beauty has it at the start, both with a search button; grocery and
- * B2B show a search field. The shop's name stands in for a missing logo.
+ * B2B show a search field. The shop's name stands in for a missing logo. Fashion's lies over its hero: clear at [solid]
+ * 0, the normal bar at 1.
  */
 @Composable
-private fun HomeTopBar(template: HomeTemplate, brand: Brand?, onSearch: () -> Unit) {
+private fun HomeTopBar(template: HomeTemplate, brand: Brand?, solid: Float, onSearch: () -> Unit) {
     val name = brand?.name.orEmpty()
     val logo = brand?.logo?.url
     val search = listOf(ArgonTopBarAction(ArgonIconName.Search, "Search", action = onSearch))
     when (template) {
-        HomeTemplate.Fashion -> ArgonTopBar(name, variant = ArgonTopBarVariant.CenteredLogo, logoUrl = logo, trailing = search)
+        HomeTemplate.Fashion -> ArgonTopBar(name, variant = ArgonTopBarVariant.Overlay, logoUrl = logo, trailing = search, solid = solid)
         HomeTemplate.Beauty -> ArgonTopBar(name, logoUrl = logo, trailing = search)
         HomeTemplate.Grocery -> SearchField("Search products", onSearch)
         HomeTemplate.B2B -> SearchField("Search by name or SKU", onSearch)

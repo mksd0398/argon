@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The colour behind the logo in the app icon and on the launch screen. The CLI writes the store logo's own background here. -->
+<resources>
+    <color name="launcher_background">#FFFFFF</color>
+</resources>

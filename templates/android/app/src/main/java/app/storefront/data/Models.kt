@@ -26,9 +26,15 @@ data class Seo(val title: String? = null, val description: String? = null)
 @Serializable
 data class Attribute(val key: String, val value: String? = null)
 
-/** A resource by handle, with its title, (an article's) blog and (a product's) featured image where the document selects them. */
+/** A resource by handle, with its title, (an article's) blog, (a product's) featured image and its id where the document selects them. */
 @Serializable
-data class ResourceRef(val handle: String, val title: String? = null, val blog: ResourceRef? = null, val featuredImage: Img? = null)
+data class ResourceRef(
+    val handle: String,
+    val title: String? = null,
+    val blog: ResourceRef? = null,
+    val featuredImage: Img? = null,
+    val id: String? = null,
+)
 
 /** One of a mutation's `userErrors`: [field] is the input path it is about, [code] Shopify's error code (may be null). */
 @Serializable
@@ -693,15 +699,33 @@ data class CartLine(
 ) {
     val variantTitle: String get() = merchandise.title
     val productTitle: String get() = merchandise.product.title.orEmpty()
+
+    /** The product's id (what recommendations are asked for); empty only for a response without it. */
+    val productId: String get() = merchandise.product.id.orEmpty()
     val image: Img? get() = merchandise.image
+
+    /** What the line costs after its discounts. */
     val total: Money get() = cost.totalAmount
+
+    /** What the line costs before its discounts. */
+    val subtotal: Money get() = cost.subtotalAmount
+
+    /** One item's price on this line. */
+    val unitPrice: Money get() = cost.amountPerQuantity
+
+    /** One item's compare-at price; null when the variant has none. */
+    val compareAtUnitPrice: Money? get() = cost.compareAtAmountPerQuantity
+
+    /** Every discount on the line, a code's and an automatic one's alike, each with what it takes off. */
+    val discounts: List<CartDiscount> get() = discountAllocations.map { CartDiscount(it.discountedAmount, it.code ?: it.title ?: "Discount") }
     val sellingPlanName: String? get() = sellingPlanAllocation?.sellingPlan?.name
 
     @Serializable
-    data class Cost(val totalAmount: Money)
+    data class Cost(val totalAmount: Money, val subtotalAmount: Money, val amountPerQuantity: Money, val compareAtAmountPerQuantity: Money? = null)
 
+    /** A discount's share on this line: [code] for a discount code, [title] for an automatic or a custom discount. */
     @Serializable
-    data class DiscountAllocation(val discountedAmount: Money)
+    data class DiscountAllocation(val discountedAmount: Money, val code: String? = null, val title: String? = null)
 
     /** The variant on the line ([product]: its product's handle and title). */
     @Serializable
@@ -715,6 +739,9 @@ data class CartLine(
         val product: ResourceRef,
     )
 }
+
+/** A discount on a cart line: the [amount] it takes off, and its [label] (the code, or an automatic discount's title). */
+data class CartDiscount(val amount: Money, val label: String)
 
 /** One part of a bundle on a cart line: [quantity] of a variant. */
 @Serializable
@@ -747,7 +774,16 @@ fun menuTree(items: List<Menu.Item>, hosts: Set<String>): List<MenuItem> = items
     MenuItem(item.title, target, children)
 }
 
-data class Brand(val name: String, val logo: Img?, val cover: Img?, val accent: String?, val hosts: Set<String>)
+/** [shortDescription] and [slogan]: the brand's own words for itself (Shopify admin, Settings > Brand), null when unset. */
+data class Brand(
+    val name: String,
+    val logo: Img?,
+    val cover: Img?,
+    val accent: String?,
+    val hosts: Set<String>,
+    val shortDescription: String? = null,
+    val slogan: String? = null,
+)
 
 /** [configDomain] is SHOP_DOMAIN; together with the primary domain it decides which links stay in the app. */
 fun Shop.toBrand(configDomain: String) = Brand(
@@ -756,7 +792,27 @@ fun Shop.toBrand(configDomain: String) = Brand(
     cover = brand?.coverImage?.image,
     accent = brand?.colors?.primary?.firstOrNull()?.background,
     hosts = setOfNotNull(configDomain, primaryDomain?.host),
+    shortDescription = brand?.shortDescription,
+    slogan = brand?.slogan,
 )
+
+/** One page of the first-launch welcome: a full-screen [image] (a URL) with a [heading] and a line of [text] over it. */
+data class OnboardingPage(val image: String, val heading: String, val text: String)
+
+object Onboarding {
+    /**
+     * The three welcome pages, over [template]'s three stock banners: the shop in its own words (its brand's short
+     * description, else its slogan, else a line with its name), then what the app is good for.
+     */
+    fun pages(brand: Brand, template: HomeTemplate): List<OnboardingPage> {
+        val own = listOf(brand.shortDescription, brand.slogan).firstNotNullOfOrNull { it?.trim()?.takeIf(String::isNotEmpty) }
+        return listOf(
+            "Welcome to ${brand.name}" to (own ?: "Everything from ${brand.name}, in one app."),
+            "Find it fast" to "Search, filter and save what you love.",
+            "Checkout in a few taps" to "Track your orders and returns from your account.",
+        ).mapIndexed { i, (heading, text) -> OnboardingPage(StockImages.url(template, i + 1), heading, text) }
+    }
+}
 
 sealed interface Section {
     data class Banner(

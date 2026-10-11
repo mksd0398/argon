@@ -50,6 +50,8 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 // Tab routes: home, shop, wishlist, cart, account. Pushed screens: product/{handle}, collection/{handle}, search?q={q},
 // order/{id}, orders, return/{orderId}, profile, addresses, policy/{handle}, and in debug builds components (the Argon UI
@@ -130,14 +132,25 @@ fun AppRoot() {
     val brand by AppGraph.brand.collectAsState()
     AppTheme(brand?.accent) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            // the app can't reach a real store without its Storefront token (mock.shop needs none)
-            if (AppGraph.storefrontToken.isBlank() && AppGraph.shopDomain != "mock.shop") SetupScreen() else AppNav()
+            // null until the device has said whether the welcome was seen: neither it nor the tabs flash up meanwhile
+            val welcomed by AppGraph.onboardingStore.done.collectAsState()
+            var startTab by remember { mutableStateOf<AppTab?>(null) }
+            when {
+                // the app can't reach a real store without its Storefront token (mock.shop needs none)
+                AppGraph.storefrontToken.isBlank() && AppGraph.shopDomain != "mock.shop" -> SetupScreen()
+                !AppGraph.onboarding || welcomed == true -> AppNav(startTab)
+                welcomed == false -> OnboardingScreen { signIn ->
+                    startTab = if (signIn) AppTab.Account else null
+                    AppGraph.scope.launch { AppGraph.onboardingStore.finish() }
+                }
+            }
         }
     }
 }
 
+/** The tabs and every pushed screen; [startTab] is the tab to open on instead of Home (the welcome's "Sign in"). */
 @Composable
-private fun AppNav() {
+private fun AppNav(startTab: AppTab? = null) {
     val nav = rememberNavController()
     val current = nav.currentBackStackEntryAsState().value?.destination?.route
     val onTab = AppTab.entries.any { it.route == current }
@@ -145,7 +158,15 @@ private fun AppNav() {
     val snackbar = remember { SnackbarHostState() }
     // a newer message replaces the one showing
     LaunchedEffect(Unit) { AppGraph.toast.messages.collectLatest { snackbar.showSnackbar(it) } }
-    LaunchedEffect(Unit) { AppGraph.tabs.selections.collect { nav.openTab(it.route) } }
+    LaunchedEffect(Unit) {
+        if (startTab != null) {
+            // not before the first screen is on the stack: the NavHost below sets the graph while it is laid out, which
+            // is after this effect starts, and a NavController without its graph can't navigate
+            nav.currentBackStackEntryFlow.first()
+            nav.openTab(startTab.route)
+        }
+        AppGraph.tabs.selections.collect { nav.openTab(it.route) }
+    }
     Scaffold(
         // each screen's own Scaffold handles the system bars; this one only reserves room for the tab bar
         contentWindowInsets = WindowInsets(0),
@@ -170,7 +191,7 @@ private fun AppNav() {
             composable("home") { HomeScreen(nav) }
             composable("shop") { ShopScreen(nav) }
             composable("wishlist") { WishlistScreen(nav) }
-            composable("cart") { CartScreen() }
+            composable("cart") { CartScreen(nav) }
             composable("account") { AccountScreen(nav) }
             composable("product/{handle}") { ProductScreen(it.arguments?.getString("handle").orEmpty(), nav) }
             composable("collection/{handle}") { CollectionScreen(it.arguments?.getString("handle").orEmpty(), nav) }

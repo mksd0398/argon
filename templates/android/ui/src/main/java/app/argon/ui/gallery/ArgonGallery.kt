@@ -1,5 +1,6 @@
 package app.argon.ui.gallery
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -424,6 +425,14 @@ private fun Bars() = Section("Top and bottom bars") {
     Caption("Search")
     var query by remember { mutableStateOf("") }
     ArgonTopBar("Search products", variant = ArgonTopBarVariant.Search, searchText = query, onSearchTextChange = { query = it }, trailing = listOf(bag))
+    Caption("Overlay: over a picture, then solid as the picture scrolls away")
+    var solid by remember { mutableStateOf(false) }
+    val solidity by animateFloatAsState(if (solid) 1f else 0f, label = "solid")
+    Box(Modifier.fillMaxWidth().height(160.dp).clip(ArgonTheme.radius.m)) {
+        AsyncImage(photos[0], null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        ArgonTopBar("Maison", variant = ArgonTopBarVariant.Overlay, trailing = listOf(search, bag), solid = solidity)
+    }
+    ArgonSwitch(solid, { solid = it }, label = "Solid")
     var selected by remember { mutableStateOf("home") }
     ArgonBottomBar(
         listOf(

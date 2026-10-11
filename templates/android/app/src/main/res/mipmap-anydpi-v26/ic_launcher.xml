@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The app icon: the store's logo (the CLI writes launcher_logo and launcher_background) on its background colour. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/launcher_background" />
+    <foreground android:drawable="@drawable/launcher_foreground" />
+</adaptive-icon>

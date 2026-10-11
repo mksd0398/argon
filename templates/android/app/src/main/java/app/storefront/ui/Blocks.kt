@@ -4,6 +4,7 @@ import android.text.method.LinkMovementMethod
 import android.widget.TextView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -15,12 +16,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -31,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.text.HtmlCompat
+import androidx.core.view.WindowCompat
 import app.argon.ui.ArgonSize
 import app.argon.ui.ArgonTheme
 import app.argon.ui.components.ArgonIcon
@@ -78,6 +82,22 @@ fun StoreImage(
     contentScale: ContentScale = ContentScale.Crop,
     placeholder: Boolean = true,
 ) = StoreImage(image?.url, image?.alt ?: contentDescription, modifier, contentScale, placeholder)
+
+/**
+ * Light status bar icons while [light]: for a screen whose picture runs up under the status bar. Otherwise, and once
+ * that screen is gone, the icons follow the theme again (dark on the light theme).
+ */
+@Composable
+fun StatusBarIcons(light: Boolean) {
+    val view = LocalView.current
+    val dark = isSystemInDarkTheme()
+    DisposableEffect(view, light, dark) {
+        val bars = view.context.componentActivity()?.window?.let { WindowCompat.getInsetsController(it, view) }
+        // "light status bars" is the system's name for a light background: dark icons
+        bars?.isAppearanceLightStatusBars = !light && !dark
+        onDispose { bars?.isAppearanceLightStatusBars = !dark }
+    }
+}
 
 /** A small label over an image or beside a price: "Sold out", "Bundle"; [isSale] puts it on the sale colour: "Sale", "Save 20%". */
 @Composable

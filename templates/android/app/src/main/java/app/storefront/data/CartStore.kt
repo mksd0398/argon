@@ -111,6 +111,32 @@ class CartStore(
     }
 
     /**
+     * Adds the discount [code] to the cart's codes (Shopify takes the whole list each time). False when Shopify says it
+     * can't be used on this cart (unknown, expired, or its conditions aren't met): the code is then taken off again, so
+     * the cart only carries codes that count. False too without a cart or a code.
+     */
+    suspend fun applyDiscount(code: String): Boolean = lock.withLock {
+        val entered = code.trim()
+        val current = state.value
+        if (entered.isEmpty() || current == null) return false
+        // codes are not case-sensitive: entering one again replaces it instead of listing it twice
+        val others = current.discountCodes.map { it.code }.filterNot { it.equals(entered, ignoreCase = true) }
+        val updated = change({ api.updateDiscountCodes(it, others + entered) }) ?: return false
+        if (updated.discountCodes.any { it.applicable && it.code.equals(entered, ignoreCase = true) }) return true
+        change({ api.updateDiscountCodes(it, others) })
+        false
+    }
+
+    /** Takes the discount [code] off the cart. */
+    suspend fun removeDiscount(code: String) {
+        lock.withLock {
+            // without the cart there is no list to send (an empty one would clear every code)
+            val codes = state.value?.discountCodes?.map { it.code } ?: return
+            change({ api.updateDiscountCodes(it, codes.filterNot { c -> c.equals(code, ignoreCase = true) }) })
+        }
+    }
+
+    /**
      * The URL to hand to Checkout Kit, with the signed-in customer attached to the cart first. Null without a cart.
      * Attaching the customer never blocks checkout: if it fails, the shopper checks out as a guest. A buyer the cart
      * already has is not attached again, so asking twice gives the same URL and leaves the cart as it is.

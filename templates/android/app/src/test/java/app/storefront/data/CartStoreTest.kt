@@ -339,6 +339,75 @@ class CartStoreTest {
         assertEquals("CartLinesRemove", names.last())
     }
 
+    // Discount codes
+
+    /** The fixture cart carrying [codes], each with whether it counts. */
+    private fun withCodes(vararg codes: Pair<String, Boolean>) = JsonObject(
+        cartJson + ("discountCodes" to JsonArray(codes.map { (code, applicable) -> buildJsonObject { put("code", code); put("applicable", applicable) } })),
+    )
+
+    /** The codes each `CartDiscountCodesUpdate` sent, in order. */
+    private val sentCodes get() = calls.filter { it.first == "CartDiscountCodesUpdate" }
+        .map { call -> call.second.getValue("discountCodes").jsonArray.map { it.jsonPrimitive.content } }
+
+    /** A store whose cart starts with [carried] codes; Shopify counts the codes in [valid] and no others. */
+    private fun discountStore(vararg carried: String, valid: Set<String>) = store {
+        if (it == "CartDiscountCodesUpdate") {
+            val sent = calls.last().second.getValue("discountCodes").jsonArray.map { code -> code.jsonPrimitive.content }
+            answer(it, withCodes(*sent.map { code -> code to (code in valid) }.toTypedArray()))
+        } else {
+            answer(it, withCodes(*carried.map { code -> code to true }.toTypedArray()))
+        }
+    }
+
+    @Test
+    fun applyingADiscountSendsTheWholeListWithTheNewCode() = runBlocking {
+        val s = discountStore("VIP", valid = setOf("VIP", "WELCOME10"))
+        s.add("v1", 1)
+        assertEquals(true, s.applyDiscount(" WELCOME10 "))
+        assertEquals(listOf(listOf("VIP", "WELCOME10")), sentCodes)
+        assertEquals(cartId, calls.last().second.getValue("cartId").jsonPrimitive.content)
+        assertEquals(listOf("VIP", "WELCOME10"), s.cart.value?.discountCodes?.map { it.code })
+    }
+
+    @Test
+    fun aCodeThatDoesNotApplyIsTakenOffAgain() = runBlocking {
+        val s = discountStore("VIP", valid = setOf("VIP"))
+        s.add("v1", 1)
+        assertEquals(false, s.applyDiscount("NOPE"))
+        assertEquals("sent with the code, then without it", listOf(listOf("VIP", "NOPE"), listOf("VIP")), sentCodes)
+        assertEquals(listOf("VIP"), s.cart.value?.discountCodes?.map { it.code })
+    }
+
+    @Test
+    fun enteringACodeAgainDoesNotListItTwice() = runBlocking {
+        val s = discountStore("VIP", valid = setOf("VIP", "vip"))
+        s.add("v1", 1)
+        assertEquals(true, s.applyDiscount("vip"))
+        assertEquals(listOf(listOf("vip")), sentCodes)
+    }
+
+    @Test
+    fun removingADiscountSendsTheListWithoutIt() = runBlocking {
+        val s = discountStore("VIP", "WELCOME10", valid = setOf("VIP", "WELCOME10"))
+        s.add("v1", 1)
+        s.removeDiscount("welcome10")
+        assertEquals(listOf(listOf("VIP")), sentCodes)
+        assertEquals(listOf("VIP"), s.cart.value?.discountCodes?.map { it.code })
+        s.removeDiscount("VIP")
+        assertEquals("the last one leaves an empty list", emptyList<String>(), sentCodes.last())
+    }
+
+    @Test
+    fun aDiscountNeedsACartAndACode() = runBlocking {
+        val s = discountStore(valid = setOf("WELCOME10"))
+        assertEquals("no cart", false, s.applyDiscount("WELCOME10"))
+        s.removeDiscount("WELCOME10")
+        s.add("v1", 1)
+        assertEquals("no code", false, s.applyDiscount("  "))
+        assertEquals(emptyList<List<String>>(), sentCodes)
+    }
+
     @Test
     fun rapidAddsShareOneCart() = runBlocking {
         val s = store { if (it == "CartCreate") delay(100); answer(it) }

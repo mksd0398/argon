@@ -11,6 +11,7 @@ import app.storefront.data.Section
 import app.storefront.data.fixtureStorefront
 import app.storefront.data.toBrand
 import app.storefront.ui.home.heroBanners
+import app.storefront.ui.home.heroSolid
 import app.storefront.ui.home.routeOf
 import app.storefront.ui.home.title
 import kotlinx.coroutines.runBlocking
@@ -104,5 +105,20 @@ class HomeContentTest {
         assertEquals(listOf(banners[0], banners[2]), heroBanners(banners))
         assertEquals("a lone banner is the hero", banners.take(1), heroBanners(banners.take(1)))
         assertTrue(heroBanners(emptyList()).isEmpty())
+    }
+
+    @Test
+    fun theBarOverTheHeroTurnsSolidAsTheLastOfTheHeroScrollsOut() {
+        val hero = 1350f
+        val bar = 200f
+        assertEquals("at the top", 0f, heroSolid(0f, hero, bar), 0f)
+        assertEquals("two bar heights of the hero left: still clear", 0f, heroSolid(hero - 2 * bar, hero, bar), 0f)
+        assertEquals(0.5f, heroSolid(hero - 1.5f * bar, hero, bar), 1e-6f)
+        assertEquals("the hero ends where the bar does", 1f, heroSolid(hero - bar, hero, bar), 0f)
+        assertEquals("scrolled past", 1f, heroSolid(hero + 500f, hero, bar), 0f)
+        assertEquals("pulled down past the top", 0f, heroSolid(-80f, hero, bar), 0f)
+        // a bar whose height isn't known switches when the hero is gone
+        assertEquals(0f, heroSolid(hero - 1f, hero, 0f), 0f)
+        assertEquals(1f, heroSolid(hero, hero, 0f), 0f)
     }
 }

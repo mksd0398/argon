@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The logo at its own size in the middle of the icon (108 dp, of which a launcher shows the middle 72): never scaled up. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/launcher_logo" android:gravity="center" />
+</layer-list>

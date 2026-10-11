@@ -98,6 +98,13 @@ class ContractFixturesTest(private val operation: String) {
                 assertEquals(QuantityRule(minimum = 0, maximum = null, increment = 0), line.merchandise.quantityRule)
                 assertEquals(1, line.merchandise.quantityRule?.min)
                 assertEquals(1, line.merchandise.quantityRule?.step)
+                // 3 × 120.00, 150.00 each before, and an automatic discount on the line
+                assertEquals(Money("360.0", "CAD"), line.subtotal)
+                assertEquals(Money("324.0", "CAD"), line.total)
+                assertEquals(Money("120.0", "CAD"), line.unitPrice)
+                assertEquals(Money("150.0", "CAD"), line.compareAtUnitPrice)
+                assertEquals(listOf(CartDiscount(Money("36.0", "CAD"), "Buy 3, save 10%")), line.discounts)
+                assertEquals("gid://shopify/Product/7982905098262", line.productId)
             }
             "CartAttributesUpdate" -> assertEquals(listOf(Attribute("source", "app")), storefront.updateAttributes(cartId, listOf(Attribute("source", "app"))).attributes)
             "CartBuyerIdentityUpdate" -> storefront.updateBuyerIdentity(cartId, CartBuyerIdentityInput(countryCode = "CA")).let {
@@ -124,6 +131,10 @@ class ContractFixturesTest(private val operation: String) {
             "CartDiscountCodesUpdate" -> storefront.updateDiscountCodes(cartId, listOf("WELCOME10")).let {
                 assertEquals(listOf("WELCOME10"), it.discountCodes.map { d -> d.code })
                 assertEquals("Enter a valid discount code", it.warnings.single().message)
+                val line = it.lines.single()
+                assertNull("no compare-at price on this line", line.compareAtUnitPrice)
+                assertTrue("the code doesn't apply: no discount on the line", line.discounts.isEmpty())
+                assertEquals(line.subtotal, line.total)
             }
             "CartGiftCardCodesAdd" -> storefront.addGiftCards(cartId, listOf("GIFT")).let {
                 assertTrue(it.appliedGiftCards.isEmpty())

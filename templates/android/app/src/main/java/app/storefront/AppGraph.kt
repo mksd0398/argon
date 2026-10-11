@@ -17,6 +17,7 @@ import app.storefront.data.CollectionTemplate
 import app.storefront.data.CustomerAccountApi
 import app.storefront.data.HomeTemplate
 import app.storefront.data.JudgeMe
+import app.storefront.data.OnboardingStore
 import app.storefront.data.RecentlyViewedStore
 import app.storefront.data.Storefront
 import app.storefront.data.StorefrontApi
@@ -54,6 +55,7 @@ class StorefrontApp : Application(), SingletonImageLoader.Factory {
         AppGraph.assets = assets
         AppGraph.wishlist = WishlistStore(prefs("wishlist"), AppGraph.scope)
         AppGraph.recentlyViewed = RecentlyViewedStore(prefs("recent"), AppGraph.scope)
+        AppGraph.onboardingStore = OnboardingStore(prefs("onboarding"), AppGraph.scope)
         AppGraph.auth = AuthStore(
             domain = AppGraph.shopDomain,
             clientId = AppGraph.customerClientId,
@@ -143,6 +145,15 @@ object AppGraph {
      */
     val showVendor: Boolean = BuildConfig.SHOW_VENDOR.trim().equals("true", ignoreCase = true)
 
+    /** Whether a first launch starts with the welcome pages (`ONBOARDING`, true unless it is `false`). */
+    val onboarding: Boolean = !BuildConfig.ONBOARDING.trim().equals("false", ignoreCase = true)
+
+    /**
+     * The order value from which the store ships for free, in the shop's currency (`FREE_SHIPPING_THRESHOLD`); null when
+     * unset or not a number above zero: the cart then shows no free-shipping progress.
+     */
+    val freeShippingThreshold: Double? = BuildConfig.FREE_SHIPPING_THRESHOLD.trim().toDoubleOrNull()?.takeIf { it > 0 && it.isFinite() }
+
     internal lateinit var assets: AssetManager
 
     /** The one HTTP client; the Customer Account client reuses it. */
@@ -153,6 +164,7 @@ object AppGraph {
 
     internal lateinit var wishlist: WishlistStore
     internal lateinit var recentlyViewed: RecentlyViewedStore
+    internal lateinit var onboardingStore: OnboardingStore
     internal lateinit var cart: CartStore
     internal lateinit var auth: AuthStore
 

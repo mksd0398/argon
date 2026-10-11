@@ -166,7 +166,7 @@ private fun SignedOut(nav: NavController) {
         ArgonDivider()
         val policies by produceState(emptyList<Policy>()) { value = loadPolicies() }
         StoreRows(policies, nav)
-        ComponentsRow(nav)
+        DebugRows(nav)
     }
 }
 
@@ -177,10 +177,17 @@ private fun StoreRows(policies: List<Policy>, nav: NavController) {
     ArgonListItem("Help", trailing = ArgonListTrailing.Chevron, onClick = { nav.open(contactRoute()) })
 }
 
-/** Debug builds only: the Argon UI gallery, to review every component on a device. */
+/**
+ * Debug builds only: the Argon UI gallery, to review every component on a device, and (in an app with the welcome on)
+ * "Show onboarding", which runs it again.
+ */
 @Composable
-private fun ComponentsRow(nav: NavController) {
-    if (BuildConfig.DEBUG) ArgonListItem("Components", trailing = ArgonListTrailing.Chevron, onClick = { nav.navigate("components") })
+private fun DebugRows(nav: NavController) {
+    if (!BuildConfig.DEBUG) return
+    ArgonListItem("Components", trailing = ArgonListTrailing.Chevron, onClick = { nav.navigate("components") })
+    if (AppGraph.onboarding) {
+        ArgonListItem("Show onboarding", trailing = ArgonListTrailing.Chevron, onClick = { AppGraph.scope.launch { AppGraph.onboardingStore.reset() } })
+    }
 }
 
 // Signed in
@@ -232,7 +239,7 @@ private fun SignedIn(account: Account, nav: NavController) {
                 trailing = ArgonListTrailing.Chevron,
                 onClick = { nav.open(Route.Web("https://shopify.com/${AppGraph.shopId}/account")) },
             )
-            ComponentsRow(nav)
+            DebugRows(nav)
         }
         Column(gutter, verticalArrangement = Arrangement.spacedBy(spacing.s)) {
             ArgonButton("Sign out", style = ArgonButtonStyle.Secondary, fullWidth = true) { signOut() }
