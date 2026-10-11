@@ -233,6 +233,16 @@ test("backgroundOf: the top-left pixel when it is opaque, else white", () => {
   assert.equal(backgroundOf(corner), "#FFFFFF");
 });
 
+test("backgroundOf: a light logo on a transparent background gets the dark colour, so it can be seen", () => {
+  const white = solid(3, 3, [255, 255, 255, 255]);
+  white.data.set([0, 0, 0, 0], 0); // a transparent corner: the logo has no background of its own
+  assert.equal(backgroundOf(white), "#17150F");
+  assert.equal(backgroundOf(white, "#7A1F2B"), "#7A1F2B");
+  const faint = solid(3, 3, [0, 0, 0, 0]);
+  faint.data.set([250, 250, 250, 255], 16); // one white pixel among transparent black ones: transparent pixels don't count
+  assert.equal(backgroundOf(faint), "#17150F");
+});
+
 test("plainIcon: an opaque square with a rounded square in the mark colour in the middle", () => {
   const icon = plainIcon(200, "#17150F", "#F6F4F0");
   assert.deepEqual([icon.width, icon.height], [200, 200]);

@@ -154,7 +154,7 @@ Both are part of the app binary, so nothing can set them at run time. Argon make
 | `ios/App/Assets.xcassets/LaunchLogo.imageset/LaunchLogo.png` | The logo, at most 600×600 px, transparent |
 | `ios/App/Assets.xcassets/LaunchBackground.colorset/Contents.json` | The background colour |
 
-The background colour is the logo's top-left pixel when that pixel is opaque (a logo on its own background), else white. A light logo on a transparent background therefore needs its background set by hand.
+The background colour is the logo's top-left pixel when that pixel is opaque (a logo on its own background), else white. A light logo on a transparent background would vanish on white, so it goes on the brand's primary colour when that is dark, else on near-black.
 
 Without a usable logo (none set, the download fails, or a file the built-in PNG reader can't decode, such as an interlaced PNG), Android keeps the template's own icon and iOS gets a plain one on the brand's primary colour (near-black when the brand has none). Argon prints whether the logo was used; a logo never stops a run.
 
