@@ -1,8 +1,10 @@
 import Foundation
+import os
 
-/// A product's review totals. `histogram` is stars (1...5) to the number of reviews with that many.
+/// A product's review totals. `histogram` is stars (1...5) to the number of reviews with that many. Reviews read without
+/// a token come with their count only: `average` is nil and `histogram` empty.
 struct ReviewSummary: Equatable, Sendable {
-    let average: Double
+    let average: Double?
     let count: Int
     let histogram: [Int: Int]
 }
@@ -28,8 +30,25 @@ struct ReviewPage: Equatable, Sendable {
     let hasNextPage: Bool
 }
 
+/// The token-less answer, `{"html": ..., "total_count": 2, "page": "1"}`, as far as it is read.
+private struct WidgetReviews: Decodable {
+    let html: String
+    let totalCount: Int
+
+    private enum CodingKeys: String, CodingKey {
+        case html
+        case totalCount = "total_count"
+    }
+}
+
 /// Judge.me reviews for a headless store, through its Widget API with the shop's **public** token (the private token
-/// must never ship in an app). The app makes one only when JUDGEME_PUBLIC_TOKEN is set. Failures are `ArgonAPIError`s.
+/// must never ship in an app). Failures are `ArgonAPIError`s.
+///
+/// Without a token the reviews come from the endpoint Judge.me's own storefront widget pages through, which asks for
+/// none: the reviews and their count, without the average and the star breakdown (`ReviewSummary`).
+/// ponytail: that endpoint is not a documented API, so it can change without notice. Any answer but a 200 with its JSON
+/// turns it off until the app starts again: no reviews, no more requests, no error. Upgrade: set `JUDGEME_PUBLIC_TOKEN`,
+/// the documented route, with the average and the breakdown.
 final class JudgeMe: Sendable {
     private let shopDomain: String
     private let token: String
@@ -37,6 +56,8 @@ final class JudgeMe: Sendable {
     /// The demo store has no reviews app, so its app shows one bundled page of sample reviews instead: this returns
     /// that widget's HTML (`JudgeMeWidget.sample.html`). Nothing is then asked of Judge.me or sent to it.
     private let sample: (@Sendable () throws -> String)?
+    // the token-less endpoint answered something else than its JSON: it is left alone for the rest of this run
+    private let tokenlessOff = OSAllocatedUnfairLock(initialState: false)
 
     init(shopDomain: String, token: String, session: URLSession = .shared, sample: (@Sendable () throws -> String)? = nil) {
         self.shopDomain = shopDomain
@@ -46,6 +67,9 @@ final class JudgeMe: Sendable {
     }
 
     var isSample: Bool { sample != nil }
+
+    /// No token (and no sample): nobody has said this store uses Judge.me, so only a product with reviews shows any of it.
+    var isTokenless: Bool { token.isEmpty && sample == nil }
 
     /// The digits that end a Shopify GID: `gid://shopify/Product/123` is Judge.me's external id `123`.
     static func numericId(_ gid: String) -> String {
@@ -59,6 +83,7 @@ final class JudgeMe: Sendable {
             let only = JudgeMeHtml.parse(try sample(), page: page, perPage: perPage)
             return ReviewPage(summary: only.summary, reviews: page == 1 ? only.reviews : [], page: page, hasNextPage: false)
         }
+        if token.isEmpty { return try await tokenlessReviews(productId: productId, page: page, perPage: perPage) }
         var url = URLComponents(string: "https://api.judge.me/api/v1/widgets/product_review")
         url?.queryItems = [
             URLQueryItem(name: "shop_domain", value: shopDomain),
@@ -76,6 +101,40 @@ final class JudgeMe: Sendable {
             throw ArgonAPIError.decoding(operation: "JudgeMe.reviews", detail: "widget missing")
         }
         return JudgeMeHtml.parse(widget, page: page, perPage: perPage)
+    }
+
+    /// A page of reviews without a token. The answer is JSON `{"html": ..., "total_count": 2, "page": "1"}`: `html` holds
+    /// the same review blocks as the token route's widget, with no summary around them. Once it is anything else, every
+    /// page is empty and nothing is asked. A network failure is not an answer: it throws, and the next call asks again.
+    private func tokenlessReviews(productId: String, page: Int, perPage: Int) async throws -> ReviewPage {
+        let none = ReviewPage(summary: nil, reviews: [], page: page, hasNextPage: false)
+        if tokenlessOff.withLock({ $0 }) { return none }
+        var url = URLComponents(string: "https://api.judge.me/reviews/reviews_for_widget")
+        url?.queryItems = [
+            URLQueryItem(name: "url", value: shopDomain),
+            URLQueryItem(name: "shop_domain", value: shopDomain),
+            URLQueryItem(name: "platform", value: "shopify"),
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "per_page", value: String(perPage)),
+            URLQueryItem(name: "product_id", value: Self.numericId(productId)),
+        ]
+        guard let address = url?.url else { throw ArgonAPIError.network(URLError(.badURL)) }
+        var body: Data? = nil
+        do {
+            body = try await session.graphQL(URLRequest(url: address))
+        } catch ArgonAPIError.http {
+            // a status that isn't 2xx is not that answer either: `body` stays nil
+        }
+        guard let answer = body.flatMap({ try? JSONDecoder().decode(WidgetReviews.self, from: $0) }) else {
+            tokenlessOff.withLock { $0 = true }
+            return none
+        }
+        return ReviewPage(
+            summary: ReviewSummary(average: nil, count: answer.totalCount, histogram: [:]),
+            reviews: JudgeMeHtml.parse(answer.html, page: page, perPage: perPage).reviews,
+            page: page,
+            hasNextPage: answer.totalCount > page * perPage
+        )
     }
 
     /// Sends a review of product `productId` (its GID). Judge.me asks for no token here; the store publishes the review

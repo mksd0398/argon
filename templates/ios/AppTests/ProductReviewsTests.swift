@@ -3,6 +3,10 @@ import XCTest
 
 private struct Offline: Error {}
 
+private func review(_ id: Int, stars: Int = 5) -> Review {
+    Review(id: "\(id)", rating: stars, body: "Body \(id)", author: "Ada", verified: true)
+}
+
 /// Seven reviews, five a page; review 5 shows again on page 2 (a new review came in between the two calls).
 private final class Pages {
     var asked: [Int] = []
@@ -12,9 +16,19 @@ private final class Pages {
         asked.append(page)
         if failing { throw Offline() }
         let ids = page == 1 ? 1...5 : 5...7
-        let reviews = ids.map { Review(id: "\($0)", rating: 5, body: "Body \($0)", author: "Ada", verified: true) }
+        let reviews = ids.map { review($0) }
         return ReviewPage(summary: ReviewSummary(average: 4.6, count: 7, histogram: [5: 7]), reviews: reviews, page: page, hasNextPage: page == 1)
     }
+}
+
+/// Without a token: three reviews, two a page, with their count and nothing else.
+private func tokenless(_ page: Int) -> ReviewPage {
+    ReviewPage(
+        summary: ReviewSummary(average: nil, count: 3, histogram: [:]),
+        reviews: page == 1 ? [review(1, stars: 5), review(2, stars: 4)] : [review(3, stars: 3)],
+        page: page,
+        hasNextPage: page == 1
+    )
 }
 
 final class ProductReviewsTests: XCTestCase {
@@ -83,6 +97,22 @@ final class ProductReviewsTests: XCTestCase {
         XCTAssertNil(shownRating(nil, rating: 4.0, ratingCount: 0), "rated by nobody")
         XCTAssertNil(shownRating(nil, rating: nil, ratingCount: 5))
         XCTAssertNil(shownRating(summary(0), rating: nil, ratingCount: nil))
+        // reviews read without a token, their average not known yet
+        let counted = ReviewSummary(average: nil, count: 12, histogram: [:])
+        XCTAssertNil(shownRating(counted, rating: nil, ratingCount: nil), "a count is no stars")
+        let fallback = shownRating(counted, rating: 4.0, ratingCount: 10)
+        XCTAssertEqual(fallback?.value, 4.0)
+        XCTAssertEqual(fallback?.count, 10)
+    }
+
+    func testReviewsWithoutAnAverageTakeTheRatingMetafieldElseTheirOwnMeanOnceAllAreLoaded() {
+        let two = [review(1, stars: 5), review(2, stars: 4)]
+        XCTAssertEqual(reviewAverage(rating: 4.2, count: 12, loaded: two), 4.2, "the store's metafield, whatever is loaded")
+        XCTAssertEqual(reviewAverage(rating: 4.2, count: 2, loaded: two), 4.2)
+        XCTAssertEqual(reviewAverage(rating: nil, count: 2, loaded: two), 4.5, "both reviews are here: their mean")
+        XCTAssertNil(reviewAverage(rating: nil, count: 12, loaded: two), "ten more are not loaded")
+        XCTAssertNil(reviewAverage(rating: nil, count: 0, loaded: []))
+        XCTAssertEqual(reviewAverage(rating: 0, count: 2, loaded: two), 4.5, "a rating of 0 is none")
     }
 
     func testAHistogramBarIsItsShareOfAllReviews() {
@@ -148,6 +178,39 @@ final class ProductReviewsTests: XCTestCase {
         await reviews.loadMore()
         XCTAssertEqual(pages.asked, [1, 1, 2, 2])
         XCTAssertEqual(reviews.items.count, 7)
+    }
+
+    @MainActor
+    func testWithoutATokenTheBlockWaitsForAReviewAndTheAverageForAllOfThem() async {
+        let reviews = ReviewsState(load: { tokenless($0) }, send: { _ in }, hidesEmpty: true)
+        XCTAssertFalse(reviews.isShown, "nothing is known of the store's reviews yet")
+        XCTAssertTrue(ReviewsState(load: { tokenless($0) }, send: { _ in }).isShown, "with a token the block is there from the start")
+        await reviews.loadFirst()
+        XCTAssertTrue(reviews.isShown)
+        XCTAssertEqual(reviews.summary, ReviewSummary(average: nil, count: 3, histogram: [:]), "one review is not loaded: the count alone")
+        await reviews.loadMore()
+        XCTAssertEqual(reviews.summary, ReviewSummary(average: 4.0, count: 3, histogram: [:]), "all three: (5 + 4 + 3) / 3")
+
+        let rated = ReviewsState(load: { tokenless($0) }, send: { _ in }, rating: 4.6, hidesEmpty: true)
+        await rated.loadFirst()
+        XCTAssertEqual(rated.summary?.average, 4.6, "the product's rating metafield, from the first page on")
+    }
+
+    @MainActor
+    func testWithoutATokenAProductWithoutReviewsAndAFailedLoadShowNoBlock() async {
+        let none = ReviewsState(
+            load: { ReviewPage(summary: ReviewSummary(average: nil, count: 0, histogram: [:]), reviews: [], page: $0, hasNextPage: false) },
+            send: { _ in },
+            hidesEmpty: true
+        )
+        await none.loadFirst()
+        XCTAssertTrue(none.isLoaded)
+        XCTAssertFalse(none.isShown)
+
+        let offline = ReviewsState(load: { _ in throw Offline() }, send: { _ in }, hidesEmpty: true)
+        await offline.loadFirst()
+        XCTAssertTrue(offline.failed)
+        XCTAssertFalse(offline.isShown, "no retry line for reviews that may not exist")
     }
 
     @MainActor

@@ -27,14 +27,15 @@ struct FreeShipping: Equatable {
     var reached: Bool { !remaining.isPositive() }
 }
 
-/// Free shipping for a cart worth `subtotal` (its total after discounts) in a store that ships free from `threshold`;
-/// nil for a store without one (`FREE_SHIPPING_THRESHOLD` unset), or an amount that can't be read.
-/// ponytail: the threshold is one number, compared with the cart in whatever currency the shopper buys in. Upgrade: one
-/// threshold per currency, if stores selling in several ask for it.
-func freeShipping(subtotal: Money, threshold: Double?) -> FreeShipping? {
+/// Free shipping for a cart worth `subtotal` (its total after discounts) in a store that ships free from `threshold`, a
+/// number in `shopCurrency`; nil for a store without one (`FREE_SHIPPING_THRESHOLD` unset), an amount that can't be
+/// read, a cart in another currency, and until the shop's currency is known.
+/// ponytail: the threshold is one number, in the shop's own currency: a shopper buying in another one sees no progress.
+/// Upgrade: one threshold per currency, if stores selling in several ask for it.
+func freeShipping(subtotal: Money, threshold: Double?, shopCurrency: String?) -> FreeShipping? {
     // the threshold through its text: a Decimal made from a Double keeps the Double's binary error (49.99 isn't 49.99)
-    guard let threshold = threshold, threshold > 0, threshold.isFinite, let goal = Decimal(string: String(threshold)),
-          let have = Decimal(string: subtotal.amount) else { return nil }
+    guard subtotal.currencyCode == shopCurrency, let threshold = threshold, threshold > 0, threshold.isFinite,
+          let goal = Decimal(string: String(threshold)), let have = Decimal(string: subtotal.amount) else { return nil }
     let progress = NSDecimalNumber(decimal: have / goal).doubleValue
     return FreeShipping(
         remaining: Money(amount: "\(max(goal - have, 0))", currencyCode: subtotal.currencyCode),
@@ -163,6 +164,8 @@ struct CartView: View {
     @State private var checkout: URL? = nil
     @State private var checkingOut = false
     @State private var alsoLike: [ProductCard] = []
+    // the currency of the shop's own prices, which `FREE_SHIPPING_THRESHOLD` is a number in; nil until the shop has answered
+    @State private var shopCurrency: String? = nil
     @State private var keyboardUp = false
     @Environment(Router.self) private var router
     @Environment(\.argonTheme) private var theme
@@ -193,6 +196,8 @@ struct CartView: View {
         // Warm up checkout once the shopper is looking at a non-empty cart, and again after every change to it.
         .task(id: cart) { await preload(cart) }
         .task(id: firstProduct) { await suggest(firstProduct) }
+        // the shop is fetched once for the whole app, so this is rarely a call; when it can't be asked, the row stays away
+        .task { if let shop = try? await AppGraph.storefront.shop() { shopCurrency = shop.paymentSettings.currencyCode } }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in keyboardUp = true }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in keyboardUp = false }
         .argonModal(
@@ -209,10 +214,11 @@ struct CartView: View {
 
     private func content(_ cart: Cart) -> some View {
         let gutter = theme.spacing.l
+        let shipping = freeShipping(subtotal: cart.total, threshold: AppGraph.freeShippingThreshold, shopCurrency: shopCurrency)
         return VStack(spacing: 0) {
             ScrollView {
                 VStack(spacing: theme.spacing.l) {
-                    if let shipping = freeShipping(subtotal: cart.total, threshold: AppGraph.freeShippingThreshold) {
+                    if let shipping = shipping {
                         FreeShippingBar(shipping: shipping).padding(.horizontal, gutter)
                     }
                     LazyVStack(spacing: theme.spacing.l) {
