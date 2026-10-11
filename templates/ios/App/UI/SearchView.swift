@@ -1,3 +1,4 @@
+import ArgonUI
 import Observation
 import SwiftUI
 import UIKit
@@ -54,6 +55,8 @@ private func loadSuggestions(_ query: String) async throws -> Suggestions {
     )
 }
 
+/// Search (`search?q=`): the field in the top bar, suggestions while typing (queries, collections, products), and the
+/// results of a submitted query in the store's collection template (`ListingView`, with search's own sorts).
 @MainActor
 struct SearchView: View {
     @State private var model: SearchModel
@@ -61,6 +64,7 @@ struct SearchView: View {
     @State private var failure: String? = nil
     @State private var searching = false
     @Environment(Router.self) private var router
+    @Environment(\.argonTheme) private var theme
 
     init(initial: String) {
         _model = State(initialValue: SearchModel(initial: initial))
@@ -68,18 +72,21 @@ struct SearchView: View {
 
     var body: some View {
         let typed = model.text.trimmingCharacters(in: .whitespacesAndNewlines)
-        VStack {
+        VStack(spacing: 0) {
             if let submitted = model.submitted, typed == submitted {
-                ListingView(listing: model.listing, emptyText: "No products match \"\(submitted)\".")
+                ListingView(listing: model.listing, emptyText: "No products match \"\(submitted)\".", onOpen: { router.open($0) })
             } else {
                 suggestionList
             }
         }
-        .searchable(text: $model.text, isPresented: $searching, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search products")
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(theme.colors.paper)
+        // the native field brings its own clear button
+        .argonTopBar(variant: .search, title: "Search products", searchText: $model.text, isSearching: $searching)
         .onSubmit(of: .search) { model.submit(model.text) }
-        .navigationBarTitleDisplayMode(.inline)
         .task {
             model.start()
+            // opened to type: the field has the keyboard
             if model.submitted == nil { searching = true }
         }
         // 300 ms debounce: typing again cancels this task (and a request in flight) before it queries
@@ -87,32 +94,46 @@ struct SearchView: View {
     }
 
     private var suggestionList: some View {
-        List {
-            if let failure = failure {
-                Text(failure).foregroundStyle(.red)
-            }
-            if let s = suggestions {
-                ForEach(s.queries, id: \.self) { q in
-                    Button { submitSuggestion(q) } label: { Label(q, systemImage: "magnifyingglass") }
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                if let failure = failure {
+                    Text(failure)
+                        .font(theme.type.body)
+                        .foregroundStyle(theme.colors.sale)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(theme.spacing.l)
                 }
-                if !s.collections.isEmpty {
-                    SwiftUI.Section("Collections") {
-                        ForEach(s.collections.indices, id: \.self) { index in
-                            Button(s.collections[index].title) { router.open(.collection(s.collections[index].handle)) }
-                        }
+                if let s = suggestions {
+                    ForEach(Array(s.queries.enumerated()), id: \.offset) { _, q in
+                        row(ArgonListItem(title: q, leading: .icon(.search), onClick: { submitSuggestion(q) }))
                     }
-                }
-                if !s.products.isEmpty {
-                    SwiftUI.Section("Products") {
-                        ForEach(s.products, id: \.id) { card in
-                            Button { router.open(.product(card.handle)) } label: { ProductRow(card: card) }
-                        }
+                    if !s.collections.isEmpty { label("Collections") }
+                    ForEach(s.collections.indices, id: \.self) { index in
+                        row(ArgonListItem(title: s.collections[index].title, onClick: { router.open(.collection(s.collections[index].handle)) }))
+                    }
+                    if !s.products.isEmpty { label("Products") }
+                    ForEach(Array(s.products.enumerated()), id: \.offset) { _, card in
+                        row(ArgonListItem(
+                            title: card.title,
+                            subtitle: card.price.display(),
+                            leading: card.image.map { ArgonListLeading.image(URL(string: $0.url)) },
+                            onClick: { router.open(.product(card.handle)) }
+                        ))
                     }
                 }
             }
         }
-        .listStyle(.plain)
-        .tint(Color.primary)
+    }
+
+    private func row(_ item: ArgonListItem) -> some View {
+        item.buttonStyle(.plain).padding(.horizontal, theme.spacing.l)
+    }
+
+    private func label(_ text: String) -> some View {
+        SectionHeader(title: text)
+            .padding(.horizontal, theme.spacing.l)
+            .padding(.top, theme.spacing.l)
+            .padding(.bottom, theme.spacing.xs)
     }
 
     /// Searches for a suggested query and ends editing, as the keyboard's Search key does. It resigns the field rather
@@ -137,23 +158,6 @@ struct SearchView: View {
             failure = nil
         } catch {
             if !Task.isCancelled { failure = error.localizedDescription }
-        }
-    }
-}
-
-@MainActor
-private struct ProductRow: View {
-    let card: ProductCard
-
-    var body: some View {
-        HStack(spacing: 12) {
-            StoreImage(image: card.image)
-                .frame(width: 48, height: 48)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(card.title).lineLimit(1)
-                Text(card.price.display()).font(.caption).foregroundStyle(.secondary)
-            }
         }
     }
 }

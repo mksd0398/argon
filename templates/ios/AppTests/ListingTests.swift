@@ -152,17 +152,34 @@ final class ListingTests: XCTestCase {
         XCTAssertFalse(l.hasNext)
     }
 
-    private func price(_ filter: String?) throws -> [String: Double] {
-        let text = try XCTUnwrap(filter)
-        let object = try XCTUnwrap(try JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any])
-        return try XCTUnwrap(object["price"] as? [String: Double])
+    @MainActor
+    func testTheCurrencyIsTheListsOnceAProductHasShownIt() async {
+        let l = Listing(sorts: collectionSorts) { after, _, _ in
+            after == nil ? self.page(["a"], "c1") : self.page([], nil)
+        }
+        XCTAssertNil(l.currencyCode)
+        await l.reload().value
+        XCTAssertEqual(l.currencyCode, "USD")
+        _ = await l.loadMore()?.value // an empty page has no price to read: the currency stays
+        XCTAssertEqual(l.currencyCode, "USD")
     }
 
-    func testPriceFilterGivesMinAndOrMax() throws {
-        XCTAssertEqual(try price(priceFilter("10", " 50.5 ")), ["min": 10, "max": 50.5])
-        XCTAssertEqual(try price(priceFilter("", "20")), ["max": 20])
-        XCTAssertEqual(try price(priceFilter("12,5", "")), ["min": 12.5], "a comma-decimal keyboard's comma")
-        XCTAssertNil(priceFilter("", "abc"))
-        XCTAssertNil(priceFilter("NaN", "Infinity"), "not a JSON number")
+    func testEachListSortsWithTheKeysOfItsOwnQuery() {
+        // the values of ProductCollectionSortKeys, ProductSortKeys and SearchSortKeys: a key of another enum is refused by the API
+        let collectionKeys: Set<String> = ["COLLECTION_DEFAULT", "BEST_SELLING", "PRICE", "CREATED", "TITLE", "MANUAL", "ID", "RELEVANCE"]
+        let catalogKeys: Set<String> = ["BEST_SELLING", "PRICE", "CREATED_AT", "UPDATED_AT", "TITLE", "VENDOR", "PRODUCT_TYPE", "ID", "RELEVANCE"]
+        let searchKeys: Set<String> = ["RELEVANCE", "PRICE"]
+        XCTAssertTrue(collectionSorts.allSatisfy { collectionKeys.contains($0.key) })
+        XCTAssertTrue(catalogSorts.allSatisfy { catalogKeys.contains($0.key) })
+        XCTAssertTrue(searchSorts.allSatisfy { searchKeys.contains($0.key) })
+        XCTAssertEqual(
+            [collectionSorts, catalogSorts, searchSorts].map { $0.first?.label },
+            ["Featured", "Best selling", "Relevance"],
+            "each list opens in its first sort"
+        )
+        for sorts in [collectionSorts, catalogSorts, searchSorts] {
+            XCTAssertEqual(Set(sorts.map { "\($0.key) \($0.reverse)" }).count, sorts.count, "no two entries sort the same way")
+            XCTAssertEqual(Set(sorts.map { $0.label }).count, sorts.count, "or read the same")
+        }
     }
 }
