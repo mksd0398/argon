@@ -36,6 +36,11 @@ class CartStore(
     // The company location the signed-in buyer purchases for (B2B); null: a retail cart.
     private var companyLocationId: String? = null
 
+    // The buyer Shopify last put on the cart: the cart's id, the customer's token and the company location. Shopify
+    // answers every buyer update with a checkout URL under a new key, so attaching the same buyer again changes the cart
+    // each time: a screen that prepares checkout whenever the cart changes would then reload it without end.
+    private var attached: Triple<String, String, String?>? = null
+
     /** Null while there is no cart (none yet, not loaded yet, expired, or checked out). */
     val cart: StateFlow<Cart?> = state
 
@@ -68,7 +73,8 @@ class CartStore(
             this.companyLocationId = companyLocationId
             if (companyLocationId == null || currentId() == null) return
             val token = accessToken() ?: return
-            change({ api.updateBuyerIdentity(it, CartBuyerIdentityInput(customerAccessToken = token, companyLocationId = companyLocationId)) })
+            val cart = change({ api.updateBuyerIdentity(it, CartBuyerIdentityInput(customerAccessToken = token, companyLocationId = companyLocationId)) })
+            if (cart != null) attached = Triple(cart.id, token, companyLocationId)
         }
     }
 
@@ -106,13 +112,18 @@ class CartStore(
 
     /**
      * The URL to hand to Checkout Kit, with the signed-in customer attached to the cart first. Null without a cart.
-     * Attaching the customer never blocks checkout: if it fails, the shopper checks out as a guest.
+     * Attaching the customer never blocks checkout: if it fails, the shopper checks out as a guest. A buyer the cart
+     * already has is not attached again, so asking twice gives the same URL and leaves the cart as it is.
      */
     suspend fun checkoutUrl(): String? = lock.withLock {
         val current = state.value ?: return null
         try {
             val token = accessToken() ?: return current.checkoutUrl
-            change({ api.updateBuyerIdentity(it, CartBuyerIdentityInput(customerAccessToken = token, companyLocationId = companyLocationId)) })?.checkoutUrl
+            val buyer = Triple(current.id, token, companyLocationId)
+            if (buyer == attached) return current.checkoutUrl
+            val updated = change({ api.updateBuyerIdentity(it, CartBuyerIdentityInput(customerAccessToken = token, companyLocationId = companyLocationId)) })
+            if (updated != null) attached = buyer
+            updated?.checkoutUrl
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

@@ -46,7 +46,17 @@ final class CartStore {
     private let lock: AsyncLock
     /// The company location a B2B customer buys for (`setBuyer`); nil for anyone else.
     private var companyLocationId: String? = nil
+    /// The buyer Shopify last put on the cart: the cart's id, the customer's token and the company location. Shopify
+    /// answers every buyer update with a checkout URL under a new key, so attaching the same buyer again changes the
+    /// cart each time: a screen that prepares checkout whenever the cart changes would then reload it without end.
+    private var attached: AttachedBuyer? = nil
     private static let idKey = "cartId"
+
+    private struct AttachedBuyer: Equatable {
+        let cartId: String
+        let token: String
+        let companyLocationId: String?
+    }
 
     init(api: StorefrontAPI, defaults: UserDefaults, accessToken: @escaping () async throws -> String? = { nil }) {
         self.api = api
@@ -99,16 +109,20 @@ final class CartStore {
     }
 
     /// The URL to hand to Checkout Kit, with the signed-in customer attached to the cart first. Nil without a cart.
-    /// Attaching the customer never blocks checkout: if it fails, the shopper checks out as a guest.
+    /// Attaching the customer never blocks checkout: if it fails, the shopper checks out as a guest. A buyer the cart
+    /// already has is not attached again, so asking twice gives the same URL and leaves the cart as it is.
     func checkoutUrl() async -> String? {
         await lock.lock()
         defer { lock.unlock() }
         guard let current = cart else { return nil }
         do {
             guard let token = try await accessToken() else { return current.checkoutUrl }
+            let buyer = AttachedBuyer(cartId: current.id, token: token, companyLocationId: companyLocationId)
+            if buyer == attached { return current.checkoutUrl }
             let identity = CartBuyerIdentityInput(customerAccessToken: token, companyLocationId: companyLocationId)
-            let attached = try await change({ try await self.api.updateBuyerIdentity(cartId: $0, buyerIdentity: identity) })
-            return attached?.checkoutUrl
+            let updated = try await change({ try await self.api.updateBuyerIdentity(cartId: $0, buyerIdentity: identity) })
+            if updated != nil { attached = buyer }
+            return updated?.checkoutUrl
         } catch {
             // the token provider threw, Shopify refused the token (userErrors), or the request failed
             cartLog.warning("customer not attached to the cart; checking out as a guest: \(error.localizedDescription)")
@@ -132,7 +146,9 @@ final class CartStore {
         self.companyLocationId = companyLocationId
         guard let location = companyLocationId, currentId() != nil, let token = try await accessToken() else { return }
         let identity = CartBuyerIdentityInput(customerAccessToken: token, companyLocationId: location)
-        _ = try await change { try await self.api.updateBuyerIdentity(cartId: $0, buyerIdentity: identity) }
+        if let updated = try await change({ try await self.api.updateBuyerIdentity(cartId: $0, buyerIdentity: identity) }) {
+            attached = AttachedBuyer(cartId: updated.id, token: token, companyLocationId: location)
+        }
     }
 
     private func create(_ lines: [CartLineInput]) async throws -> Cart {

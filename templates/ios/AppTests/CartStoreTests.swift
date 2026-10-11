@@ -136,6 +136,42 @@ final class CartStoreTests: XCTestCase {
         XCTAssertEqual((variables["buyerIdentity"] as? [String: Any])?["customerAccessToken"] as? String, "tok")
     }
 
+    // Shopify answers every buyer update with a checkout URL under a new key. Attaching the same customer to the same
+    // cart again would change the cart each time, and the cart screen, which prepares checkout whenever the cart
+    // changes, would reload checkout without end (seen on a phone with a signed-in customer).
+    @MainActor
+    func testCheckoutUrlAttachesTheSameBuyerToACartOnlyOnce() async throws {
+        var key = 0
+        var token = "tok"
+        let s = store(
+            accessToken: { token },
+            reply: { name in
+                guard name == "CartBuyerIdentityUpdate" else { return try self.answer(name, cart: self.cartJson) }
+                key += 1
+                var keyed = self.cartJson
+                keyed["checkoutUrl"] = "https://shop.test/checkout?key=\(key)"
+                return try self.answer(name, cart: keyed)
+            }
+        )
+        try await s.add("v1", quantity: 1)
+        let first = await s.checkoutUrl()
+        XCTAssertEqual(first, "https://shop.test/checkout?key=1")
+
+        let again = await s.checkoutUrl()
+        XCTAssertEqual(again, "https://shop.test/checkout?key=1", "asked again: the same URL")
+        XCTAssertEqual(s.cart?.checkoutUrl, "https://shop.test/checkout?key=1", "and the cart is as it was")
+        XCTAssertEqual(names, ["CartCreate", "CartBuyerIdentityUpdate"], "nothing more was sent")
+
+        // a refreshed token is attached once more
+        token = "tok2"
+        let refreshed = await s.checkoutUrl()
+        XCTAssertEqual(refreshed, "https://shop.test/checkout?key=2")
+        let refreshedAgain = await s.checkoutUrl()
+        XCTAssertEqual(refreshedAgain, "https://shop.test/checkout?key=2")
+        XCTAssertEqual(names, ["CartCreate", "CartBuyerIdentityUpdate", "CartBuyerIdentityUpdate"])
+        XCTAssertEqual((calls[2].variables["buyerIdentity"] as? [String: Any])?["customerAccessToken"] as? String, "tok2")
+    }
+
     @MainActor
     func testCheckoutUrlSkipsTheBuyerWhenSignedOut() async throws {
         let s = store(token: nil)

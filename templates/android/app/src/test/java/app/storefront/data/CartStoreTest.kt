@@ -149,6 +149,36 @@ class CartStoreTest {
         assertEquals("tok", vars.getValue("buyerIdentity").jsonObject.getValue("customerAccessToken").jsonPrimitive.content)
     }
 
+    // Shopify answers every buyer update with a checkout URL under a new key. Attaching the same customer to the same cart
+    // again would change the cart each time, and the cart screen, which prepares checkout whenever the cart changes, would
+    // reload checkout without end (seen on a phone with a signed-in customer).
+    @Test
+    fun checkoutUrlAttachesTheSameBuyerToACartOnlyOnce() = runBlocking {
+        var key = 0
+        var token = "tok"
+        val s = store(accessToken = { token }) {
+            if (it == "CartBuyerIdentityUpdate") {
+                answer(it, JsonObject(cartJson + ("checkoutUrl" to JsonPrimitive("https://shop.test/checkout?key=${++key}"))))
+            } else {
+                answer(it)
+            }
+        }
+        s.add("v1", 1)
+        assertEquals("https://shop.test/checkout?key=1", s.checkoutUrl())
+        val attached = s.cart.value
+
+        assertEquals("asked again: the same URL", "https://shop.test/checkout?key=1", s.checkoutUrl())
+        assertEquals("and the cart is as it was", attached, s.cart.value)
+        assertEquals("nothing more was sent", listOf("CartCreate", "CartBuyerIdentityUpdate"), names)
+
+        // a refreshed token is attached once more
+        token = "tok2"
+        assertEquals("https://shop.test/checkout?key=2", s.checkoutUrl())
+        assertEquals("https://shop.test/checkout?key=2", s.checkoutUrl())
+        assertEquals(listOf("CartCreate", "CartBuyerIdentityUpdate", "CartBuyerIdentityUpdate"), names)
+        assertEquals("tok2", calls[2].second.getValue("buyerIdentity").jsonObject.getValue("customerAccessToken").jsonPrimitive.content)
+    }
+
     @Test
     fun checkoutUrlSkipsTheBuyerWhenSignedOut() = runBlocking {
         val s = store(token = null)
