@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { run, configText } from "../lib/index.js";
+import { run, configText, xtoolFiles } from "../lib/index.js";
 import { loadContract } from "../lib/contract.js";
 
 const WHICH = process.platform === "win32" ? "where" : "command";
@@ -97,6 +97,15 @@ test("--demo --yes scaffolds both apps against mock.shop", async () => {
     const ios = queryFiles(join(dir, "ios/App/Resources/queries"));
     assert.equal(android.length, 52);
     assert.deepEqual(ios, android);
+
+    // xtool (iOS without a Mac): every file the app reads from its bundle is listed, and each exists
+    const xtool = readFileSync(join(dir, "ios/xtool.yml"), "utf8").trimEnd().split("\n");
+    assert.deepEqual(xtool.slice(0, 4), ["version: 1", "bundleID: com.mockshop.demoapp", "infoPath: Xtool-Info.plist", "resources:"]);
+    const resources = xtool.slice(4).map((line) => line.replace(/^- /, ""));
+    assert.deepEqual(resources.slice(0, 2), ["Config.xcconfig", "App/PrivacyInfo.xcprivacy"]);
+    assert.deepEqual(resources.slice(2), ios.map((file) => `App/Resources/queries/${file}`));
+    for (const file of [...resources, "Xtool-Info.plist", "Package.swift"]) assert.ok(existsSync(join(dir, "ios", file)), file);
+    assert.ok(readFileSync(join(dir, "ios/Xtool-Info.plist"), "utf8").includes("<string>Mock.shop</string>"));
     for (const folder of ["android/app/src/main/assets/queries", "ios/App/Resources/queries"]) {
       for (const [name, document] of contract) {
         assert.equal(readFileSync(join(dir, folder, `${name}.graphql`), "utf8"), document, `${folder}/${name}`);
@@ -249,4 +258,10 @@ test("configText: one line per key, no scheme, values safe for each file format"
 test("configText: xcconfig never keeps two slashes in a row, however many there are", () => {
   assert.equal(configText({ APP_NAME: "a///b" }, "ios"), "APP_NAME = a/$()/$()/b\n");
   assert.equal(configText({ APP_NAME: "a////b//" }, "ios").includes("//"), false);
+});
+
+test("xtoolFiles: the display name is XML-escaped", () => {
+  const files = xtoolFiles({ appName: "Fish & <Chips>", bundleId: "com.x.y", operations: ["Shop"] });
+  assert.ok(files["Xtool-Info.plist"].includes("<string>Fish &amp; &lt;Chips&gt;</string>"));
+  assert.ok(files["xtool.yml"].endsWith("- App/Resources/queries/Shop.graphql\n"));
 });
