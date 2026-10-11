@@ -1,0 +1,93 @@
+{
+  "id": 6183412097110,
+  "admin_graphql_api_id": "gid://shopify/Order/6183412097110",
+  "name": "#1042",
+  "order_number": 1042,
+  "created_at": "2026-10-11T09:30:00-04:00",
+  "processed_at": "2026-10-11T09:30:00-04:00",
+  "test": false,
+  "currency": "USD",
+  "presentment_currency": "USD",
+  "taxes_included": false,
+  "subtotal_price": "135.00",
+  "total_discounts": "15.00",
+  "total_tax": "10.80",
+  "total_price": "155.80",
+  "total_shipping_price_set": {
+    "shop_money": { "amount": "10.00", "currency_code": "USD" },
+    "presentment_money": { "amount": "10.00", "currency_code": "USD" }
+  },
+  "email": "Asha.Rao@Example.com",
+  "contact_email": "Asha.Rao@Example.com",
+  "phone": "+919876543210",
+  "customer": {
+    "id": 7412589630123,
+    "admin_graphql_api_id": "gid://shopify/Customer/7412589630123",
+    "email": "asha.rao@example.com",
+    "phone": "+919876543210",
+    "first_name": "Asha",
+    "last_name": "Rao"
+  },
+  "client_details": {
+    "accept_language": "en-IN",
+    "browser_height": null,
+    "browser_ip": "203.0.113.24",
+    "browser_width": null,
+    "session_hash": null,
+    "user_agent": "Mozilla/5.0 (Linux; Android 16; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/141.0.0.0 Mobile Safari/537.36"
+  },
+  "note_attributes": [
+    { "name": "_argon_platform", "value": "android" },
+    { "name": "_ga_app_instance_id", "value": "6f2c1d7e9a8b4c3d5e6f7a8b9c0d1e2f" },
+    { "name": "_meta_anon_id", "value": "XZ6f1a2b3c-4d5e-6f70-8192-a3b4c5d6e7f8" },
+    { "name": "_meta_extinfo", "value": "[\"a2\",\"com.argon.demo\",\"1\",\"1.0\",\"16\",\"Pixel 9\",\"en_IN\",\"IST\",\"Jio\",\"1080\",\"2424\",\"2.63\",\"8\",\"128\",\"64\",\"Asia/Kolkata\"]" },
+    { "name": "_meta_tracking", "value": "1" }
+  ],
+  "discount_codes": [
+    { "code": "WELCOME10", "amount": "15.00", "type": "percentage" }
+  ],
+  "shipping_lines": [
+    { "id": 5012345678901, "title": "Standard", "code": "Standard", "price": "10.00", "discounted_price": "10.00", "source": "shopify" }
+  ],
+  "line_items": [
+    {
+      "id": 15234567890123,
+      "product_id": 8123456789012,
+      "variant_id": 45123456789012,
+      "title": "Linen Shirt",
+      "name": "Linen Shirt - Blue / M",
+      "variant_title": "Blue / M",
+      "vendor": "Argon Supply",
+      "sku": "LS-BLU-M",
+      "quantity": 2,
+      "price": "60.00",
+      "total_discount": "0.00"
+    },
+    {
+      "id": 15234567890124,
+      "product_id": 8123456789099,
+      "variant_id": 45123456789099,
+      "title": "Canvas Tote",
+      "name": "Canvas Tote",
+      "variant_title": null,
+      "vendor": "Argon Supply",
+      "sku": "CT-01",
+      "quantity": 1,
+      "price": "25.00",
+      "total_discount": "0.00"
+    },
+    {
+      "id": 15234567890125,
+      "product_id": null,
+      "variant_id": null,
+      "title": "Gift wrap",
+      "name": "Gift wrap",
+      "variant_title": null,
+      "vendor": null,
+      "sku": null,
+      "quantity": 1,
+      "price": "5.00",
+      "total_discount": "0.00"
+    }
+  ]
+}
