@@ -327,7 +327,11 @@ test("download: the body's bytes, with a timeout; an HTTP error, a body over the
   await assert.rejects(serve(endless).download("https://cdn.shopify.com/logo.png"), /^Error: larger than 8 MB$/);
   assert.equal(cancelled, true);
 
-  const stalled = (url, { signal }) => new Promise((_, reject) => signal.addEventListener("abort", () => reject(signal.reason)));
+  // AbortSignal.timeout's timer doesn't keep Node running (a real fetch's socket does), so the stand-in holds the loop open
+  const stalled = (url, { signal }) => new Promise((_, reject) => {
+    const open = setInterval(() => {}, 1000);
+    signal.addEventListener("abort", () => (clearInterval(open), reject(signal.reason)));
+  });
   await assert.rejects(setup(t, undefined, { fetch: stalled }).shopify.download("https://cdn.shopify.com/logo.png", { timeoutMs: 20 }), { name: "TimeoutError" });
 });
 
