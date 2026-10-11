@@ -1,99 +1,108 @@
+import ArgonUI
+import os
 import SwiftUI
 
-private let isoDate = ISO8601DateFormatter()
+private let accountLog = Logger(subsystem: "app.storefront", category: "Account")
 
-/// "Oct 1, 2026" in the device's zone and locale; the text as it came when it isn't an ISO-8601 date-time.
-func displayDate(_ iso: String) -> String {
-    guard let date = isoDate.date(from: iso) else { return iso }
-    return date.formatted(date: .abbreviated, time: .omitted)
-}
-
-/// PARTIALLY_REFUNDED -> "Partially refunded".
-func displayStatus(_ status: String) -> String {
-    let words = status.lowercased().replacingOccurrences(of: "_", with: " ")
-    return words.prefix(1).uppercased() + String(words.dropFirst())
-}
-
-/// The customer and their latest orders.
-private struct Account {
-    let customer: Customer
-    let orders: [OrderSummary]
-}
-
+/// `load`'s result, or nil when it fails: for the parts of a page that are left out rather than failing it.
 @MainActor
-private func loadAccount() async throws -> Account {
-    let api = AppGraph.customerAccount
-    async let customer = api.customer()
-    async let orders = api.orders()
-    return try await Account(customer: customer, orders: orders.items)
+private func optional<T>(_ what: String, _ load: () async throws -> T) async -> T? {
+    do {
+        return try await load()
+    } catch {
+        // the error's type only: a message could carry a URL
+        accountLog.warning("\(what, privacy: .public) not loaded (\(String(describing: type(of: error)), privacy: .public))")
+        return nil
+    }
 }
 
+/// The shop's policies, each a row that opens it; none while they can't be loaded.
+@MainActor
+private func loadPolicies() async -> [ShopPolicy] {
+    await optional("policies") { try await AppGraph.storefront.policies().all } ?? []
+}
+
+/// The Account tab. Signed out: what an account is for, "Sign in", and on the demo store "Preview with a sample account".
+/// With an account (a signed-in customer, or the sample one): the customer, their company, store credit and latest order,
+/// and the ways on (orders, profile, addresses, wishlist, policies, help).
 @MainActor
 struct AccountView: View {
-    // Each visit loads the customer again: a new order shows, and nothing of this customer outlives a sign-out.
-    @State private var visit = 0
+    @Environment(\.argonTheme) private var theme
 
     var body: some View {
-        VStack {
-            // the CLI lets a store skip the Customer Account client: no client id, no sign-in
-            if AppGraph.customerClientId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                VStack(spacing: 12) {
-                    Text("Sign-in isn't configured for this store").font(.headline)
-                    Text(verbatim: "Set CUSTOMER_CLIENT_ID in ios/Config.xcconfig").font(.footnote).foregroundStyle(.secondary)
-                }
-                .multilineTextAlignment(.center)
-                .padding(32)
-            } else if AppGraph.auth.signedIn {
-                Loader(load: loadAccount) { CustomerContent(customer: $0.customer, orders: $0.orders) }.id(visit)
+        Group {
+            if AppGraph.hasAccount {
+                // not kept: a new order shows on the next visit, and nothing of this customer outlives a sign-out
+                FreshLoader(load: loadAccount) { SignedIn(account: $0) }
             } else {
                 SignedOut()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        #if DEBUG
-        // the ArgonUI gallery, to review the components on a phone, signed in or not (debug builds only)
-        .safeAreaInset(edge: .bottom) {
-            NavigationLink(value: Destination.components) {
-                HStack {
-                    Text("Components")
-                    Spacer()
-                    Image(systemName: "chevron.right").foregroundStyle(.secondary)
-                }
-                .padding(16)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .background(.bar)
-        }
-        #endif
-        .navigationTitle("Account")
-        .onDisappear { visit += 1 }
+        .background(theme.colors.paper)
+        .argonTopBar(title: "Account")
     }
 }
+
+// MARK: Signed out
 
 @MainActor
 private struct SignedOut: View {
     @State private var starting = false
     @State private var failure: String? = nil
+    @State private var policies: [ShopPolicy] = []
+    @Environment(\.argonTheme) private var theme
 
     var body: some View {
-        if starting {
-            ProgressView()
-        } else if let failure = failure {
-            ErrorView(message: failure) { signIn() }
-        } else {
-            VStack(spacing: 12) {
-                if let error = AppGraph.auth.signInError {
-                    Text(error).foregroundStyle(.red).multilineTextAlignment(.center)
+        // the CLI lets a store skip the Customer Account client: no client id, no sign-in
+        let canSignIn = trimmedText(AppGraph.customerClientId) != nil
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Your account")
+                    .font(theme.type.title)
+                    .foregroundStyle(theme.colors.ink)
+                    .accessibilityAddTraits(.isHeader)
+                    .padding(.horizontal, theme.spacing.l)
+                VStack(spacing: 0) {
+                    ArgonListItem(title: "Track your orders", leading: .icon(.truck))
+                    ArgonListItem(title: "Faster checkout", leading: .icon(.bag))
+                    ArgonListItem(title: "Returns in a few taps", leading: .icon(.returns))
                 }
-                Button { signIn() } label: { Text("Sign in").onBrand() }
-                    .buttonStyle(.borderedProminent)
+                .padding(.horizontal, theme.spacing.l)
+                VStack(alignment: .leading, spacing: theme.spacing.s) {
+                    ErrorText(failure ?? AppGraph.auth.signInError)
+                    if canSignIn {
+                        ArgonButton(title: "Sign in", isLoading: starting, fullWidth: true) { signIn() }
+                    } else {
+                        Text("Sign-in isn't configured for this store").font(theme.type.label).foregroundStyle(theme.colors.ink)
+                        Text(verbatim: "Set CUSTOMER_CLIENT_ID in ios/Config.xcconfig")
+                            .font(theme.type.caption)
+                            .foregroundStyle(theme.colors.muted)
+                    }
+                    // the demo store has no customer accounts: its sample one shows the signed-in pages
+                    if AppGraph.sampleAvailable {
+                        ArgonButton(
+                            title: "Preview with a sample account",
+                            style: canSignIn ? .secondary : .primary,
+                            fullWidth: true
+                        ) { AppGraph.sampleAccount = true }
+                    }
+                }
+                .padding(theme.spacing.l)
+                ArgonDivider()
+                VStack(spacing: 0) {
+                    StoreRows(policies: policies)
+                    ComponentsRow()
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, theme.spacing.l)
             }
-            .padding(32)
+            .padding(.vertical, theme.spacing.l)
         }
+        .task { policies = await loadPolicies() }
     }
 
-    // Discovery runs first, so a store without the Customer Account API fails here (error + Retry), before any browser opens.
+    // Discovery runs first, so a store without the Customer Account API fails here (the error shows), before any browser opens.
     private func signIn() {
         starting = true
         failure = nil
@@ -108,69 +117,209 @@ private struct SignedOut: View {
     }
 }
 
+/// The rows anyone gets, signed in or not: each of the shop's policies, and "Help" (the store's contact page).
 @MainActor
-private struct CustomerContent: View {
-    let customer: Customer
-    let orders: [OrderSummary]
+private struct StoreRows: View {
+    let policies: [ShopPolicy]
     @Environment(Router.self) private var router
 
     var body: some View {
-        List {
-            if !customer.name.isEmpty || customer.email != nil {
-                VStack(alignment: .leading, spacing: 4) {
-                    if !customer.name.isEmpty { Text(customer.name).font(.title2) }
-                    if let email = customer.email { Text(email).foregroundStyle(.secondary) }
-                }
-            }
-            SwiftUI.Section("Orders") {
-                if orders.isEmpty {
-                    Text("No orders yet").foregroundStyle(.secondary)
-                }
-                ForEach(orders, id: \.id) { order in
-                    NavigationLink(value: Destination.order(order.id)) { OrderRow(order: order) }
-                }
-            }
-            SwiftUI.Section {
-                Button("Sign out") { signOut() }
-                // no API deletes a customer account, so the store's contact page takes the request (Apple and Google require the entry)
-                Button("Delete account", role: .destructive) {
-                    router.open(.web("https://\(AppGraph.shopDomain)/pages/contact"))
-                }
-            }
+        ForEach(policies, id: \.handle) { policy in
+            ArgonListItem(title: policy.title, trailing: .chevron) { router.open(.policy(policy.handle)) }
         }
+        ArgonListItem(title: "Help", trailing: .chevron) { router.open(contactRoute()) }
     }
+}
 
-    private func signOut() {
-        // Not tied to this screen, which goes away as soon as the session does.
-        Task {
-            // The cart first, so it goes even if the logout call fails or hangs: one the customer was attached to would still
-            // check out as them (shopify.dev Checkout Kit "Authenticate checkouts": clear the stored tokens and authenticated
-            // carts). Only here, on an explicit sign-out: a session that ends mid-checkout must not lose the cart.
-            await AppGraph.cart.completed()
-            await AppGraph.auth.signOut()
-            // AppRoot invalidates the preloaded checkout on both changes (the cart, then signedIn).
+/// Debug builds only: the Argon UI gallery, to review every component on a device.
+@MainActor
+private struct ComponentsRow: View {
+    @Environment(Router.self) private var router
+
+    var body: some View {
+        #if DEBUG
+        ArgonListItem(title: "Components", trailing: .chevron) { router.path.append(.components) }
+        #endif
+    }
+}
+
+// MARK: Signed in
+
+/// What the signed-in screen shows. Only `customer` has to load: the rest is left out when its call fails.
+private struct Account {
+    let customer: Customer
+    let latestOrder: OrderSummary?
+    let credit: [Money]
+    let policies: [ShopPolicy]
+}
+
+/// The profile with, side by side, the newest order, the store credit and the shop's policies.
+@MainActor
+private func loadAccount() async throws -> Account {
+    let api = AppGraph.customerAccount
+    async let order = optional("latest order") { try await api.orders().items.first }
+    async let credit = optional("store credit") { try await creditBalances(api.storeCredit()) }
+    async let policies = loadPolicies()
+    let customer = try await api.customer()
+    return await Account(customer: customer, latestOrder: order ?? nil, credit: credit ?? [], policies: policies)
+}
+
+@MainActor
+private struct SignedIn: View {
+    let account: Account
+    @Environment(Router.self) private var router
+    @Environment(\.argonTheme) private var theme
+
+    var body: some View {
+        let spacing = theme.spacing
+        let customer = account.customer
+        let latest = account.latestOrder
+        ScrollView {
+            VStack(alignment: .leading, spacing: spacing.l) {
+                Group {
+                    if AppGraph.sampleAccount {
+                        ArgonTag(text: "Sample account: nothing is saved", style: .info)
+                    }
+                    AccountHeader(customer: customer)
+                    // the company comes from the buyer store: it follows the session by itself, and is nil for a retail customer
+                    if let company = AppGraph.buyer.company {
+                        CompanyCard(company: company)
+                    }
+                    if !account.credit.isEmpty {
+                        ArgonListItem(title: "Store credit", trailing: .text(account.credit.map { $0.display() }.joined(separator: ", ")))
+                    }
+                    if let latest = latest {
+                        VStack(alignment: .leading, spacing: spacing.s) {
+                            SectionHeader(title: "Latest order", actionLabel: "All orders", onAction: { router.path.append(.orders) })
+                            OrderCard(order: latest) { router.path.append(.order(latest.id)) }
+                        }
+                    }
+                    VStack(spacing: 0) {
+                        // no latest order to show (none yet, or it couldn't be loaded): the orders are still a row away
+                        if latest == nil {
+                            ArgonListItem(title: "All orders", trailing: .chevron) { router.path.append(.orders) }
+                        }
+                        ArgonListItem(title: "Profile", trailing: .chevron) { router.path.append(.profile) }
+                        ArgonListItem(title: "Addresses", trailing: .chevron) { router.path.append(.addresses) }
+                        ArgonListItem(title: "Wishlist", trailing: .chevron) { AppGraph.tabs.selected = .wishlist }
+                        EmailOffers(customer: customer)
+                        StoreRows(policies: account.policies)
+                        ArgonListItem(title: "Manage account on the web", trailing: .chevron) {
+                            router.open(.web("https://shopify.com/\(AppGraph.shopId)/account"))
+                        }
+                        ComponentsRow()
+                    }
+                    .buttonStyle(.plain)
+                    VStack(spacing: spacing.s) {
+                        ArgonButton(title: "Sign out", style: .secondary, fullWidth: true) { signOut() }
+                        // no API deletes a customer account, so the store's contact page takes the request (Apple and Google require the entry)
+                        ArgonButton(title: "Delete account", style: .tertiary, fullWidth: true) { router.open(contactRoute()) }
+                    }
+                }
+                .padding(.horizontal, spacing.l)
+            }
+            .padding(.vertical, spacing.l)
         }
     }
 }
 
+/// The avatar (the customer's picture, else their initials), their name and email.
 @MainActor
-private struct OrderRow: View {
-    let order: OrderSummary
+private struct AccountHeader: View {
+    let customer: Customer
+    @Environment(\.argonTheme) private var theme
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(order.name)
-                Text(detail).font(.subheadline).foregroundStyle(.secondary)
+        let name = accountName(customer)
+        HStack(spacing: theme.spacing.m) {
+            ArgonAvatar(
+                imageUrl: customer.imageUrl.flatMap { URL(string: $0) },
+                initials: initials(customer.firstName, customer.lastName, customer.email),
+                size: .l
+            )
+            VStack(alignment: .leading, spacing: 0) {
+                Text(name ?? "Your account").font(theme.type.headline).foregroundStyle(theme.colors.ink).lineLimit(1)
+                if let email = customer.email, email != name {
+                    Text(email).font(theme.type.body).foregroundStyle(theme.colors.muted).lineLimit(1)
+                }
             }
-            Spacer(minLength: 8)
-            Text(order.total.display())
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
+}
 
-    private var detail: String {
-        var parts = [displayDate(order.processedAt)]
-        if let status = order.financialStatus { parts.append(displayStatus(status)) }
-        return parts.joined(separator: " · ")
+/// The company the customer buys for and the location; with several locations, a dropdown to buy for another.
+@MainActor
+private struct CompanyCard: View {
+    let company: BuyerCompany
+    @Environment(\.argonTheme) private var theme
+
+    var body: some View {
+        Panel {
+            Text("Company").font(theme.type.caption).foregroundStyle(theme.colors.muted)
+            Text(company.companyName).font(theme.type.headline).foregroundStyle(theme.colors.ink)
+            if company.locations.count > 1 {
+                ArgonDropdown(
+                    label: "Location",
+                    options: company.locations.map { $0.name },
+                    selectedIndex: company.locations.firstIndex { $0.id == company.locationId }
+                ) { index in
+                    // not tied to the screen: the choice is stored and applied to the shop and the cart, whatever the screen does
+                    Task { await AppGraph.buyer.select(company.locations[index].id) }
+                }
+            } else if let location = company.location {
+                Text(location.name).font(theme.type.body).foregroundStyle(theme.colors.muted)
+            }
+        }
+    }
+}
+
+/// "Email offers": on subscribes the customer to the store's marketing emails, off unsubscribes; a refusal shows under it.
+@MainActor
+private struct EmailOffers: View {
+    @State private var subscribed: Bool
+    @State private var busy = false
+    @State private var error: String? = nil
+
+    init(customer: Customer) {
+        _subscribed = State(initialValue: isSubscribed(customer.emailAddress?.marketingState))
+    }
+
+    var body: some View {
+        ArgonSwitch(isOn: subscribed, label: "Email offers") { on in
+            busy = true
+            error = nil
+            // not tied to the screen: leaving the tab doesn't drop the change
+            Task {
+                do {
+                    let api = AppGraph.customerAccount
+                    let answer = try await on ? api.subscribeEmailMarketing() : api.unsubscribeEmailMarketing()
+                    subscribed = isSubscribed(answer.marketingState)
+                } catch {
+                    self.error = error.localizedDescription
+                }
+                busy = false
+            }
+        }
+        .frame(minHeight: 44)
+        .disabled(busy)
+        ErrorText(error)
+    }
+}
+
+/// Leaves the account: the sample one is just switched off; a signed-in customer is signed out, not tied to the screen
+/// (which goes away as soon as the session does).
+@MainActor
+private func signOut() {
+    let signedIn = AppGraph.auth.signedIn
+    AppGraph.sampleAccount = false
+    if !signedIn { return }
+    Task {
+        // The cart first, so it goes even if the logout call fails or hangs: one the customer was attached to would still
+        // check out as them (shopify.dev Checkout Kit "Authenticate checkouts": clear the stored tokens and authenticated
+        // carts). Only here, on an explicit sign-out: a session that ends mid-checkout must not lose the cart.
+        await AppGraph.cart.completed()
+        await AppGraph.auth.signOut()
+        // AppRoot invalidates the preloaded checkout on both changes (the cart, then signedIn).
     }
 }
