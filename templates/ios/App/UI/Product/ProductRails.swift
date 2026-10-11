@@ -7,7 +7,7 @@ import SwiftUI
 /// ponytail: the row is a plain stack, as tall as its tallest card (a lazy one sizes itself on the first cards only):
 /// every card is built at once, a dozen at most. Upgrade: a lazy stack with a fixed card height, for longer rails.
 @MainActor
-struct ProductRail: View {
+struct ProductPageRail: View {
     let title: String
     let cards: [ProductCard]
     let style: ProductCardStyle

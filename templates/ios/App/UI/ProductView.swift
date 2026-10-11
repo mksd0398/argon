@@ -463,9 +463,9 @@ private struct ProductContent: View {
             ProductReviews(reviews: reviews, onWrite: { writingReview = true }, onLoadMore: { Task { await reviews.loadMore() } })
                 .id(ProductBlock.reviews)
         }
-        ProductRail(title: "Pairs well with", cards: state.complementary ?? [], style: .compact, onOpen: open)
-        ProductRail(title: "You may also like", cards: state.related ?? [], style: .standard, onOpen: open)
-        ProductRail(title: "Recently viewed", cards: state.recent ?? [], style: .standard, onOpen: open)
+        ProductPageRail(title: "Pairs well with", cards: state.complementary ?? [], style: .compact, onOpen: open)
+        ProductPageRail(title: "You may also like", cards: state.related ?? [], style: .standard, onOpen: open)
+        ProductPageRail(title: "Recently viewed", cards: state.recent ?? [], style: .standard, onOpen: open)
     }
 }
 
