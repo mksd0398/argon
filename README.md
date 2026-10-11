@@ -27,13 +27,16 @@ The apps work the way a Liquid theme does. They render whatever the store contai
 
 - **Two native codebases**, SwiftUI (iOS 17+) and Jetpack Compose (Android minSdk 26), kept screen for screen identical
 - **Tabs**: Home, Shop, Wishlist, Cart, Account, with search from Home and Shop
-- **Product lists** with sorting and filters, **product pages** with variants and metafields, a persisted **cart**
+- **Page templates**, picked in the config: four home screens (fashion, beauty, grocery, industrial & B2B) and two collection layouts (sticky filter bar at the top, floating bar at the bottom), with colour swatches ([Page templates](#page-templates))
+- **A product page built to sell**: variant swatches, bundles, unit prices, volume pricing and quantity rules, B2B catalogue prices, subscriptions, a sticky add-to-cart bar, recommendations, recently viewed, and Judge.me reviews
+- **Orders and returns**: tracking, payments, refunds, and a return or exchange request, from the Customer Account API
+- A persisted **cart**
 - **Checkout** through Checkout Kit: Shopify owns payment, tax, shipping, discounts and orders
-- **Login** with the Customer Account API (OAuth 2.0 + PKCE), orders, and the *Delete account* entry both app stores require
+- **Login** with the Customer Account API (OAuth 2.0 + PKCE), profile, addresses, company, store credit, and the *Delete account* entry both app stores require
 - **A home screen the merchant edits**: an ordered list of metaobject sections ([Content model](#content-model))
 - **Branding** from the store's own colours and logo
 - **A native component library**: 29 themed components on each platform (Compose `ui` module, `ArgonUI` Swift package), with a debug gallery at Account → Components
-- **The full Storefront and Customer Account API, prebuilt**: 52 typed operations behind `StorefrontApi` and `CustomerAccountApi` (same names on iOS), checked against Shopify's 2026-10 schemas
+- **The full Storefront and Customer Account API, prebuilt**: 55 typed operations behind `StorefrontApi` and `CustomerAccountApi` (same names on iOS), checked against Shopify's 2026-10 schemas
 - **One Shopify SDK**: Checkout Kit. A hand-written GraphQL client, no Mobile Buy SDK, no Apollo, no DI framework
 - **`AGENTS.md`, `CLAUDE.md` and a README** in every generated project, so an AI coding agent follows the same rules with nothing installed
 
@@ -63,7 +66,7 @@ A missing Xcode or Android SDK only produces a warning. You can generate the pro
 npx @mksd0398/argon demo-app --demo --yes
 ```
 
-The apps use `mock.shop`: no account, no token. Menu, catalogue and cart work. Metaobjects return null there, so Home shows the fallback home, and login is hidden. **`mock.shop` doesn't implement `nodes(ids:)`, so the Wishlist tab stays empty on it.** It works on real stores.
+The apps use `mock.shop`: no account, no token. Menu, catalogue and cart work. Metaobjects return null there, so Home shows the template's stock banners over the store's collections. It has no customer accounts, so the Account tab offers **Preview with a sample account**: sample orders, a return and a company, to see those pages. **`mock.shop` doesn't implement `nodes(ids:)`, so the Wishlist tab stays empty on it.** It works on real stores.
 
 ### A real store
 
@@ -92,7 +95,7 @@ Shopify has no API to create a Headless storefront or its login client, so these
 
 1. Install the **Headless** channel and create a storefront (Sales channels → Headless).
 2. Make your products and collections available to the storefront. Each Headless storefront is its own sales channel, listed by its name (Products → filter by Online Store → select all → Include in sales channels).
-3. In **Storefront API**, copy the **public** access token. Its permissions allow reading metaobjects (the home screen) by default.
+3. In **Storefront API**, copy the **public** access token. Its permissions allow reading metaobjects (the home screen) by default. The apps leave out whatever a permission you turn off would have fed: without `unauthenticated_read_product_inventory`, for example, the product page shows no "Only 3 left".
    Argon checks it as you paste it, asks again if Shopify rejects it, and then checks that the app can see your products and read the home screen.
 4. In **Customer Account API**, edit Client type to **Public (mobile app)** and save. Shopify fills in the Callback URI `shop.<shop id>.app://callback`; check it, then copy the **Client ID**.
 
@@ -114,7 +117,24 @@ cd my-store-app
 - **iOS**: open `ios/App.xcodeproj` in Xcode 16+, pick a simulator, Run.
 - **Android**: open `android/` in Android Studio, or `cd android && ./gradlew assembleDebug`.
 
-Per-store values live in `ios/Config.xcconfig` and `android/shopify.properties`, with the same eight keys on both (`SHOP_DOMAIN`, `STOREFRONT_TOKEN`, `CUSTOMER_CLIENT_ID`, `SHOP_ID`, `API_VERSION`, `APP_NAME`, `BUNDLE_ID`, `PDP_METAFIELDS`). The generated README explains each. With an empty token on a store other than `mock.shop`, the app shows a setup screen naming the missing key instead of failing at run time.
+Per-store values live in `ios/Config.xcconfig` and `android/shopify.properties`, with the same eleven keys on both (`SHOP_DOMAIN`, `STOREFRONT_TOKEN`, `CUSTOMER_CLIENT_ID`, `SHOP_ID`, `API_VERSION`, `APP_NAME`, `BUNDLE_ID`, `PDP_METAFIELDS`, `HOME_TEMPLATE`, `COLLECTION_TEMPLATE`, `JUDGEME_PUBLIC_TOKEN`). The generated README explains each. With an empty token on a store other than `mock.shop`, the app shows a setup screen naming the missing key instead of failing at run time.
+
+---
+
+## Page templates
+
+Every app carries all of them; two config keys pick what it shows, so switching is a one-line change and a rebuild.
+
+| Key | Values |
+|---|---|
+| `HOME_TEMPLATE` | `fashion` (editorial, image-led), `beauty` (soft cards, ratings, shop by routine), `grocery` (search first, dense, quick add), `b2b` (SKUs, trade prices, bulk quantities) |
+| `COLLECTION_TEMPLATE` | `top` (sort and filters in a sticky bar), `bottom` (a floating bar) |
+
+- **Home** shows the store's own banners, collections and product rows from the [content model](#content-model) in the template's layout. Until the store has banners, each template shows three stock photos from Shopify's [Burst](https://www.shopify.com/stock-photos) (`templates/images/CREDITS.md`).
+- **Colour swatches** use Shopify's swatch data, and fall back to the colour's name ("Peacock Blue" is shown blue) for stores that have none.
+- **Reviews** come from [Judge.me](https://judge.me)'s Widget API with the store's *public* token (`JUDGEME_PUBLIC_TOKEN`, from Judge.me admin → Settings → Integrations → View API tokens), drawn natively. Leave it empty to hide reviews. Never use the private token: it would ship inside the app.
+- **B2B**: when the signed-in customer is a company contact, every price is the company location's catalogue price, with quantity rules and volume pricing on the product page.
+- **Returns and exchanges** use Shopify's self-serve returns. The Customer Account API takes return requests only, so an exchange is sent as a return whose note names the wanted variant; the merchant completes it in admin.
 
 ---
 
@@ -147,6 +167,9 @@ Edit them under **Content → Metaobjects**. The home screen is the `mobile_scre
 | `--token=TOKEN` | Public Storefront API access token. |
 | `--client-id=ID` | Customer Account API client ID. Omit to hide login. |
 | `--bundle-id=ID` | Bundle / application ID. Default `com.<store>.<project>`. |
+| `--home=TEMPLATE` | Home screen: `fashion` (default), `beauty`, `grocery` or `b2b`. |
+| `--collection=TEMPLATE` | Collection layout: `top` (default) or `bottom`. |
+| `--judgeme-token=TOKEN` | Judge.me public API token. Omit to hide reviews. |
 | `--skip-content` | Don't create the metaobject definitions or the `home` entry. |
 | `--yes` | Accept defaults and ask nothing. |
 | `--help` | Show help. |
@@ -200,7 +223,7 @@ The tests need Node 22+ (the CLI itself runs on Node 18+).
 
 The GraphQL contract is in `contract/`: Storefront API documents in `queries/` (fragments in `fragments.graphql`), Customer Account API documents in `customer/` (its own `fragments.graphql`), one operation per file, and `fixtures/<Operation>.json`, one response `data` per operation, which the CLI copies into both apps for their decoding tests. `npm test` validates every document against the schemas in `test/schema/` (from `@shopify/hydrogen@2026.10.0`) and every fixture against its document. With `ARGON_RECORD=1`, `npm run test:live` re-records the fixtures mock.shop can answer; the rest are hand-written.
 
-CI (`.github/workflows/ci.yml`) has three jobs. `cli` runs the two commands above on Node 22. `android` and `ios` each generate a `--demo` project and build and test it: Gradle `testDebugUnitTest assembleDebug` on Linux, `xcodebuild build test` on macOS. The `ios` job runs twice: with Xcode 16, which must pass, and with the latest stable Xcode (26), which App Store uploads require and which may fail without failing CI. Each run picks an iPhone simulator on the newest iOS runtime (17 or later) that its Xcode supports. Swift can't be built on Windows or Linux, so the iOS job is what verifies the iOS app.
+CI (`.github/workflows/ci.yml`) has three jobs. `cli` runs the two commands above on Node 22. `android` and `ios` each generate a `--demo` project and build and test it: Gradle `testDebugUnitTest assembleDebug` on Linux, `xcodebuild build test` on macOS. The `ios` job runs twice: with Xcode 16, which must pass, and with the latest stable Xcode (26), which App Store uploads require and which may fail without failing CI. Each run picks an iPhone simulator on the newest iOS runtime (17 or later) that its Xcode supports. Without a Mac, [xtool](https://xtool.sh) can compile the iOS app on Linux or Windows (the generated README explains how), but only this job runs its tests.
 
 ---
 
