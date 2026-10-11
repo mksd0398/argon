@@ -104,7 +104,7 @@ The apps can report to Google Analytics, Meta and MoEngage. Each is off until it
 A Firebase file must be for this app's `BUNDLE_ID`: Google Analytics gets nothing from an app whose ID is not the one in its file.
 
 - **Android** needs nothing more: the build adds an SDK when its file or its keys are there.
-- **iOS with Xcode**: add the provider's Swift package to the App target (File → Add Package Dependencies).
+- **iOS with Xcode**: add the provider's Swift package to the App target (File → Add Package Dependencies). For Google Analytics also add `-ObjC` to the App target's Other Linker Flags (Build Settings): Firebase's package asks for it.
 - **iOS with xtool**: `ios/Package.swift` already has the packages of the providers Argon was given. To add one later, add its package and its product there, next to Checkout Kit's. Firebase's file also goes in `ios/xtool.yml` (`- App/GoogleService-Info.plist`), and Meta's SDK reads three keys from `ios/Xtool-Info.plist`: `FacebookAppID`, `FacebookClientToken` and `FacebookDisplayName`.
 
 | Provider | Swift package | Product |

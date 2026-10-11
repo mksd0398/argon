@@ -288,6 +288,7 @@ final class AnalyticsTests: XCTestCase {
     private final class Recorder: AnalyticsSink {
         var events: [AnalyticsEvent] = []
         var users: [AnalyticsUser?] = []
+        var enabled: [Bool] = []
         private let attributes: [String: String]
 
         init(_ attributes: [String: String] = [:]) {
@@ -299,6 +300,8 @@ final class AnalyticsTests: XCTestCase {
         func identify(_ user: AnalyticsUser?) { users.append(user) }
 
         func cartAttributes() async -> [String: String] { attributes }
+
+        func setEnabled(_ allowed: Bool) { enabled.append(allowed) }
     }
 
     @MainActor
@@ -385,5 +388,38 @@ final class AnalyticsTests: XCTestCase {
         XCTAssertFalse(again.allowed, "still off after a restart")
         again.set(true)
         XCTAssertTrue(consent().allowed)
+    }
+
+    @MainActor
+    func testEverySinkIsToldTheChoiceAsTheHubIsBuiltAndEachTimeItChanges() {
+        var allowed = false
+        let first = Recorder()
+        let second = Recorder()
+        let analytics = Analytics(sinks: [first, second], allowed: { allowed })
+        analytics.track(.login)
+        for sink in [first, second] {
+            // the gate is closed, and that is the very thing a provider's SDK has to hear
+            XCTAssertEqual(sink.enabled, [false], "the choice the hub was built with")
+            XCTAssertEqual(sink.events, [])
+        }
+
+        allowed = true
+        analytics.consentChanged()
+        allowed = false
+        analytics.consentChanged()
+        for sink in [first, second] { XCTAssertEqual(sink.enabled, [false, true, false]) }
+    }
+
+    /// The store and the hub tied as `AppGraph` ties them.
+    @MainActor
+    func testTheSwitchReachesTheSinks() {
+        let sink = Recorder()
+        var analytics: Analytics?
+        let store = AnalyticsConsentStore(defaults: UserDefaults(suiteName: suite)!, changed: { analytics?.consentChanged() })
+        analytics = Analytics(sinks: [sink, LogSink(write: { _ in })], allowed: { store.allowed })
+        XCTAssertEqual(sink.enabled, [true], "on until the shopper turns it off")
+        store.set(false)
+        store.set(true)
+        XCTAssertEqual(sink.enabled, [true, false, true])
     }
 }

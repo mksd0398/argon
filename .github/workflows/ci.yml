@@ -73,10 +73,13 @@ jobs:
       - uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: ${{ matrix.xcode }}
+      # lib/index.js names the analytics SDKs the last step resolves: a change there saves the cache again, starting
+      # from the last one
       - uses: actions/cache@v6
         with:
           path: ~/Library/Caches/org.swift.swiftpm
-          key: spm-${{ runner.os }}-${{ matrix.runner }}-${{ matrix.xcode }}-${{ hashFiles('templates/ios/App.xcodeproj/project.pbxproj') }}
+          key: spm-${{ runner.os }}-${{ matrix.runner }}-${{ matrix.xcode }}-${{ hashFiles('templates/ios/App.xcodeproj/project.pbxproj', 'lib/index.js') }}
+          restore-keys: spm-${{ runner.os }}-${{ matrix.runner }}-${{ matrix.xcode }}-
       - name: Generate the demo project
         run: |
           git config --global user.email "ci@argon.invalid"
@@ -121,5 +124,20 @@ jobs:
           mkdir package
           cp -R demo/ios/Package.swift demo/ios/App demo/ios/ArgonUI package/
           cd package
+          xcodebuild -scheme ArgonStorefront -destination "generic/platform=iOS Simulator" \
+            CODE_SIGNING_ALLOWED=NO -skipPackagePluginValidation -skipMacroValidation build
+      # The analytics sinks (Firebase, Meta, MoEngage) are compiled only in an app that has their SDKs, and the demo has
+      # none: a second project with all three set up, built as a package like the one above, is what compiles them
+      # against the real SDKs. On the one Xcode Firebase 13 resolves with (26.2 or later). The Firebase file is a dummy
+      # for com.mockshop.analytics, the id a demo project named "analytics" gets; nothing here is run or sent.
+      - name: Build the Swift package with the analytics SDKs
+        if: matrix.xcode == 'latest-stable'
+        run: |
+          node bin/create.js analytics --demo --yes \
+            --meta-app-id=1234567890 --meta-client-token=0123456789abcdef0123456789abcdef \
+            --moengage-workspace-id=TESTWORKSPACE --firebase-ios=test/fixtures/GoogleService-Info.plist
+          mkdir analytics-package
+          cp -R analytics/ios/Package.swift analytics/ios/App analytics/ios/ArgonUI analytics-package/
+          cd analytics-package
           xcodebuild -scheme ArgonStorefront -destination "generic/platform=iOS Simulator" \
             CODE_SIGNING_ALLOWED=NO -skipPackagePluginValidation -skipMacroValidation build

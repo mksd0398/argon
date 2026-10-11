@@ -140,6 +140,10 @@ protocol AnalyticsSink {
 
     /// What a new cart carries for the store's server to tie the order to this app install (the provider's own ids).
     func cartAttributes() async -> [String: String]
+
+    /// Whether the shopper shares usage data. A provider's SDK collects on its own (automatic events, an advertising id,
+    /// sessions), which the hub's gate can't stop: its sink turns the SDK's own collection on or off here.
+    func setEnabled(_ allowed: Bool)
 }
 
 extension AnalyticsSink {
@@ -148,6 +152,8 @@ extension AnalyticsSink {
     func identify(_ user: AnalyticsUser?) {}
 
     func cartAttributes() async -> [String: String] { [:] }
+
+    func setEnabled(_ allowed: Bool) {}
 }
 
 /// The hub: screens and stores report here (`AppGraph.analytics`), and every sink gets what they report while the shopper
@@ -160,6 +166,14 @@ final class Analytics {
     init(sinks: [AnalyticsSink], allowed: @escaping () -> Bool) {
         self.sinks = sinks
         self.allowed = allowed
+        consentChanged()
+    }
+
+    /// Tells every sink the shopper's choice (`AnalyticsSink.setEnabled`): once as the hub is built, where the choice is
+    /// already known, and again each time it changes.
+    func consentChanged() {
+        let allowed = allowed()
+        for sink in sinks { sink.setEnabled(allowed) }
     }
 
     func track(_ event: AnalyticsEvent) {
