@@ -5,6 +5,7 @@ import app.storefront.data.CustomerAddress
 import app.storefront.data.CustomerAddressInput
 import app.storefront.data.Money
 import app.storefront.data.StoreCreditAccount
+import java.util.Locale
 
 // The account pages' rules, kept free of UI so they can be tested (and read side by side with iOS).
 
@@ -41,6 +42,13 @@ fun addressLines(address: CustomerAddress): List<String> = address.formatted.ifE
         address.country ?: address.countryCode.orEmpty(),
     ).map { it.trim() }.filter { it.isNotEmpty() }
 }
+
+/**
+ * A country's name in the address form's picker: the store's [name] for it, else the device's own name for the ISO
+ * [code] ("CA" is "Canada"; a store may send no names), else the code itself.
+ */
+fun countryName(code: String, name: String?, locale: Locale = Locale.getDefault()): String =
+    name?.takeIf { it.isNotBlank() } ?: Locale("", code).getDisplayCountry(locale).ifBlank { code }
 
 /** The fields the address form checks itself. */
 enum class AddressField { Address1, City, Country }

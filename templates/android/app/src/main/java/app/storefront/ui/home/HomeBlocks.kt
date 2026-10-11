@@ -5,15 +5,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -31,10 +27,13 @@ import androidx.compose.ui.unit.dp
 import app.argon.ui.ArgonSize
 import app.argon.ui.ArgonTheme
 import app.argon.ui.components.ArgonButton
+import app.storefront.data.CollectionCard
 import app.storefront.data.HomeContent
+import app.storefront.data.Img
 import app.storefront.data.ProductCard
 import app.storefront.data.Route
 import app.storefront.data.Section
+import app.storefront.ui.ProductCardRow
 import app.storefront.ui.ProductCardStyle
 import app.storefront.ui.ProductCardView
 import app.storefront.ui.SectionHeader
@@ -82,8 +81,13 @@ internal fun BannerView(
         ArgonTheme(darkTheme = true) {
             val colors = ArgonTheme.colors
             val spacing = ArgonTheme.spacing
-            // the shade grows towards the bottom, where the words are; a banner without a picture is all shade
-            val shade = if (banner.image == null) SolidColor(colors.paper) else Brush.verticalGradient(0.35f to Color.Transparent, 1f to colors.paper.copy(alpha = 0.85f))
+            // the shade grows towards the bottom, where the words are; a banner without a picture is all shade. In a short
+            // banner the heading reaches the top, so the whole picture is shaded a little for it to stay readable.
+            val shade = when {
+                banner.image == null -> SolidColor(colors.paper)
+                compact -> Brush.verticalGradient(0f to colors.paper.copy(alpha = 0.3f), 1f to colors.paper.copy(alpha = 0.85f))
+                else -> Brush.verticalGradient(0.35f to Color.Transparent, 1f to colors.paper.copy(alpha = 0.85f))
+            }
             Column(
                 Modifier.matchParentSize().background(shade).padding(if (compact) spacing.m else spacing.l),
                 verticalArrangement = Arrangement.spacedBy(spacing.s, Alignment.Bottom),
@@ -113,11 +117,15 @@ internal fun ProductRail(
     val spacing = ArgonTheme.spacing
     Column(verticalArrangement = Arrangement.spacedBy(spacing.m)) {
         SectionHeader(title, Modifier.padding(horizontal = spacing.l), actionLabel = "View all") { onOpen(viewAll) }
-        LazyRow(contentPadding = PaddingValues(horizontal = spacing.l), horizontalArrangement = Arrangement.spacedBy(spacing.m)) {
-            items(cards) { card -> ProductCardView(card, { onOpen(Route.Product(card.handle)) }, Modifier.width(cardWidth), style) }
-        }
+        ProductCardRow(cards, { onOpen(Route.Product(it.handle)) }, style = style, cardWidth = cardWidth)
     }
 }
+
+/**
+ * A category's picture: the collection's own image, else its first product's (many stores never give their collections
+ * one). Null, and so the quiet placeholder, only when it has neither.
+ */
+internal val CollectionCard.picture: Img? get() = image ?: products.firstOrNull()?.image
 
 /** [cards] two to a row (a lazy grid can't sit inside the home's list, and these are a handful of cards). */
 @Composable

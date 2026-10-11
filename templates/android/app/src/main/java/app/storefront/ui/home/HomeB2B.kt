@@ -103,8 +103,8 @@ private fun CategoryList(categories: List<CollectionCard>, onOpen: (Route) -> Un
     for (category in categories) {
         ArgonListItem(
             category.title,
-            // a collection without a picture keeps the row's shape with an icon
-            leading = category.image?.let { ArgonListLeading.Image(it.url) } ?: ArgonListLeading.Icon(ArgonIconName.Grid),
+            // a collection without a picture (its own or a product's) keeps the row's shape with an icon
+            leading = category.picture?.let { ArgonListLeading.Image(it.url) } ?: ArgonListLeading.Icon(ArgonIconName.Grid),
             trailing = ArgonListTrailing.Chevron,
             onClick = { onOpen(Route.Collection(category.handle)) },
         )

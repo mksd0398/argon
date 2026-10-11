@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.res.ResourcesCompat
 import androidx.core.text.HtmlCompat
 import app.argon.ui.ArgonSize
 import app.argon.ui.ArgonTheme
@@ -51,20 +52,32 @@ import kotlinx.coroutines.CancellationException
 /**
  * Any image the app shows, filling the space it's given (cropped), on a quiet placeholder while it loads or when there
  * is none: [url] from the store's CDN, or a file bundled with the app (`file:///android_asset/...`, a stock banner,
- * [app.storefront.data.StockImages]), which Coil reads from the APK.
+ * [app.storefront.data.StockImages]), which Coil reads from the APK. Without [placeholder] nothing is drawn behind the
+ * image: for one shown whole ([ContentScale.Fit]) on its screen's own background, like the full-screen viewer's.
  */
 @Composable
-fun StoreImage(url: String?, contentDescription: String?, modifier: Modifier = Modifier, contentScale: ContentScale = ContentScale.Crop) = AsyncImage(
+fun StoreImage(
+    url: String?,
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+    contentScale: ContentScale = ContentScale.Crop,
+    placeholder: Boolean = true,
+) = AsyncImage(
     model = url,
     contentDescription = contentDescription,
-    modifier = modifier.background(ArgonTheme.colors.border.copy(alpha = 0.5f)),
+    modifier = if (placeholder) modifier.background(ArgonTheme.colors.border.copy(alpha = 0.5f)) else modifier,
     contentScale = contentScale,
 )
 
 /** [image] with its own alt text; [contentDescription] when it has none. */
 @Composable
-fun StoreImage(image: Img?, contentDescription: String?, modifier: Modifier = Modifier, contentScale: ContentScale = ContentScale.Crop) =
-    StoreImage(image?.url, image?.alt ?: contentDescription, modifier, contentScale)
+fun StoreImage(
+    image: Img?,
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+    contentScale: ContentScale = ContentScale.Crop,
+    placeholder: Boolean = true,
+) = StoreImage(image?.url, image?.alt ?: contentDescription, modifier, contentScale, placeholder)
 
 /** A small label over an image or beside a price: "Sold out", "Bundle"; [isSale] puts it on the sale colour: "Sale", "Save 20%". */
 @Composable
@@ -220,6 +233,11 @@ private fun TrustItem(icon: ArgonIconName, label: String, modifier: Modifier) = 
     Text(label, style = ArgonTheme.type.caption, color = ArgonTheme.colors.muted, textAlign = TextAlign.Center)
 }
 
+private val STYLE_BLOCKS = Regex("""<(style|script)\b[^>]*>.*?</\1\s*>""", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
+
+/** [html] without its `<style>` and `<script>` blocks: the renderer would show their CSS and code as words. */
+internal fun withoutStyleBlocks(html: String): String = html.replace(STYLE_BLOCKS, "")
+
 /** The merchant's HTML (a product description, a policy) through the platform's HTML renderer: paragraphs, lists, bold, links. */
 @Composable
 fun HtmlText(html: String, modifier: Modifier = Modifier) {
@@ -227,11 +245,18 @@ fun HtmlText(html: String, modifier: Modifier = Modifier) {
     val color = ArgonTheme.colors.ink.toArgb()
     val linkColor = ArgonTheme.colors.accent.toArgb()
     AndroidView(
-        factory = { TextView(it).apply { movementMethod = LinkMovementMethod.getInstance(); textSize = 15f } },
+        factory = {
+            TextView(it).apply {
+                movementMethod = LinkMovementMethod.getInstance()
+                // the body style of the theme (Hanken Grotesk, 16 sp), not the platform's default font
+                textSize = 16f
+                runCatching { ResourcesCompat.getFont(it, app.argon.ui.R.font.hanken_grotesk) }.getOrNull()?.let { font -> typeface = font }
+            }
+        },
         update = {
             it.setTextColor(color)
             it.setLinkTextColor(linkColor)
-            it.text = HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_COMPACT).trimEnd()
+            it.text = HtmlCompat.fromHtml(withoutStyleBlocks(html), HtmlCompat.FROM_HTML_MODE_COMPACT).trimEnd()
         },
         modifier = modifier.fillMaxWidth(),
     )

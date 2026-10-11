@@ -18,6 +18,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -157,5 +158,11 @@ private fun HomeTopBar(template: HomeTemplate, brand: Brand?, onSearch: () -> Un
 @Composable
 private fun SearchField(placeholder: String, onSearch: () -> Unit) = Box {
     ArgonTopBar(placeholder, Modifier.clearAndSetSemantics {}.padding(bottom = ArgonTheme.spacing.s), variant = ArgonTopBarVariant.Search)
-    Box(Modifier.matchParentSize().semantics { contentDescription = placeholder }.clickable(role = Role.Button, onClick = onSearch))
+    // Material's SearchBar puts itself at zIndex 1, which is also the order taps are tried in: the button has to sit
+    // above that, or a tap on the field lands in the field (a cursor, the keyboard) and never opens the search screen.
+    // No ripple of its own: it would be a grey rectangle over the bar and the status bar.
+    Box(
+        Modifier.matchParentSize().zIndex(2f).semantics { contentDescription = placeholder }
+            .clickable(interactionSource = null, indication = null, role = Role.Button, onClick = onSearch),
+    )
 }

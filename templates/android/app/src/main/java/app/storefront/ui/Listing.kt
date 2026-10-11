@@ -142,7 +142,7 @@ class Listing(
                 pagesLoaded++
                 page.items.firstOrNull()?.let { currencyCode = it.price.currencyCode }
                 // a filtered first page that comes back without filters keeps the old ones, so the user can still clear them
-                if (first && page.filters.isNotEmpty()) filters = page.filters
+                if (first && page.filters.isNotEmpty()) filters = keepingPriceBounds(filters, page.filters, applied)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -154,6 +154,23 @@ class Listing(
         }
     }
 }
+
+/**
+ * The filters to show after a reload: the list's new ones ([fresh]), except that while a price range is selected
+ * ([applied]) a price filter stays as it was ([current]). Shopify answers a list filtered by price with the range of
+ * what is left, which would shrink the slider to the selection and leave no way to widen it again.
+ * ponytail: the bounds are those from before the price was chosen, even if other filters change meanwhile.
+ */
+internal fun keepingPriceBounds(current: List<Filter>, fresh: List<Filter>, applied: List<String>): List<Filter> =
+    if (priceSelection(applied) == null) fresh
+    else fresh.map { filter -> current.firstOrNull { it.type == "PRICE_RANGE" && it.id == filter.id } ?: filter }
+
+// A collection's description is Shopify's plain text of the merchant's HTML, and that keeps the text of a `<style>` block
+// (page builders put one first): rules like `#html-body [data-pb-style=X]{display:flex}` before the words.
+private val LEADING_CSS = Regex("""^(?:\s*[^{}]{1,200}\{[^{}]*\})+""")
+
+/** [text] without the CSS rules a page builder left at its start; the words after them are the description. */
+internal fun withoutLeadingCss(text: String): String = text.replace(LEADING_CSS, "").trim()
 
 // The filter selection is `Listing.applied`: the `input` JSON of every selected filter value, in the order they were
 // selected (a price range is one entry, `{"price":{"min":10.0,"max":50.0}}`, see FilterSheet.kt).

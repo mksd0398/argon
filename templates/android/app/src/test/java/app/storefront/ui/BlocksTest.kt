@@ -93,4 +93,13 @@ class BlocksTest {
         assertNull(quantityRuleLabel(QuantityRule()))
         assertNull(quantityRuleLabel(null))
     }
+
+    // Merchant HTML
+
+    @Test
+    fun styleAndScriptBlocksAreLeftOutOfMerchantHtml() {
+        assertEquals("<p>Soft cotton.</p>", withoutStyleBlocks("<style>#html-body{display:flex}</style><p>Soft cotton.</p>"))
+        assertEquals("<p>a</p><p>b</p>", withoutStyleBlocks("<p>a</p><STYLE type=\"text/css\">\n.x{color:red}\n</STYLE><script>alert(1)</script><p>b</p>"))
+        assertEquals("nothing to take out", "<p>In style.</p>", withoutStyleBlocks("<p>In style.</p>"))
+    }
 }

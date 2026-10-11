@@ -76,7 +76,7 @@ private fun CategoryGrid(categories: List<CollectionCard>, onOpen: (Route) -> Un
                         verticalArrangement = Arrangement.spacedBy(spacing.xs),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        StoreImage(category.image, null, Modifier.fillMaxWidth().aspectRatio(1f).clip(ArgonTheme.radius.m))
+                        StoreImage(category.picture, null, Modifier.fillMaxWidth().aspectRatio(1f).clip(ArgonTheme.radius.m))
                         Text(
                             category.title,
                             style = ArgonTheme.type.caption,

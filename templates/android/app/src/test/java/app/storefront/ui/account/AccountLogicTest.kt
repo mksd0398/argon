@@ -8,6 +8,7 @@ import app.storefront.data.CustomerEmailAddress
 import app.storefront.data.Money
 import app.storefront.data.StoreCreditAccount
 import app.storefront.data.fixture
+import java.util.Locale
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -133,5 +134,14 @@ class AccountLogicTest {
         assertFalse("the second address isn't the default", AddressForm.of(addresses[1]).isDefault)
         assertEquals(AddressForm(), AddressForm.of(null))
         assertEquals("an unchanged form changes nothing it had", "Suite 400", AddressForm.of(addresses[0]).toInput(addresses[0]).address2)
+    }
+
+    @Test
+    fun aCountryWithoutANameGetsTheDevicesNameForItsCode() {
+        assertEquals("the store's name wins", "Kanada", countryName("CA", "Kanada", Locale.US))
+        assertEquals("mock.shop sends no names", "Canada", countryName("CA", "", Locale.US))
+        assertEquals("Canada", countryName("CA", null, Locale.US))
+        assertEquals("blank is no name", "India", countryName("IN", " ", Locale.US))
+        assertEquals("in the device's language", "Kanada", countryName("CA", null, Locale.GERMANY))
     }
 }

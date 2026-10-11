@@ -3,6 +3,7 @@ package app.storefront.ui
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,12 +13,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -25,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.argon.ui.ArgonSize
 import app.argon.ui.ArgonTheme
@@ -51,7 +56,10 @@ fun Money.display(): String = runCatching {
     NumberFormat.getCurrencyInstance().apply { currency = Currency.getInstance(currencyCode) }.format(amount.toBigDecimal())
 }.getOrDefault("$amount $currencyCode")
 
-/** Heart toggle for the product with id [productId]: filled while it is in the wishlist. */
+/**
+ * Heart toggle for the product with id [productId]: filled while it is in the wishlist. A 36 dp disc inside the 48 dp
+ * touch target, so the disc sits 6 dp inside whatever corner the button is aligned to.
+ */
 @Composable
 fun WishlistHeart(productId: String, modifier: Modifier = Modifier) {
     val ids by AppGraph.wishlist.ids.collectAsState()
@@ -69,12 +77,14 @@ fun WishlistHeart(productId: String, modifier: Modifier = Modifier) {
         },
         modifier,
     ) {
-        ArgonIcon(
-            if (saved) ArgonIconName.HeartFilled else ArgonIconName.Heart,
-            size = 17.dp,
-            tint = ArgonTheme.colors.ink,
-            contentDescription = if (saved) "Remove from wishlist" else "Save to wishlist",
-        )
+        Box(Modifier.size(36.dp).background(ArgonTheme.colors.surface.copy(alpha = 0.9f), CircleShape), contentAlignment = Alignment.Center) {
+            ArgonIcon(
+                if (saved) ArgonIconName.HeartFilled else ArgonIconName.Heart,
+                size = 17.dp,
+                tint = ArgonTheme.colors.ink,
+                contentDescription = if (saved) "Remove from wishlist" else "Save to wishlist",
+            )
+        }
     }
 }
 
@@ -93,6 +103,25 @@ fun ProductCardView(card: ProductCard, onOpen: () -> Unit, modifier: Modifier = 
         ProductCardStyle.Row -> RowCard(card, onOpen, modifier)
     }
 
+/**
+ * Product cards in a row that scrolls sideways (a rail), each [cardWidth] wide, inset by the page's gutter. Not lazy: a
+ * rail is a handful of cards, and a lazy row is only as tall as the cards on screen, so the page under it would jump
+ * whenever a taller card (a second title line, colour dots) scrolled in. This row is as tall as its tallest card.
+ */
+@Composable
+fun ProductCardRow(
+    cards: List<ProductCard>,
+    onOpen: (ProductCard) -> Unit,
+    modifier: Modifier = Modifier,
+    style: ProductCardStyle = ProductCardStyle.Standard,
+    cardWidth: Dp = 160.dp,
+) = Row(
+    modifier.horizontalScroll(rememberScrollState()).padding(horizontal = ArgonTheme.spacing.l),
+    horizontalArrangement = Arrangement.spacedBy(ArgonTheme.spacing.m),
+) {
+    for (card in cards) key(card.id) { ProductCardView(card, { onOpen(card) }, Modifier.width(cardWidth), style) }
+}
+
 @Composable
 private fun CardTitle(card: ProductCard, minLines: Int = 1) =
     Text(card.title, style = ArgonTheme.type.label, color = ArgonTheme.colors.ink, minLines = minLines, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -108,10 +137,7 @@ private fun StandardCard(card: ProductCard, onOpen: () -> Unit, modifier: Modifi
     Column(modifier.clickable(onClick = onOpen), verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
         Box(Modifier.fillMaxWidth().aspectRatio(4f / 5f).clip(ArgonTheme.radius.m)) {
             StoreImage(card.image, card.title, Modifier.matchParentSize())
-            WishlistHeart(
-                card.id,
-                Modifier.align(Alignment.TopEnd).padding(spacing.xs).size(36.dp).background(ArgonTheme.colors.surface.copy(alpha = 0.9f), CircleShape),
-            )
+            WishlistHeart(card.id, Modifier.align(Alignment.TopEnd))
             val tag = Modifier.align(Alignment.TopStart).padding(spacing.s)
             if (!card.available) LabelTag("Sold out", tag) else if (card.compareAt != null) LabelTag("Sale", tag, isSale = true)
         }

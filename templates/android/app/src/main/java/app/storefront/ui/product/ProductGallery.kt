@@ -28,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -135,7 +136,8 @@ private fun ZoomableImage(image: Img, contentDescription: String) {
     StoreImage(
         image,
         contentDescription,
-        Modifier.fillMaxSize()
+        // clipped to its page: a zoomed image must not draw over the viewer's top bar (its close button) or the next page
+        Modifier.fillMaxSize().clipToBounds()
             .pointerInput(Unit) {
                 detectTapGestures(onDoubleTap = {
                     scale = if (scale > 1f) 1f else DOUBLE_TAP_ZOOM
@@ -163,5 +165,7 @@ private fun ZoomableImage(image: Img, contentDescription: String) {
                 translationY = offset.y
             },
         contentScale = ContentScale.Fit,
+        // letterboxed on the viewer's own background, not on a placeholder band
+        placeholder = false,
     )
 }

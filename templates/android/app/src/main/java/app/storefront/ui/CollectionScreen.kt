@@ -42,7 +42,7 @@ class CollectionModel(private val handle: String) : ViewModel() {
         } else {
             val collection = api.collection(handle, applied, sort.key, sort.reverse, after) ?: error("Collection not found")
             title = collection.title
-            description = collection.description
+            description = withoutLeadingCss(collection.description)
             collection.products
         }
     }

@@ -78,7 +78,7 @@ private fun CategoryTiles(categories: List<CollectionCard>, onOpen: (Route) -> U
                     Modifier.width(132.dp).clickable { onOpen(Route.Collection(category.handle)) },
                     verticalArrangement = Arrangement.spacedBy(spacing.s),
                 ) {
-                    StoreImage(category.image, null, Modifier.fillMaxWidth().aspectRatio(3f / 4f).clip(ArgonTheme.radius.m))
+                    StoreImage(category.picture, null, Modifier.fillMaxWidth().aspectRatio(3f / 4f).clip(ArgonTheme.radius.m))
                     Text(category.title, style = ArgonTheme.type.label, color = ArgonTheme.colors.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }

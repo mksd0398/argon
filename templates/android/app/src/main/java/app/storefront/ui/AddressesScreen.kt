@@ -50,6 +50,7 @@ import app.storefront.ui.account.AddressForm
 import app.storefront.ui.account.ErrorText
 import app.storefront.ui.account.Panel
 import app.storefront.ui.account.addressLines
+import app.storefront.ui.account.countryName
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -67,7 +68,7 @@ private suspend fun loadAddresses(): List<CustomerAddress> = AppGraph.customerAc
 private suspend fun loadAddressBook(): AddressBook = coroutineScope {
     val countries = async {
         try {
-            AppGraph.storefront.localization().availableCountries.map { CountryChoice(it.isoCode, it.name.ifBlank { it.isoCode }) }.sortedBy { it.name }
+            AppGraph.storefront.localization().availableCountries.map { CountryChoice(it.isoCode, countryName(it.isoCode, it.name)) }.sortedBy { it.name }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

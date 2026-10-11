@@ -86,7 +86,7 @@ private fun CategoryCircles(categories: List<CollectionCard>, onOpen: (Route) ->
                     verticalArrangement = Arrangement.spacedBy(spacing.xs),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    ArgonAvatar(imageUrl = category.image?.url, initials = category.title, size = ArgonSize.L)
+                    ArgonAvatar(imageUrl = category.picture?.url, initials = category.title, size = ArgonSize.L)
                     Text(
                         category.title,
                         style = ArgonTheme.type.caption,

@@ -1,5 +1,6 @@
 package app.argon.ui.components
 
+import android.view.View
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -14,10 +15,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 
 /** A dialog button; destructive ones are drawn in the sale (error) colour. */
 data class ArgonModalAction(val title: String, val isDestructive: Boolean = false, val action: () -> Unit = {})
@@ -52,6 +57,18 @@ private fun ModalButton(action: ArgonModalAction, onDismiss: () -> Unit) = TextB
 fun ArgonFullScreenModal(isPresented: Boolean, onDismiss: () -> Unit, title: String, content: @Composable () -> Unit) {
     if (!isPresented) return
     Dialog(onDismiss, DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+        // The dialog has a window of its own, which the activity's system-bar setting doesn't reach: on a light
+        // background the status and navigation bars get dark icons (white ones would be unreadable).
+        val view = LocalView.current
+        val light = MaterialTheme.colorScheme.background.luminance() > 0.5f
+        SideEffect {
+            // the flags every API level from 26 understands (the module has no androidx.core for WindowCompat)
+            @Suppress("DEPRECATION")
+            (view.parent as? DialogWindowProvider)?.window?.decorView?.let { decor ->
+                val lightBars = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+                decor.systemUiVisibility = if (light) decor.systemUiVisibility or lightBars else decor.systemUiVisibility and lightBars.inv()
+            }
+        }
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Column {
                 ArgonTopBar(title, leading = listOf(ArgonTopBarAction(ArgonIconName.Close, "Close", action = onDismiss)))

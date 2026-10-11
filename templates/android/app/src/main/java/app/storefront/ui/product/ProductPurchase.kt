@@ -16,6 +16,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -30,6 +32,7 @@ import app.argon.ui.components.ArgonIconName
 import app.argon.ui.components.ArgonQuantityStepper
 import app.argon.ui.components.ArgonRadioGroup
 import app.argon.ui.components.steppedQuantity
+import app.storefront.AppGraph
 import app.storefront.data.Money
 import app.storefront.data.QuantityRule
 import app.storefront.data.SellingPlanAllocation
@@ -292,11 +295,16 @@ internal fun ProductQuantity(
 @Composable
 internal fun StickyAddBar(price: ChosenPrice?, label: String, isEnabled: Boolean, isLoading: Boolean, onAdd: () -> Unit) {
     val spacing = ArgonTheme.spacing
+    val density = LocalDensity.current
     // the surface runs under the system's navigation; the content stays above it
     Column(Modifier.fillMaxWidth().background(ArgonTheme.colors.surface)) {
         ArgonDivider()
         Row(
-            Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = spacing.l, vertical = spacing.m),
+            Modifier.fillMaxWidth()
+                .navigationBarsPadding()
+                // the app's toast shows above the bar (see AppNav): it is told how tall the bar is
+                .onSizeChanged { AppGraph.toast.stickyBarHeight = with(density) { it.height.toDp() } }
+                .padding(horizontal = spacing.l, vertical = spacing.m),
             horizontalArrangement = Arrangement.spacedBy(spacing.m),
             verticalAlignment = Alignment.CenterVertically,
         ) {

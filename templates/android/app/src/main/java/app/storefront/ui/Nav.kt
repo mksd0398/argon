@@ -23,7 +23,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -86,6 +88,12 @@ class ToastState {
     /** The messages to show, for the root's snackbar. */
     val messages: SharedFlow<String> = shown
 
+    /**
+     * How tall the product page's sticky add-to-cart bar is (above the system navigation), as it last measured itself:
+     * on a product page the snackbar shows above the bar, not over its button.
+     */
+    var stickyBarHeight by mutableStateOf(0.dp)
+
     fun show(message: String) {
         shown.tryEmit(message)
     }
@@ -141,8 +149,12 @@ private fun AppNav() {
     Scaffold(
         // each screen's own Scaffold handles the system bars; this one only reserves room for the tab bar
         contentWindowInsets = WindowInsets(0),
-        // the tab bar keeps the snackbar off the system navigation; without it the padding does
-        snackbarHost = { SnackbarHost(snackbar, if (onTab) Modifier else Modifier.navigationBarsPadding()) },
+        // the tab bar keeps the snackbar off the system navigation; without it the padding does, and on a product page
+        // the snackbar also clears the sticky add-to-cart bar
+        snackbarHost = {
+            val lift = if (current?.startsWith("product/") == true) AppGraph.toast.stickyBarHeight else 0.dp
+            SnackbarHost(snackbar, if (onTab) Modifier else Modifier.navigationBarsPadding().padding(bottom = lift))
+        },
         bottomBar = {
             if (onTab) {
                 ArgonBottomBar(

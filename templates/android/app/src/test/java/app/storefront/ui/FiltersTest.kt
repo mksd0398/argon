@@ -142,4 +142,25 @@ class FiltersTest {
         assertEquals("Filters", countLabel("Filters", 0))
         assertEquals("Filter (2)", countLabel("Filter", 2))
     }
+
+    @Test
+    fun thePriceSliderKeepsItsBoundsWhileAPriceIsSelected() {
+        // Shopify answers a list filtered to 0...80 with a price filter of 0...80: the slider must not shrink to it
+        val narrowed = priceFilter("""{"price":{"min":0,"max":80}}""")
+        val fresh = listOf(availability, narrowed, color.copy(values = color.values.take(1)))
+        val kept = keepingPriceBounds(filters, fresh, listOf(priceInput(0f, 80f), green))
+        assertEquals("the price filter is the one from before", price, kept[1])
+        assertEquals("every other filter is the new one", listOf(fresh[0], fresh[2]), listOf(kept[0], kept[2]))
+        assertEquals("no price selected: all new", fresh, keepingPriceBounds(filters, fresh, listOf(green)))
+        assertEquals("nothing to keep yet", fresh, keepingPriceBounds(emptyList(), fresh, listOf(priceInput(0f, 80f))))
+    }
+
+    @Test
+    fun aDescriptionLosesTheCssAPageBuilderLeftBeforeIt() {
+        val css = "#html-body [data-pb-style=SMHWSI9]{justify-content:flex-start;display:flex}#html-body [data-pb-style=A1]{border-style:none}"
+        assertEquals("Silk sarees for every day.", withoutLeadingCss("$css Silk sarees for every day."))
+        assertEquals("only CSS: nothing to show", "", withoutLeadingCss(css))
+        assertEquals("plain words stay as they are", "Cotton Silk Saree- Drape every occasion", withoutLeadingCss("Cotton Silk Saree- Drape every occasion"))
+        assertEquals("", withoutLeadingCss(""))
+    }
 }

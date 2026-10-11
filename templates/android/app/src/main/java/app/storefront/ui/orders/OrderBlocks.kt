@@ -42,8 +42,8 @@ fun OrderCard(order: OrderSummary, onOpen: () -> Unit, modifier: Modifier = Modi
                     Text(order.name, style = type.headline, color = colors.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(displayDate(order.processedAt), style = type.caption, color = colors.muted, maxLines = 1)
                 }
-                // the tag is a chip: a tap on it opens the order like the rest of the card
-                ArgonTag(orderStatus(order), style = ArgonTagStyle.Info, onClick = onOpen)
+                // a plain label: a tap on it goes to the card, which opens the order
+                ArgonTag(orderStatus(order), style = ArgonTagStyle.Info)
             }
             val shown = order.lineItems.take(3)
             if (shown.isNotEmpty()) {

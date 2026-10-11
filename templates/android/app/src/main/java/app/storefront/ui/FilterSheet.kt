@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -154,17 +154,41 @@ fun FilterSheet(
     scrollTo: String? = null,
 ) = ArgonBottomSheet(isPresented, onDismiss, detents = setOf(ArgonSheetDetent.Large)) {
     val spacing = ArgonTheme.spacing
+    val list = rememberLazyListState(filters.indexOfFirst { it.id == scrollTo }.coerceAtLeast(0))
+    // A change reloads the filters, and a section above the one just used can come back shorter (fewer values are left):
+    // the section that was used (its id, and how far down the list's window it sat) is put back where it was, so it
+    // doesn't jump from under the finger.
+    var anchor by remember { mutableStateOf<Pair<String, Int>?>(null) }
+    LaunchedEffect(filters) {
+        val (id, offset) = anchor ?: return@LaunchedEffect
+        anchor = null
+        val index = filters.indexOfFirst { it.id == id }
+        if (index >= 0) list.scrollToItem(index, -offset)
+    }
     SheetTitle("Filters", Modifier.padding(horizontal = spacing.l))
     LazyColumn(
         Modifier.weight(1f, fill = false),
-        state = rememberLazyListState(filters.indexOfFirst { it.id == scrollTo }.coerceAtLeast(0)),
+        state = list,
         contentPadding = PaddingValues(horizontal = spacing.l, vertical = spacing.m),
         verticalArrangement = Arrangement.spacedBy(spacing.l),
     ) {
-        items(filters) { filter -> FilterSection(filter, applied, onChange, currencyCode) }
+        itemsIndexed(filters) { index, filter ->
+            FilterSection(
+                filter,
+                applied,
+                onChange = { next ->
+                    anchor = list.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }?.let { filter.id to it.offset }
+                    onChange(next)
+                },
+                currencyCode,
+            )
+        }
     }
     Row(Modifier.fillMaxWidth().padding(spacing.l), horizontalArrangement = Arrangement.spacedBy(spacing.m)) {
-        ArgonButton("Clear", style = ArgonButtonStyle.Tertiary, isEnabled = applied.isNotEmpty()) { onChange(emptyList()) }
+        ArgonButton("Clear", style = ArgonButtonStyle.Tertiary, isEnabled = applied.isNotEmpty()) {
+            anchor = null
+            onChange(emptyList())
+        }
         ArgonButton(if (results != null) "Show $results" else "Show products", Modifier.weight(1f), action = onDismiss)
     }
 }
