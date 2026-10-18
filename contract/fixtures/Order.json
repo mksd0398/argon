@@ -326,7 +326,6 @@
           "status": "CLOSED",
           "createdAt": "2026-09-27T17:20:00Z",
           "closedAt": "2026-10-02T10:15:00Z",
-          "decline": null,
           "returnLineItems": {
             "nodes": [
               {

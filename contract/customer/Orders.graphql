@@ -10,11 +10,9 @@ query Orders($first: Int!, $after: String, $sortKey: OrderSortKeys, $reverse: Bo
         financialStatus
         fulfillmentStatus
         cancelledAt
-        latestFulfillmentDeliveryDate
         totalPrice { ...Money }
-        lineItemsSummary { totalQuantityOfLineItems }
-        lineItems(first: 3) { nodes { title image { url altText } } }
-        fulfillments(first: 1) { nodes { latestShipmentStatus estimatedDeliveryAt } }
+        lineItems(first: 50) { nodes { title quantity image { url altText } } }
+        fulfillments(first: 1, sortKey: CREATED_AT, reverse: true) { nodes { latestShipmentStatus estimatedDeliveryAt updatedAt } }
       }
     }
   }

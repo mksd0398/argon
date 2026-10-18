@@ -22,7 +22,9 @@
         }
       ],
       "nonReturnableSummary": {
-        "summaryMessage": "Sweatpants were already returned."
+        "nonReturnableReasons": [
+          "RETURNED"
+        ]
       },
       "returnableLineItems": {
         "nodes": [

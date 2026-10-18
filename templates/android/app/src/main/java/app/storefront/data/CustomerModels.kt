@@ -68,10 +68,10 @@ data class CustomerAddressInput(
 )
 
 /**
- * An order in the customer's list. [lineItems]: the first three, for their [titles] and [images]; [itemCount]: how many
- * items were ordered, over all lines. [latestShipmentStatus] (IN_TRANSIT, OUT_FOR_DELIVERY, DELIVERED, ...) and
- * [estimatedDeliveryAt]: its latest shipment's, null while nothing has shipped. [latestFulfillmentDeliveryDate]: when
- * it was delivered.
+ * An order in the customer's list. [titles] and [images]: its first three lines'; [itemCount]: how many items were
+ * ordered, over all lines. [latestShipmentStatus] (IN_TRANSIT, OUT_FOR_DELIVERY, DELIVERED, ...) and
+ * [estimatedDeliveryAt]: its latest shipment's, null while nothing has shipped. [deliveredAt]: when that shipment was
+ * delivered.
  */
 @Serializable
 data class OrderSummary(
@@ -84,24 +84,21 @@ data class OrderSummary(
     val cancelledAt: String? = null,
     @SerialName("totalPrice") val total: Money,
     @Serializable(with = NodesSerializer::class) val lineItems: List<LineItem> = emptyList(),
-    val latestFulfillmentDeliveryDate: String? = null,
-    private val lineItemsSummary: Summary? = null,
     @Serializable(with = NodesSerializer::class) private val fulfillments: List<Shipment> = emptyList(),
 ) {
-    val images: List<Img> get() = lineItems.mapNotNull { it.image }
-    val titles: List<String> get() = lineItems.mapNotNull { it.title }
-    val itemCount: Int? get() = lineItemsSummary?.totalQuantityOfLineItems
+    val images: List<Img> get() = lineItems.take(3).mapNotNull { it.image }
+    val titles: List<String> get() = lineItems.take(3).mapNotNull { it.title }
+    // ponytail: sums the first 50 lines (Orders.graphql), so an order of more lines undercounts. Upgrade: page lineItems.
+    val itemCount: Int? get() = lineItems.sumOf { it.quantity }
     val latestShipmentStatus: String? get() = fulfillments.firstOrNull()?.latestShipmentStatus
     val estimatedDeliveryAt: String? get() = fulfillments.firstOrNull()?.estimatedDeliveryAt
+    val deliveredAt: String? get() = fulfillments.firstOrNull()?.takeIf { it.latestShipmentStatus == "DELIVERED" }?.updatedAt
 
     @Serializable
-    data class LineItem(val title: String? = null, val image: Img? = null)
+    data class LineItem(val title: String? = null, val quantity: Int = 0, val image: Img? = null)
 
     @Serializable
-    data class Summary(val totalQuantityOfLineItems: Int? = null)
-
-    @Serializable
-    data class Shipment(val latestShipmentStatus: String? = null, val estimatedDeliveryAt: String? = null)
+    data class Shipment(val latestShipmentStatus: String? = null, val estimatedDeliveryAt: String? = null, val updatedAt: String? = null)
 }
 
 /**
@@ -302,7 +299,8 @@ data class OrderReturnOptions(
     val returnShippingMethods: List<String> get() = returnInformation?.returnShippingMethods.orEmpty()
     val returnShippingMethodNote: String? get() = returnInformation?.returnShippingMethodNote
     val fees: List<ReturnFee> get() = returnInformation?.returnFees.orEmpty()
-    val nonReturnableSummary: String? get() = returnInformation?.nonReturnableSummary?.summaryMessage
+    val nonReturnableSummary: String? get() = returnInformation?.nonReturnableSummary?.nonReturnableReasons.orEmpty()
+        .map(::nonReturnableReason).distinct().joinToString(" ").ifEmpty { null }
 
     @Serializable
     data class ReturnInformation(
@@ -316,7 +314,16 @@ data class OrderReturnOptions(
     )
 
     @Serializable
-    data class Summary(val summaryMessage: String? = null)
+    data class Summary(val nonReturnableReasons: List<String> = emptyList())
+}
+
+/** Why some of an order can't be returned, from one of Shopify's NonReturnableReason values. */
+fun nonReturnableReason(reason: String): String = when (reason) {
+    "RETURNED" -> "Some items were already returned."
+    "FINAL_SALE" -> "Final sale items can't be returned."
+    "RETURN_WINDOW_EXPIRED" -> "The return window has closed."
+    "UNFULFILLED" -> "Items that haven't shipped can't be returned yet."
+    else -> "Some items can't be returned."
 }
 
 /** A fee of a return. [kind]: ReturnShippingFee or RestockingFee. */
@@ -350,7 +357,7 @@ data class ReturnableLineItem(val quantity: Int, val lineItem: LineItem) {
 data class ReturnReason(val id: String, val handle: String, val name: String)
 
 /**
- * [status]: REQUESTED, OPEN, CLOSED, DECLINED, ... [lines], [exchangeLines], [closedAt] and [decline] where the document
+ * [status]: REQUESTED, OPEN, CLOSED, DECLINED, ... [lines], [exchangeLines] and [closedAt] where the document
  * selects them (Order).
  */
 @Serializable
@@ -360,14 +367,9 @@ data class Return(
     val status: String,
     val createdAt: String? = null,
     val closedAt: String? = null,
-    val decline: ReturnDecline? = null,
     @SerialName("returnLineItems") @Serializable(with = NodesSerializer::class) val lines: List<ReturnLine> = emptyList(),
     @SerialName("exchangeLineItems") @Serializable(with = NodesSerializer::class) val exchangeLines: List<ExchangeLine> = emptyList(),
 )
-
-/** Why the store declined a return. */
-@Serializable
-data class ReturnDecline(val reason: String? = null, val note: String? = null)
 
 /** [quantity] of an order line ([lineItemId], with its [title], [variantTitle] and [image]) sent back, and why ([reason]). */
 @Serializable

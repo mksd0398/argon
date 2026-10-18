@@ -103,7 +103,7 @@ func moreItems(itemCount: Int?, shown: Int) -> Int {
 /// nil for a cancelled order and for one with no shipment news. `date` formats an ISO date.
 func deliveryNote(_ order: OrderSummary, date: (String) -> String = displayDate) -> String? {
     if order.cancelledAt != nil { return nil }
-    if let delivered = order.latestFulfillmentDeliveryDate { return "Delivered \(date(delivered))" }
+    if let delivered = order.deliveredAt { return "Delivered \(date(delivered))" }
     return order.estimatedDeliveryAt.map { "Arrives \(date($0))" }
 }
 
