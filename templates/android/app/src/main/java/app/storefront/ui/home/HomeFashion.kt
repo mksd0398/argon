@@ -113,7 +113,7 @@ fun HomeFashion(content: HomeContent, onOpen: (Route) -> Unit, topBar: @Composab
 }
 
 /** The height of the top bar under the status bar (Material's top app bar). */
-private val BAR_HEIGHT = 64.dp
+internal val BAR_HEIGHT = 64.dp
 
 /** "Shop by category": 3:4 image tiles that scroll sideways, each with its collection's title under it. */
 @Composable

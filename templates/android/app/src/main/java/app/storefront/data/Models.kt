@@ -837,6 +837,15 @@ sealed interface Route {
 
     /** A shop policy's page by its handle (`shipping-policy`, `refund-policy`, ...): the route `policy/{handle}`. */
     data class Policy(val handle: String) : Route
+
+    /** An online store page, drawn in the app (`page/{handle}`). */
+    data class Page(val handle: String) : Route
+
+    /** A custom page of the store's own, the `app_screen` metaobject [handle] (`screen/{handle}`). */
+    data class Screen(val handle: String) : Route
+
+    /** A switch to the tab [id]: `home`, `cart`, `account` or `wishlist` (the routes of the app's tabs). */
+    data class Tab(val id: String) : Route
     data class Web(val url: String) : Route
 }
 

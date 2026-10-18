@@ -59,6 +59,7 @@ internal fun heroBanners(banners: List<Section.Banner>): List<Section.Banner> = 
 /**
  * A banner: its image in a box of [ratio] (width to height), with the heading, the text and the button over it at the
  * bottom start. The whole banner opens its link. [compact] is for short banners: tighter margins, a small button, no text.
+ * [textColor]: the words' colour (a section's `text_color`); the light ink of the dark palette by default.
  */
 @Composable
 internal fun BannerView(
@@ -69,6 +70,7 @@ internal fun BannerView(
     headingStyle: TextStyle = ArgonTheme.type.title,
     shape: Shape = ArgonTheme.radius.l,
     compact: Boolean = false,
+    textColor: Color? = null,
 ) {
     val link = banner.link
     val heading = banner.heading?.takeIf { it.isNotBlank() }
@@ -95,9 +97,9 @@ internal fun BannerView(
                 // The heading has the height the text and the button leave, and is cut with an ellipsis to fit it: nothing
                 // spills out of the banner, however long the store's words are.
                 if (heading != null) {
-                    Text(heading, Modifier.weight(1f, fill = false), style = headingStyle, color = colors.ink, maxLines = if (compact) 2 else 3, overflow = TextOverflow.Ellipsis)
+                    Text(heading, Modifier.weight(1f, fill = false), style = headingStyle, color = textColor ?: colors.ink, maxLines = if (compact) 2 else 3, overflow = TextOverflow.Ellipsis)
                 }
-                if (text != null) Text(text, style = ArgonTheme.type.body, color = colors.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                if (text != null) Text(text, style = ArgonTheme.type.body, color = textColor ?: colors.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (button != null && link != null) ArgonButton(button, size = if (compact) ArgonSize.S else ArgonSize.M) { onOpen(link) }
             }
         }

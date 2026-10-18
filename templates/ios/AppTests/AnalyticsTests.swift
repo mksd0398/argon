@@ -67,6 +67,20 @@ final class AnalyticsTests: XCTestCase {
         assertParams(.login, [:])
     }
 
+    func testAPromotionIsASectionByItsIdTrackNameAndPlace() {
+        let hero = Promotion(id: "hero", name: "winter_hero", slot: "home:0")
+        XCTAssertEqual(AnalyticsEvent.viewPromotion(hero).name, "view_promotion")
+        XCTAssertEqual(AnalyticsEvent.selectPromotion(hero).name, "select_promotion")
+        assertParams(.viewPromotion(hero), ["promotion_id": "hero", "promotion_name": "winter_hero", "creative_slot": "home:0"])
+        assertParams(
+            .selectPromotion(Promotion(id: "slides", name: "slideshow", slot: "home:1", creative: "s2")),
+            ["promotion_id": "slides", "promotion_name": "slideshow", "creative_name": "s2", "creative_slot": "home:1"]
+        )
+        // the name is the section's track, else its type
+        XCTAssertEqual(ScreenSection(id: "a", type: "banner", track: "winter_hero").promotionName, "winter_hero")
+        XCTAssertEqual(ScreenSection(id: "a", type: "banner").promotionName, "banner")
+    }
+
     // MARK: The mappers
 
     func testIdsAreTheNumericTailOfTheGid() {

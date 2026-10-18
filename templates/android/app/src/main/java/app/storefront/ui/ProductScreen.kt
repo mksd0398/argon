@@ -54,12 +54,14 @@ import app.storefront.data.Product
 import app.storefront.data.ProductCard
 import app.storefront.data.ReviewSummary
 import app.storefront.data.Route
+import app.storefront.data.ScreenContext
 import app.storefront.data.SellingPlanAllocation
 import app.storefront.data.ShopPolicies
 import app.storefront.data.Variant
 import app.storefront.data.Variants
 import app.storefront.data.analyticsCurrency
 import app.storefront.data.analyticsItem
+import app.storefront.data.productBlocks
 import app.storefront.ui.product.AddPhase
 import app.storefront.ui.product.ChosenPrice
 import app.storefront.ui.product.DESCRIPTION
@@ -85,6 +87,9 @@ import app.storefront.ui.product.galleryTags
 import app.storefront.ui.product.imageIndex
 import app.storefront.ui.product.shownRating
 import app.storefront.ui.product.visibleOptions
+import app.storefront.ui.sections.rememberScreenSections
+import app.storefront.ui.sections.rememberSectionEnv
+import app.storefront.ui.sections.sectionItems
 import java.io.IOException
 import java.util.logging.Logger
 import kotlinx.coroutines.CancellationException
@@ -137,6 +142,26 @@ internal fun shownVariant(product: Product, selection: Map<String, String>, rich
 /** The page's blocks, top to bottom. Each one hides itself when it has nothing to show. */
 internal enum class ProductBlock {
     Gallery, Title, Price, Options, Availability, PurchaseOptions, Quantity, Bundle, Details, Trust, Reviews, PairsWith, AlsoLike, RecentlyViewed,
+}
+
+/**
+ * The page's blocks for the PDP block names of screens v2 (`main.blocks`, [productBlocks]), in that order: "purchase"
+ * is availability, purchase options and quantity; "details" the details and the trust row; "rails" the three product
+ * rails. All the names in their default order give [ProductBlock]'s own order.
+ */
+internal fun productBlockList(names: List<String>): List<ProductBlock> = names.flatMap { name ->
+    when (name) {
+        "gallery" -> listOf(ProductBlock.Gallery)
+        "title" -> listOf(ProductBlock.Title)
+        "price" -> listOf(ProductBlock.Price)
+        "options" -> listOf(ProductBlock.Options)
+        "purchase" -> listOf(ProductBlock.Availability, ProductBlock.PurchaseOptions, ProductBlock.Quantity)
+        "bundle" -> listOf(ProductBlock.Bundle)
+        "details" -> listOf(ProductBlock.Details, ProductBlock.Trust)
+        "reviews" -> listOf(ProductBlock.Reviews)
+        "rails" -> listOf(ProductBlock.PairsWith, ProductBlock.AlsoLike, ProductBlock.RecentlyViewed)
+        else -> emptyList()
+    }
 }
 
 /** How long the main button says "Added". */
@@ -408,7 +433,10 @@ private suspend fun openCheckout(host: ComponentActivity) {
     presentCheckout(url, host) { AppGraph.toast.show(it) }
 }
 
-/** The blocks in one lazy list, in [ProductBlock]'s order, with the overlays they open (the image viewer, the review sheet). */
+/**
+ * The blocks in one lazy list, in [ProductBlock]'s order (or the store's, screens v2, with its sections above and below
+ * them), with the overlays they open (the image viewer, the review sheet).
+ */
 @Composable
 private fun ProductContent(state: ProductState, nav: NavController) {
     val product = state.product
@@ -422,7 +450,16 @@ private fun ProductContent(state: ProductState, nav: NavController) {
     var viewerPage by remember { mutableStateOf<Int?>(null) }
     var writingReview by remember { mutableStateOf(false) }
     val open: (Route) -> Unit = { nav.open(it) }
-    val showReviews: () -> Unit = { screen.launch { list.animateScrollToItem(ProductBlock.Reviews.ordinal) } }
+    // screens v2: the store's sections above and below the blocks, and the blocks in its order; without them, as ever
+    val sections = rememberScreenSections("product", product = product.handle)
+    val placement = sections?.placement
+    val blocks = remember(placement) { productBlockList(productBlocks(placement?.main)) }
+    val liquid = remember(product, sections) { ScreenContext.product(product, sections?.ownMetafields.orEmpty()) }
+    val env = rememberSectionEnv(sections, open, product = liquid)
+    val above = placement?.above.orEmpty().takeIf { env != null }.orEmpty()
+    // the list's index of a block: the sections above come first
+    fun indexOf(block: ProductBlock) = blocks.indexOf(block).takeIf { it >= 0 }?.plus(above.size)
+    val showReviews: () -> Unit = { indexOf(ProductBlock.Reviews)?.let { screen.launch { list.animateScrollToItem(it) } } }
     val gutter = Modifier.padding(start = spacing.l, end = spacing.l, top = spacing.xl)
 
     LaunchedEffect(state) { state.loadRest() }
@@ -431,7 +468,8 @@ private fun ProductContent(state: ProductState, nav: NavController) {
 
     // the sticky bar sits under this list (the scaffold's padding); the bottom padding is only breathing room
     LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(bottom = spacing.xxl)) {
-        items(ProductBlock.entries, key = { it }, contentType = { it }) { block ->
+        sectionItems(above, env, Modifier.padding(top = spacing.l))
+        items(blocks, key = { it }, contentType = { it }) { block ->
             when (block) {
                 ProductBlock.Gallery -> ProductGallery(product.images, product.title, gallery, galleryTags(variant)) { viewerPage = it }
                 // the stars lead to the reviews, when the page has them
@@ -441,7 +479,7 @@ private fun ProductContent(state: ProductState, nav: NavController) {
                     state.select(option, value)
                     // a variant with an image of its own brings the gallery to it: animated while the gallery is on screen
                     imageIndex(product.images, Variants.match(product.variants, state.selection)?.image)?.let { page ->
-                        if (list.firstVisibleItemIndex == ProductBlock.Gallery.ordinal) screen.launch { gallery.animateScrollToPage(page) } else gallery.requestScrollToPage(page)
+                        if (list.firstVisibleItemIndex == indexOf(ProductBlock.Gallery)) screen.launch { gallery.animateScrollToPage(page) } else gallery.requestScrollToPage(page)
                     }
                 }
                 ProductBlock.Availability -> ProductAvailability(variant, state.pickup)
@@ -467,6 +505,7 @@ private fun ProductContent(state: ProductState, nav: NavController) {
                 ProductBlock.RecentlyViewed -> ProductRail("Recently viewed", state.recent.orEmpty(), ProductCardStyle.Standard, onOpen = open)
             }
         }
+        sectionItems(placement?.below.orEmpty(), env, Modifier.padding(top = spacing.xl))
     }
 
     // outside the list: an overlay must not go away with the block that opened it

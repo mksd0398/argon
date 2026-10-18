@@ -33,10 +33,16 @@ struct RemoteSettings: Decodable, Equatable, Sendable {
     var showVendor: Bool? = nil
     /// Not empty.
     var judgeMeToken: String? = nil
+    /// The tab bar, the top bar and the drawer (screens v2, `Navigation`); nil: the built-in ones.
+    var navigation: Navigation? = nil
+    /// The strip above the top bar; nil: none.
+    var announcement: Announcement? = nil
+    /// `appearance.mode`; nil: the device's light or dark.
+    var appearance: Appearance? = nil
 
     private enum Key: String, CodingKey {
         case brand, accent, home, collection, template, onboarding, enabled, pages, heading, text, cart, freeShippingThreshold
-        case product, showVendor, reviews, judgeMePublicToken
+        case product, showVendor, reviews, judgeMePublicToken, navigation, announcement, appearance
     }
 
     init() {}
@@ -59,6 +65,9 @@ struct RemoteSettings: Decodable, Equatable, Sendable {
             .flatMap { $0 >= 0 && $0.isFinite ? $0 : nil }
         showVendor = try? section(.product)?.decode(Bool.self, forKey: .showVendor)
         judgeMeToken = string(.reviews, .judgeMePublicToken).flatMap { $0.isEmpty ? nil : $0 }
+        navigation = Navigation.decode(try? root.decode(JSONValue.self, forKey: .navigation))
+        announcement = Announcement.decode(try? root.decode(JSONValue.self, forKey: .announcement))
+        appearance = Appearance.decode(try? root.decode(JSONValue.self, forKey: .appearance))
     }
 
     /// The settings in `json`; nil when it isn't JSON or isn't an object.

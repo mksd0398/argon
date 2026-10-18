@@ -2,6 +2,7 @@ package app.storefront
 
 import android.app.Application
 import android.content.Context
+import android.content.Intent
 import android.content.res.AssetManager
 import android.util.Log
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
@@ -12,6 +13,8 @@ import app.storefront.auth.AuthStore
 import app.storefront.auth.TokenCrypto
 import app.storefront.data.Analytics
 import app.storefront.data.AnalyticsConsentStore
+import app.storefront.data.Announcement
+import app.storefront.data.Appearance
 import app.storefront.data.Brand
 import app.storefront.data.BuyerStore
 import app.storefront.data.CartStore
@@ -20,7 +23,9 @@ import app.storefront.data.CustomerAccountApi
 import app.storefront.data.HomeTemplate
 import app.storefront.data.JudgeMe
 import app.storefront.data.LogSink
+import app.storefront.data.Navigation
 import app.storefront.data.OnboardingStore
+import app.storefront.data.PushStore
 import app.storefront.data.RecentlyViewedStore
 import app.storefront.data.RemoteSettings
 import app.storefront.data.RemoteSettingsStore
@@ -30,6 +35,7 @@ import app.storefront.data.WishlistStore
 import app.storefront.data.firebaseSink
 import app.storefront.data.metaSink
 import app.storefront.data.moEngageSink
+import app.storefront.data.pushTopic
 import app.storefront.data.sampleTransport
 import app.storefront.data.toBrand
 import app.storefront.ui.TabState
@@ -109,6 +115,11 @@ class StorefrontApp : Application(), SingletonImageLoader.Factory {
             companies = { AppGraph.customerAccount.companies() },
             sample = { AppGraph.sampleAccount.value },
         )
+        // Push (PUSH, with Firebase): the opt-in, its topics and its reports to DEVICES_URL; none in an app without push
+        val topic = pushTopic()
+        if (AppGraph.pushEnabled && topic != null) {
+            AppGraph.push = PushStore(prefs("push"), AppGraph.scope, topic) { PushStore.post(AppGraph.http, AppGraph.devicesUrl, it) }
+        }
         // Web = the store's own checkout branding (Checkout Kit's default is a generic light/dark theme)
         ShopifyCheckoutSheetKit.configure {
             it.colorScheme = ColorScheme.Web()
@@ -204,6 +215,35 @@ object AppGraph {
     val freeShippingThreshold: Double? by lazy {
         val builtIn = BuildConfig.FREE_SHIPPING_THRESHOLD.trim().toDoubleOrNull()?.takeIf { it > 0 && it.isFinite() }
         settings.let { if (it == null) builtIn else it.freeShippingThreshold(builtIn) }
+    }
+
+    /** The tab bar, the top bar and the drawer (the settings', else the built-in five tabs and the template's bar). */
+    val navigation: Navigation by lazy { settings?.navigation ?: Navigation() }
+
+    /** The strip above the top bar on the tab roots (the settings'); null: none. */
+    val announcement: Announcement? by lazy { settings?.announcement }
+
+    /** Light or dark (the settings', else the device's). */
+    val appearance: Appearance by lazy { settings?.appearance ?: Appearance.System }
+
+    /** Whether the app was built with push notifications (`PUSH`, which takes Firebase). */
+    val pushEnabled: Boolean = PushStore.enabled(BuildConfig.PUSH)
+
+    /** Where the push opt-in is reported (`DEVICES_URL`, Krypton's `/v1/devices/{shop}`); empty: nowhere. */
+    val devicesUrl: String = BuildConfig.DEVICES_URL
+
+    /** The push opt-in ([PushStore]); null in an app without push. */
+    internal var push: PushStore? = null
+
+    /** The `link` of a notification the shopper tapped, until the app's root has opened it. */
+    val notificationLink = MutableStateFlow<String?>(null)
+
+    /** Takes the `link` a tapped notification put in [intent] (its extras: FCM's data), once; only in an app with push. */
+    internal fun takeNotificationLink(intent: Intent?) {
+        if (push == null || intent == null) return
+        val link = PushStore.link(mapOf("link" to intent.getStringExtra("link"))) ?: return
+        intent.removeExtra("link")
+        notificationLink.value = link
     }
 
     internal lateinit var assets: AssetManager

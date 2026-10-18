@@ -32,6 +32,9 @@ if (meta && config("META_CLIENT_TOKEN").isBlank()) {
 if (moengage && config("MOENGAGE_DATA_CENTER").trim() !in listOf("", "1", "2", "3", "4", "5", "6")) {
     throw GradleException("MOENGAGE_DATA_CENTER must be 1 to 6: the N of the workspace's dashboard-0N.moengage.com (shopify.properties)")
 }
+// Push notifications (`--push`): through the store's Firebase project, so they need its file.
+val push = config("PUSH").trim().equals("true", ignoreCase = true)
+if (push && !firebase) throw GradleException("PUSH is true but app/google-services.json is missing: push goes through the store's Firebase project")
 // Google's plugin turns google-services.json into the resources Firebase starts from; it fails a build without the file.
 if (firebase) apply(plugin = libs.plugins.google.services.get().pluginId)
 
@@ -52,12 +55,15 @@ android {
             "HOME_TEMPLATE", "COLLECTION_TEMPLATE", "JUDGEME_PUBLIC_TOKEN", "SHOW_VENDOR",
             "ONBOARDING", "FREE_SHIPPING_THRESHOLD", "SETTINGS_URL", "CUSTOMER_REDIRECT_URI",
             "META_APP_ID", "META_CLIENT_TOKEN", "MOENGAGE_WORKSPACE_ID", "MOENGAGE_DATA_CENTER", "SERVER_PURCHASE",
+            "PUSH", "DEVICES_URL",
         )) buildConfigField("String", key, javaString(config(key)))
         resValue("string", "app_name", resourceString(config("APP_NAME")))
         manifestPlaceholders["authScheme"] = "shop.${config("SHOP_ID")}.app"
         // where the Facebook SDK reads them; empty, and read by nothing, in an app without Meta
         manifestPlaceholders["metaAppId"] = config("META_APP_ID").trim()
         manifestPlaceholders["metaClientToken"] = config("META_CLIENT_TOKEN").trim()
+        // push: the FCM service and the SDK's own token, both off without PUSH
+        manifestPlaceholders["push"] = push.toString()
     }
 
     sourceSets["main"].kotlin.srcDirs(
@@ -91,6 +97,8 @@ dependencies {
     if (firebase) {
         implementation(platform(libs.firebase.bom))
         implementation(libs.firebase.analytics)
+        // its push service is compiled in with Firebase (src/firebase), and runs only with PUSH (the manifest)
+        implementation(libs.firebase.messaging)
     }
     if (meta) implementation(libs.facebook.core)
     if (moengage) implementation(libs.moengage)

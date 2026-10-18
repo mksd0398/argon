@@ -16,12 +16,24 @@ func fixtureText(_ name: String, type: String = "json") throws -> String {
     return try String(contentsOf: url, encoding: .utf8)
 }
 
-/// The names of all the Shopify fixtures in the test bundle (Judge.me's answers are not GraphQL operations).
+/// The names of all the Shopify fixtures in the test bundle (Judge.me's answers are not GraphQL operations). Only the
+/// top-level ones, named after their operation: the `screens/` and `liquid/` folders hold other files, and a flat copy
+/// must not count them.
 func fixtureNames() -> Set<String> {
     let bundle = Bundle(for: FixtureBundle.self)
     let urls = (bundle.urls(forResourcesWithExtension: "json", subdirectory: "Fixtures") ?? [])
         + (bundle.urls(forResourcesWithExtension: "json", subdirectory: nil) ?? [])
-    return Set(urls.map { $0.deletingPathExtension().lastPathComponent }.filter { !$0.hasPrefix("JudgeMe") })
+    return Set(urls.map { $0.deletingPathExtension().lastPathComponent }.filter {
+        !$0.hasPrefix("JudgeMe") && $0.first?.isUppercase == true
+    })
+}
+
+/// The text of AppTests/Fixtures/<path> in a fixture folder (`screens/home.json`, `liquid/cases.json`), read from the
+/// source tree: the test target leaves those folders out of its bundle (a flat copy would put `screens/product.json`
+/// over `Product.json`).
+func contractFixture(_ path: String, file: StaticString = #filePath) throws -> String {
+    let url = URL(fileURLWithPath: "\(file)").deletingLastPathComponent().appendingPathComponent("Fixtures/\(path)")
+    return try String(contentsOf: url, encoding: .utf8)
 }
 
 /// Fixture <name>'s `data` as JSONSerialization objects, to build other answers from.

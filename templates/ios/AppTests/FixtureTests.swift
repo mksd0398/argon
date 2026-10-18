@@ -8,7 +8,7 @@ final class FixtureTests: XCTestCase {
         "Shop", "Localization", "ShopPolicies", "Menu", "Product", "ProductMetafields", "VariantBySelectedOptions", "Catalog",
         "Products", "ProductRecommendations", "Collection", "Collections", "Search", "PredictiveSearch", "StoreAvailability",
         "Locations", "Page", "Pages", "Blogs", "Blog", "Article", "Articles", "Metaobject", "Metaobjects", "HomeScreen",
-        "FallbackHome",
+        "FallbackHome", "AppScreen", "SectionNodes", "CollectionMetafields", "ShopMetafields",
         "Cart", "CartCreate", "CartLinesAdd", "CartLinesUpdate", "CartLinesRemove", "CartBuyerIdentityUpdate",
         "CartDiscountCodesUpdate", "CartGiftCardCodesAdd", "CartGiftCardCodesRemove", "CartNoteUpdate", "CartAttributesUpdate",
         "CartDeliveryAddressesAdd", "CartDeliveryAddressesUpdate", "CartDeliveryAddressesRemove",
@@ -427,6 +427,63 @@ final class FixtureTests: XCTestCase {
         XCTAssertEqual(collections.map { $0.products.count }, [3, 3, 3])
         XCTAssertEqual(collections.first?.products.first?.vendor, "Mock.shop")
         XCTAssertEqual(collections.first?.products.first?.colors.map { $0.name }, ["Green", "Olive", "Ocean"])
+    }
+
+    // MARK: Screens v2
+
+    @MainActor
+    func testAppScreen() async throws {
+        let server = StubServer()
+        let found = try await server.storefront().appScreen("home")
+        let screen = try XCTUnwrap(found)
+        XCTAssertEqual(server.calls.first?.variables["handle"] as? String, "home")
+        XCTAssertEqual(screen.handle, "home")
+        XCTAssertEqual(screen.title, "Home")
+        XCTAssertEqual(screen.updatedAt, "2026-10-19T08:00:00Z")
+        let template = try XCTUnwrap(ScreenTemplate.decode(screen.template))
+        XCTAssertEqual(template.sections.first?.id, "hero")
+        XCTAssertEqual(template.metafields, ["shop.custom.promo"])
+    }
+
+    @MainActor
+    func testSectionNodes() async throws {
+        let server = StubServer()
+        let api = server.storefront()
+        let ids = ["gid://shopify/Product/7982904639510", "gid://shopify/Collection/429493780502", "gid://shopify/Product/1"]
+        let nodes = try await api.sectionNodes(ids)
+        XCTAssertEqual(server.calls.first?.variables["ids"] as? [String], ids)
+        XCTAssertEqual(nodes.count, 2, "the id that is no node any more comes back null and is left out")
+        XCTAssertEqual(nodes.first?.productCard?.handle, "hoodie-old")
+        let collection = try XCTUnwrap(nodes.last?.collectionCard)
+        XCTAssertEqual(collection.handle, "men")
+        XCTAssertEqual(collection.products.map { $0.handle }.count, 2)
+        XCTAssertNotNil(collection.image)
+
+        let none = try await api.sectionNodes([])
+        XCTAssertEqual(none, [])
+        XCTAssertEqual(server.names, ["SectionNodes"], "nothing to ask for: no request")
+    }
+
+    @MainActor
+    func testCollectionMetafields() async throws {
+        let server = StubServer()
+        let identifiers = [MetafieldIdentifier(namespace: "custom", key: "banner_text"), MetafieldIdentifier(namespace: "custom", key: "size")]
+        let metafields = try await server.storefront().collectionMetafields(handle: "men", identifiers: identifiers)
+        XCTAssertEqual(metafields, [Metafield(namespace: "custom", key: "banner_text", type: "single_line_text_field", value: "Up to 40% off")])
+        XCTAssertEqual(server.calls.first?.variables["handle"] as? String, "men")
+        let sent = server.calls.first?.variables["metafields"] as? [[String: String]]
+        XCTAssertEqual(sent, [["namespace": "custom", "key": "banner_text"], ["namespace": "custom", "key": "size"]])
+    }
+
+    @MainActor
+    func testShopMetafields() async throws {
+        let server = StubServer()
+        let api = server.storefront()
+        let metafields = try await api.shopMetafields(identifiers: [MetafieldIdentifier(namespace: "custom", key: "promo")])
+        XCTAssertEqual(metafields, [Metafield(namespace: "custom", key: "promo", type: "single_line_text_field", value: "Free shipping over $75")])
+        let none = try await api.shopMetafields(identifiers: [])
+        XCTAssertEqual(none, [])
+        XCTAssertEqual(server.names, ["ShopMetafields"], "nothing to ask for: no request")
     }
 
     // MARK: Cart

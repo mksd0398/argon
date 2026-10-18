@@ -54,6 +54,12 @@ sealed class AnalyticsEvent(val name: String) {
 
     data object Login : AnalyticsEvent("login")
 
+    /** A screen section came into view (screens v2): once per section per visit of its screen. */
+    data class ViewPromotion(val promotion: Promotion) : AnalyticsEvent("view_promotion")
+
+    /** A section's link, button, product or collection was tapped. */
+    data class SelectPromotion(val promotion: Promotion) : AnalyticsEvent("select_promotion")
+
     /**
      * The event's values under Google Analytics 4's parameter names, flat, without those it has none of: what the log
      * prints. An item list is one short text per item ("<product id>/<variant id> x<quantity>").
@@ -76,6 +82,8 @@ sealed class AnalyticsEvent(val name: String) {
                 "coupon" to coupon, "items" to items.labels(),
             )
             Login -> emptyMap()
+            is ViewPromotion -> promotion.values()
+            is SelectPromotion -> promotion.values()
         }
 }
 
@@ -310,4 +318,12 @@ fun checkoutStep(event: PixelEvent): AnalyticsEvent? {
         "payment_info_submitted" -> AnalyticsEvent.AddPaymentInfo(value, currency)
         else -> null
     }
+}
+
+/**
+ * A screen's section as Google Analytics 4's promotion: [id] is the section's id, [name] its `track` name (else its
+ * type), [slot] `<screen>:<index>` (its place in the screen's template), [creative] the id of the block tapped, if any.
+ */
+data class Promotion(val id: String, val name: String, val slot: String, val creative: String? = null) {
+    internal fun values() = values("promotion_id" to id, "promotion_name" to name, "creative_name" to creative, "creative_slot" to slot)
 }

@@ -21,6 +21,7 @@ final class ConfigTests: XCTestCase {
         XCTAssertEqual(xcconfigKey("ServerPurchase"), "SERVER_PURCHASE")
         XCTAssertEqual(xcconfigKey("SettingsUrl"), "SETTINGS_URL")
         XCTAssertEqual(xcconfigKey("CustomerRedirectUri"), "CUSTOMER_REDIRECT_URI")
+        XCTAssertEqual(xcconfigKey("DevicesUrl"), "DEVICES_URL")
     }
 
     /// An Xcode build (the one these tests run in) takes the values through Info.plist: it has to name each analytics and
@@ -28,6 +29,7 @@ final class ConfigTests: XCTestCase {
     func testInfoPlistNamesTheAnalyticsKeys() {
         for key in [
             "MetaAppId", "MetaClientToken", "MoengageWorkspaceId", "MoengageDataCenter", "ServerPurchase", "SettingsUrl", "CustomerRedirectUri",
+            "Push", "DevicesUrl",
         ] {
             XCTAssertNotNil(Bundle.main.object(forInfoDictionaryKey: key) as? String, "Info.plist has no \(key)")
         }

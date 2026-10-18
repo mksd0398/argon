@@ -1,0 +1,14 @@
+query AppScreen(
+  $handle: String!
+  $country: CountryCode
+  $language: LanguageCode
+  $buyer: BuyerInput
+) @inContext(country: $country, language: $language, buyer: $buyer) {
+  metaobject(handle: { type: "app_screen", handle: $handle }) {
+    id
+    handle
+    updatedAt
+    title: field(key: "title") { value }
+    template: field(key: "template") { value }
+  }
+}

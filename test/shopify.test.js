@@ -79,7 +79,7 @@ function setup(t, admin = fakeAdmin(), extra = {}) {
 
 const entryFields = (entry) => Object.fromEntries(entry.fields.map((f) => [f.key, f.value]));
 
-test("provision, first run: definitions, then the screen definition, then seed entries, then the home screen", async (t) => {
+test("provision, first run: definitions, then the screen definitions (v1 and app_screen), then seed entries, then the home screen", async (t) => {
   const collections = [
     { id: "gid://shopify/Collection/1", productsCount: { count: 5, precision: "EXACT" } },
     { id: "gid://shopify/Collection/2", productsCount: { count: 0, precision: "EXACT" } },
@@ -87,11 +87,11 @@ test("provision, first run: definitions, then the screen definition, then seed e
   const { admin, shopify } = setup(t, fakeAdmin({ collections }));
 
   const result = await shopify.provision(STORE);
-  assert.deepEqual(result, { created: [...SECTION_TYPES, "mobile_screen"], seeded: true, warnings: [] });
+  assert.deepEqual(result, { created: [...SECTION_TYPES, "mobile_screen", "app_screen"], seeded: true, warnings: [] });
 
   const kinds = admin.mutations.map((m) => m.kind);
-  assert.deepEqual(kinds, ["definition", "definition", "definition", "definition", "entry", "entry", "entry", "entry"]);
-  assert.deepEqual(admin.mutations.slice(0, 4).map((m) => m.input.type), [...SECTION_TYPES, "mobile_screen"]);
+  assert.deepEqual(kinds, ["definition", "definition", "definition", "definition", "definition", "entry", "entry", "entry", "entry"]);
+  assert.deepEqual(admin.mutations.slice(0, 5).map((m) => m.input.type), [...SECTION_TYPES, "mobile_screen", "app_screen"]);
 
   // the screen definition allows exactly the three section definitions
   const screenDef = admin.mutations[3].input;
@@ -100,7 +100,7 @@ test("provision, first run: definitions, then the screen definition, then seed e
   assert.deepEqual(JSON.parse(allowed.value), SECTION_TYPES.map((type) => admin.defs.get(type)));
 
   // seed: a collection reported as productsCount { count: 5 } is used, the empty one is not
-  const [hero, collectionsSection, featured, home] = admin.mutations.slice(4).map((m) => m.input);
+  const [hero, collectionsSection, featured, home] = admin.mutations.slice(5).map((m) => m.input);
   assert.deepEqual([hero.handle, collectionsSection.handle, featured.handle, home.handle], ["home-hero", "home-collections", "home-featured", "home"]);
   assert.equal(entryFields(hero).heading, "Nalli");
   assert.deepEqual(JSON.parse(entryFields(collectionsSection).collections), ["gid://shopify/Collection/1"]);
@@ -130,7 +130,7 @@ test("provision: existing section definitions are skipped but their ids still go
   const { shopify } = setup(t, admin);
 
   const { created } = await shopify.provision(STORE);
-  assert.deepEqual(created, ["mobile_screen"]);
+  assert.deepEqual(created, ["mobile_screen", "app_screen"]);
   const allowed = admin.mutations[0].input.fieldDefinitions.find((f) => f.key === "sections").validations[0];
   assert.deepEqual(JSON.parse(allowed.value), SECTION_TYPES.map((_, i) => `gid://shopify/MetaobjectDefinition/${900 + i}`));
 });
@@ -138,7 +138,7 @@ test("provision: existing section definitions are skipped but their ids still go
 test("provision: a store with no collections seeds just the hero banner and the home screen", async (t) => {
   const { admin, shopify } = setup(t);
   assert.equal((await shopify.provision(STORE)).seeded, true);
-  assert.deepEqual(admin.mutations.slice(4).map((m) => m.input.handle), ["home-hero", "home"]);
+  assert.deepEqual(admin.mutations.slice(5).map((m) => m.input.handle), ["home-hero", "home"]);
 });
 
 test("provision: userErrors reject with their message", async (t) => {

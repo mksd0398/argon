@@ -27,6 +27,9 @@ import app.argon.ui.components.ArgonTopBar
 import app.storefront.AppGraph
 import app.storefront.data.ProductCard
 import app.storefront.data.Route
+import app.storefront.ui.sections.rememberScreenSections
+import app.storefront.ui.sections.rememberSectionEnv
+import app.storefront.ui.sections.sectionItems
 import kotlinx.coroutines.CancellationException
 
 private const val MAX_NODES = 250 // `nodes(ids:)` takes at most this many ids per request
@@ -65,22 +68,34 @@ class WishlistModel(private val fetch: suspend (List<String>) -> List<ProductCar
     fun pending(ids: List<String>) = ids.any { it !in known }
 }
 
-/** The Wishlist tab: the saved products as a grid of cards, newest first. */
+/** The Wishlist tab: the saved products as a grid of cards, newest first, between the store's sections (screens v2). */
 @Composable
 fun WishlistScreen(nav: NavController) {
     val model = viewModel<WishlistModel>(factory = viewModelFactory { initializer { WishlistModel(::fetchCards) } })
     val ids by AppGraph.wishlist.ids.collectAsState()
     var attempt by remember { mutableIntStateOf(0) }
     LaunchedEffect(ids, attempt) { model.sync(ids) }
+    // screens v2: the store's sections above and below the saved products
+    val sections = rememberScreenSections("wishlist")
+    val env = rememberSectionEnv(sections, { nav.open(it) })
+    val placement = sections?.placement
 
-    Scaffold(topBar = { ArgonTopBar("Wishlist") }) { padding ->
+    Scaffold(topBar = { ArgonTopBar("Wishlist", leading = nav.tabLeading("wishlist")) }) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             val cards = model.cards(ids)
             val error = model.error
             when {
                 // a failed fetch of a newly saved product shows as the grid's Retry footer
                 cards.isNotEmpty() ->
-                    ProductGrid(cards, hasNext = error != null, onLoadMore = { attempt++ }, onOpen = { nav.open(Route.Product(it.handle)) }, error = error)
+                    ProductGrid(
+                        cards,
+                        hasNext = error != null,
+                        onLoadMore = { attempt++ },
+                        onOpen = { nav.open(Route.Product(it.handle)) },
+                        error = error,
+                        above = { sectionItems(placement?.above.orEmpty(), env, ArgonTheme.spacing.l) },
+                        below = { sectionItems(placement?.below.orEmpty(), env, ArgonTheme.spacing.l) },
+                    )
                 error != null -> ErrorView(error) { attempt++ }
                 model.pending(ids) -> Spinner()
                 else -> Text(

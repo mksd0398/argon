@@ -1,0 +1,14 @@
+{
+  "collection": {
+    "id": "gid://shopify/Collection/429493780502",
+    "metafields": [
+      {
+        "namespace": "custom",
+        "key": "banner_text",
+        "type": "single_line_text_field",
+        "value": "Up to 40% off"
+      },
+      null
+    ]
+  }
+}

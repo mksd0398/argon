@@ -34,6 +34,7 @@ kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutine
 # The analytics providers: each is in an app only when the store set it up (app/build.gradle.kts).
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
+firebase-messaging = { module = "com.google.firebase:firebase-messaging" }
 facebook-core = { module = "com.facebook.android:facebook-core", version.ref = "facebook" }
 moengage = { module = "com.moengage:moe-android-sdk", version.ref = "moengage" }
 junit = { module = "junit:junit", version.ref = "junit" }

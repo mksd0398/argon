@@ -238,6 +238,40 @@ final class StorefrontAPI {
         }
     }
 
+    /// The `app_screen` metaobject `handle` (AppScreen: `home`, `product`, ..., or a custom page's handle): its title
+    /// and template. Nil when the store has none by that handle.
+    func appScreen(_ handle: String) async throws -> AppScreen? {
+        try await run("AppScreen", ["handle": handle], root: "metaobject")
+    }
+
+    /// The products and collections `ids` (SectionNodes), each collection with its first 24 products: everything a
+    /// screen's sections show, in one call. Ids that aren't products or collections (any more) are left out; none asked
+    /// for, no call.
+    func sectionNodes(_ ids: [String]) async throws -> [Node] {
+        if ids.isEmpty { return [] }
+        let nodes: [Node?] = try await run("SectionNodes", ["ids": ids], root: "nodes")
+        return nodes.compactMap { $0 }
+    }
+
+    /// The metafields `identifiers` that collection `handle` has a value for (CollectionMetafields), as
+    /// `productMetafields`: none asked for, or no such collection, is empty.
+    func collectionMetafields(handle: String, identifiers: [MetafieldIdentifier]) async throws -> [Metafield] {
+        if identifiers.isEmpty { return [] }
+        let collection: MetafieldsLookup? = try await run(
+            "CollectionMetafields",
+            ["handle": handle, "metafields": jsonValue(identifiers)],
+            root: "collection"
+        )
+        return (collection?.metafields ?? []).compactMap { $0 }
+    }
+
+    /// The shop's metafields `identifiers` that have a value (ShopMetafields).
+    func shopMetafields(identifiers: [MetafieldIdentifier]) async throws -> [Metafield] {
+        if identifiers.isEmpty { return [] }
+        let shop: MetafieldsLookup? = try await run("ShopMetafields", ["metafields": jsonValue(identifiers)], root: "shop")
+        return (shop?.metafields ?? []).compactMap { $0 }
+    }
+
     /// The store's first collections, each with its first products (FallbackHome): the home of a store without a screen.
     func fallbackHome() async throws -> [CollectionCard] {
         let collections: Nodes<CollectionCard> = try await run("FallbackHome", root: "collections")

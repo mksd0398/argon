@@ -1,0 +1,394 @@
+{
+  "about": "Liquid cases every engine must pass: liquidjs (npm test, the reference), Liquid.kt and Liquid.swift. Dates are UTC. `context` is merged over the shared context.",
+  "context": {
+    "shop": {
+      "name": "Summit Supply",
+      "currency": "USD",
+      "metafields": {
+        "custom": {
+          "promo": "Free shipping over $75"
+        }
+      }
+    },
+    "product": {
+      "title": "Alpine Shell",
+      "handle": "alpine-shell",
+      "vendor": "Summit",
+      "type": "Jacket",
+      "tags": [
+        "winter",
+        "waterproof",
+        "new"
+      ],
+      "price": "249.5",
+      "compare_at_price": "299.0",
+      "available": true,
+      "url": "/products/alpine-shell",
+      "metafields": {
+        "custom": {
+          "fabric": "Recycled nylon",
+          "care": ""
+        }
+      }
+    },
+    "customer": {
+      "first_name": "Ana",
+      "last_name": "Silva"
+    },
+    "cart": {
+      "item_count": 3,
+      "total_price": "1234.5"
+    },
+    "count": 1,
+    "zero": 0,
+    "items": [
+      {
+        "name": "One",
+        "n": 1
+      },
+      {
+        "name": "Two",
+        "n": 2
+      },
+      {
+        "name": "Three",
+        "n": 3
+      }
+    ],
+    "words": "the quick brown fox jumps",
+    "when": "2026-10-19T08:05:00Z",
+    "html": "<p>Hello <b>there</b></p>",
+    "empty": "",
+    "nothing": null
+  },
+  "cases": [
+    {
+      "name": "plain text",
+      "template": "Hello",
+      "expected": "Hello"
+    },
+    {
+      "name": "variable",
+      "template": "Hi {{ customer.first_name }}!",
+      "expected": "Hi Ana!"
+    },
+    {
+      "name": "missing variable",
+      "template": "[{{ customer.middle_name }}]",
+      "expected": "[]"
+    },
+    {
+      "name": "missing object",
+      "template": "[{{ collection.title }}]",
+      "expected": "[]"
+    },
+    {
+      "name": "string literal",
+      "template": "{{ 'single' }} {{ \"double\" }}",
+      "expected": "single double"
+    },
+    {
+      "name": "number literal",
+      "template": "{{ 42 }} {{ 1.5 }}",
+      "expected": "42 1.5"
+    },
+    {
+      "name": "boolean and nil",
+      "template": "{{ true }}|{{ false }}|{{ nil }}|",
+      "expected": "true|false||"
+    },
+    {
+      "name": "index access",
+      "template": "{{ items[1].name }} {{ product.tags[0] }}",
+      "expected": "Two winter"
+    },
+    {
+      "name": "bracket key",
+      "template": "{{ product[\"title\"] }}",
+      "expected": "Alpine Shell"
+    },
+    {
+      "name": "size first last",
+      "template": "{{ items.size }} {{ product.tags.first }} {{ product.tags.last }} {{ words.size }}",
+      "expected": "3 winter new 25"
+    },
+    {
+      "name": "metafield",
+      "template": "{{ product.metafields.custom.fabric }}",
+      "expected": "Recycled nylon"
+    },
+    {
+      "name": "shop metafield",
+      "template": "{{ shop.metafields.custom.promo }}",
+      "expected": "Free shipping over $75"
+    },
+    {
+      "name": "missing metafield with default",
+      "template": "{{ product.metafields.custom.size_chart | default: 'n/a' }}",
+      "expected": "n/a"
+    },
+    {
+      "name": "default on empty string",
+      "template": "{{ product.metafields.custom.care | default: 'Wash cold' }}",
+      "expected": "Wash cold"
+    },
+    {
+      "name": "default keeps zero",
+      "template": "{{ zero | default: 5 }}",
+      "expected": "0"
+    },
+    {
+      "name": "default on false",
+      "template": "{{ false | default: 'no' }}",
+      "expected": "no"
+    },
+    {
+      "name": "upcase downcase capitalize",
+      "template": "{{ 'abc' | upcase }} {{ 'ABC' | downcase }} {{ 'hello world' | capitalize }}",
+      "expected": "ABC abc Hello world"
+    },
+    {
+      "name": "append prepend",
+      "template": "{{ product.handle | prepend: '/products/' | append: '?v=1' }}",
+      "expected": "/products/alpine-shell?v=1"
+    },
+    {
+      "name": "strip",
+      "template": "[{{ '  a b  ' | strip }}][{{ '  a' | lstrip }}][{{ 'a  ' | rstrip }}]",
+      "expected": "[a b][a][a]"
+    },
+    {
+      "name": "strip_html",
+      "template": "{{ html | strip_html }}",
+      "expected": "Hello there"
+    },
+    {
+      "name": "escape",
+      "template": "{{ '<a href=\"x\">&</a>' | escape }}",
+      "expected": "&lt;a href=&quot;x&quot;&gt;&amp;&lt;/a&gt;"
+    },
+    {
+      "name": "truncate",
+      "template": "{{ words | truncate: 12 }}|{{ words | truncate: 12, '' }}|{{ 'short' | truncate: 20 }}",
+      "expected": "the quick...|the quick br|short"
+    },
+    {
+      "name": "truncatewords",
+      "template": "{{ words | truncatewords: 3 }}|{{ words | truncatewords: 2, '--' }}",
+      "expected": "the quick brown...|the quick--"
+    },
+    {
+      "name": "replace remove",
+      "template": "{{ 'a-b-c' | replace: '-', '+' }} {{ 'a-b-c' | replace_first: '-', '+' }} {{ 'a-b-c' | remove: '-' }}",
+      "expected": "a+b+c a+b-c abc"
+    },
+    {
+      "name": "split join",
+      "template": "{{ 'a,b,c' | split: ',' | join: ' / ' }}",
+      "expected": "a / b / c"
+    },
+    {
+      "name": "join tags",
+      "template": "{{ product.tags | join: ', ' }}",
+      "expected": "winter, waterproof, new"
+    },
+    {
+      "name": "first last filters",
+      "template": "{{ product.tags | first }} {{ product.tags | last }}",
+      "expected": "winter new"
+    },
+    {
+      "name": "size filter",
+      "template": "{{ product.tags | size }} {{ 'abcd' | size }}",
+      "expected": "3 4"
+    },
+    {
+      "name": "math",
+      "template": "{{ 5 | plus: 3 }} {{ 5 | minus: 7 }} {{ 4 | times: 2.5 }} {{ 7 | divided_by: 2 }} {{ 7 | divided_by: 2.5 }} {{ 7 | modulo: 3 }}",
+      "expected": "8 -2 10 3 2.8 1"
+    },
+    {
+      "name": "rounding",
+      "template": "{{ 2.567 | round: 2 }} {{ 2.5 | round }} {{ 1.2 | ceil }} {{ 1.8 | floor }} {{ -3 | abs }}",
+      "expected": "2.57 3 2 1 3"
+    },
+    {
+      "name": "money",
+      "template": "{{ cart.total_price | money }} {{ product.price | money }}",
+      "expected": "$1,234.50 $249.50"
+    },
+    {
+      "name": "money without currency",
+      "template": "{{ cart.total_price | money_without_currency }}",
+      "expected": "1,234.50"
+    },
+    {
+      "name": "money other currencies",
+      "template": "{{ '1000' | money }}",
+      "context": {
+        "shop": {
+          "currency": "INR"
+        }
+      },
+      "expected": "₹1,000.00"
+    },
+    {
+      "name": "money unknown currency",
+      "template": "{{ '9.9' | money }}",
+      "context": {
+        "shop": {
+          "currency": "XYZ"
+        }
+      },
+      "expected": "9.90 XYZ"
+    },
+    {
+      "name": "date",
+      "template": "{{ when | date: '%b %d, %Y' }}|{{ when | date: '%A %e %B %y' }}|{{ when | date: '%H:%M %I%p %j %m %a %%' }}",
+      "expected": "Oct 19, 2026|Monday 19 October 26|08:05 08AM 292 10 Mon %"
+    },
+    {
+      "name": "handleize",
+      "template": "{{ 'Winter Sale 2026!' | handleize }}",
+      "expected": "winter-sale-2026"
+    },
+    {
+      "name": "url_encode",
+      "template": "{{ 'a b&c' | url_encode }}",
+      "expected": "a+b%26c"
+    },
+    {
+      "name": "newline_to_br",
+      "template": "{{ 'a\nb' | newline_to_br }}",
+      "expected": "a<br />\nb"
+    },
+    {
+      "name": "pluralize",
+      "template": "{{ cart.item_count }} {{ cart.item_count | pluralize: 'item', 'items' }}, {{ count }} {{ count | pluralize: 'item', 'items' }}",
+      "expected": "3 items, 1 item"
+    },
+    {
+      "name": "if true",
+      "template": "{% if product.available %}In stock{% endif %}",
+      "expected": "In stock"
+    },
+    {
+      "name": "if else",
+      "template": "{% if count > 5 %}many{% else %}few{% endif %}",
+      "expected": "few"
+    },
+    {
+      "name": "elsif",
+      "template": "{% if count == 0 %}none{% elsif count == 1 %}one{% else %}more{% endif %}",
+      "expected": "one"
+    },
+    {
+      "name": "unless",
+      "template": "{% unless product.available %}Sold out{% else %}Buy{% endunless %}",
+      "expected": "Buy"
+    },
+    {
+      "name": "comparisons",
+      "template": "{% if 2 >= 2 and 1 < 2 and 3 <= 3 and 'a' != 'b' %}ok{% endif %}",
+      "expected": "ok"
+    },
+    {
+      "name": "contains array",
+      "template": "{% if product.tags contains 'winter' %}winter{% endif %}{% if product.tags contains 'summer' %}summer{% endif %}",
+      "expected": "winter"
+    },
+    {
+      "name": "contains string",
+      "template": "{% if product.title contains 'Shell' %}yes{% endif %}",
+      "expected": "yes"
+    },
+    {
+      "name": "and or right to left",
+      "template": "{% if true or false and false %}T{% else %}F{% endif %}",
+      "expected": "T"
+    },
+    {
+      "name": "truthiness",
+      "template": "{% if empty %}a{% endif %}{% if zero %}b{% endif %}{% if nothing %}c{% endif %}{% if missing %}d{% endif %}",
+      "expected": "ab"
+    },
+    {
+      "name": "nil comparison",
+      "template": "{% if customer.middle_name == nil %}none{% endif %}",
+      "expected": "none"
+    },
+    {
+      "name": "for",
+      "template": "{% for item in items %}{{ forloop.index }}.{{ item.name }}{% unless forloop.last %}, {% endunless %}{% endfor %}",
+      "expected": "1.One, 2.Two, 3.Three"
+    },
+    {
+      "name": "for first",
+      "template": "{% for t in product.tags %}{% if forloop.first %}[{% endif %}{{ t }}{% endfor %}",
+      "expected": "[winterwaterproofnew"
+    },
+    {
+      "name": "for limit offset",
+      "template": "{% for item in items limit: 2 offset: 1 %}{{ item.n }}{% endfor %}",
+      "expected": "23"
+    },
+    {
+      "name": "for reversed",
+      "template": "{% for item in items reversed %}{{ item.n }}{% endfor %}",
+      "expected": "321"
+    },
+    {
+      "name": "for else",
+      "template": "{% for x in nothing %}{{ x }}{% else %}empty{% endfor %}",
+      "expected": "empty"
+    },
+    {
+      "name": "assign",
+      "template": "{% assign greeting = 'Hi ' | append: customer.first_name %}{{ greeting }}",
+      "expected": "Hi Ana"
+    },
+    {
+      "name": "capture",
+      "template": "{% capture label %}{{ product.vendor }} {{ product.type }}{% endcapture %}<{{ label }}>",
+      "expected": "<Summit Jacket>"
+    },
+    {
+      "name": "comment",
+      "template": "a{% comment %}hidden {{ product.title }}{% endcomment %}b",
+      "expected": "ab"
+    },
+    {
+      "name": "raw",
+      "template": "{% raw %}{{ not evaluated }}{% endraw %}",
+      "expected": "{{ not evaluated }}"
+    },
+    {
+      "name": "whitespace control",
+      "template": "a  {{- product.vendor -}}  b {%- if true -%}  c  {%- endif -%} d",
+      "expected": "aSummitbcd"
+    },
+    {
+      "name": "html passes through",
+      "template": "<p>{{ product.title }}</p>",
+      "expected": "<p>Alpine Shell</p>"
+    },
+    {
+      "name": "unknown filter renders nothing",
+      "template": "[{{ product.title | sparkle }}]",
+      "expected": "[]",
+      "lenient": true
+    },
+    {
+      "name": "unknown tag renders nothing",
+      "template": "a{% render 'snippet' %}b",
+      "expected": "ab",
+      "lenient": true
+    },
+    {
+      "name": "syntax error keeps the text without Liquid",
+      "template": "Hello {{ customer.first_name",
+      "expected": "Hello ",
+      "lenient": true
+    }
+  ]
+}

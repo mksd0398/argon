@@ -26,6 +26,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,18 +48,21 @@ import app.argon.ui.gallery.ArgonGallery
 import app.storefront.AppGraph
 import app.storefront.BuildConfig
 import app.storefront.data.AnalyticsEvent
+import app.storefront.data.Links
 import app.storefront.data.Route
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-// Tab routes: home, shop, wishlist, cart, account. Pushed screens: product/{handle}, collection/{handle}, search?q={q},
-// order/{id}, orders, return/{orderId}, profile, addresses, policy/{handle}, and in debug builds components (the Argon UI
-// gallery). Ids and handles are Uri.encode()d into a route.
-/** The app's five tabs. */
+// Tab routes: home, shop, wishlist, cart, account, and with the settings' tabs search-tab and screen-tab/{handle}; a tab the
+// bar leaves out is pushed instead (selectTab). Pushed screens: product/{handle}, collection/{handle}, search?q={q},
+// order/{id}, orders, return/{orderId}, profile, addresses, policy/{handle}, page/{handle}, screen/{handle} (a custom page,
+// screens v2), and in debug builds components (the Argon UI gallery). Ids and handles are Uri.encode()d into a route.
+/** The app's built-in tabs, by the ids of their routes (the bar itself is `AppGraph.navigation.tabs`). */
 enum class AppTab(val route: String, internal val icon: ArgonIconName) {
     Home("home", ArgonIconName.Home),
     Shop("shop", ArgonIconName.Grid),
@@ -110,13 +114,66 @@ private fun NavController.openTab(route: String) = navigate(route) {
     restoreState = true
 }
 
-/** Opens [route] in the app, or in a Custom Tab for [Route.Web]. */
+// The tab roots of a search tab and a custom-page tab (the settings' `navigation.tabs`): the pushed search and custom
+// page have their own routes, with a way back.
+private const val SEARCH_TAB = "search-tab"
+private const val SCREEN_TAB = "screen-tab/{handle}"
+
+/** The route of the tab [id] ([ShellTab.id]). */
+internal fun tabRoute(id: String): String = when {
+    id == "search" -> SEARCH_TAB
+    id.startsWith("screen:") -> "screen-tab/${Uri.encode(id.removePrefix("screen:"))}"
+    else -> id
+}
+
+/** The tab id of a destination [route] ([handle]: its argument); null for a screen that is never a tab. */
+internal fun tabId(route: String?, handle: String?): String? = when (route) {
+    SEARCH_TAB -> "search"
+    SCREEN_TAB -> "screen:$handle"
+    "home", "shop", "wishlist", "cart", "account" -> route
+    else -> null
+}
+
+/**
+ * Goes to the tab [id]: switches to it when it is in the bar; otherwise (the cart, shop, wishlist or account of a bar
+ * the settings left them out of) pushes its screen, which then has a way back.
+ */
+fun NavController.selectTab(id: String) {
+    when {
+        id == "home" || AppGraph.navigation.hasTab(id) -> openTab(tabRoute(id))
+        id == "search" -> navigate("search?q=")
+        id.startsWith("screen:") -> navigate("screen/${Uri.encode(id.removePrefix("screen:"))}")
+        id in setOf("shop", "wishlist", "cart", "account") -> navigate(id) { launchSingleTop = true }
+    }
+}
+
+/** The leading action of the root screen of tab [id]: none when it is in the bar, Back when it was pushed. */
+fun NavController.tabLeading(id: String): List<ArgonTopBarAction> = if (AppGraph.navigation.hasTab(id)) emptyList() else listOf(backAction())
+
+/** A settings icon name ([Navigation.ICONS][app.storefront.data.Navigation.ICONS]) as the component library's icon. */
+internal fun shellIcon(name: String): ArgonIconName = when (name) {
+    "home" -> ArgonIconName.Home
+    "grid" -> ArgonIconName.Grid
+    "search" -> ArgonIconName.Search
+    "heart" -> ArgonIconName.Heart
+    "bag" -> ArgonIconName.Bag
+    "person" -> ArgonIconName.Person
+    "tag" -> ArgonIconName.Tag
+    "menu" -> ArgonIconName.Menu
+    else -> ArgonIconName.Star
+}
+
+/** Opens [route] in the app (a [Route.Tab] switches to that tab), or in a Custom Tab for [Route.Web]. */
 fun NavController.open(route: Route) {
     when (route) {
         is Route.Product -> navigate("product/${Uri.encode(route.handle)}")
         is Route.Collection -> navigate("collection/${Uri.encode(route.handle)}")
         is Route.Search -> navigate("search?q=${Uri.encode(route.query)}")
         is Route.Policy -> navigate("policy/${Uri.encode(route.handle)}")
+        is Route.Page -> navigate("page/${Uri.encode(route.handle)}")
+        is Route.Screen -> navigate("screen/${Uri.encode(route.handle)}")
+        // a tab this app has (or its screen, pushed, when the bar leaves it out); any other id goes nowhere
+        is Route.Tab -> selectTab(route.id)
         // no browser installed: nothing to open, and nothing to crash
         is Route.Web -> runCatching { CustomTabsIntent.Builder().build().launchUrl(context, Uri.parse(route.url)) }
     }
@@ -157,8 +214,14 @@ fun AppRoot() {
 @Composable
 private fun AppNav(startTab: AppTab? = null) {
     val nav = rememberNavController()
-    val current = nav.currentBackStackEntryAsState().value?.destination?.route
-    val onTab = AppTab.entries.any { it.route == current }
+    val entry = nav.currentBackStackEntryAsState().value
+    val current = entry?.destination?.route
+    // the bar's tabs (the settings', else the built-in five); the bar shows on their roots
+    val navigation = AppGraph.navigation
+    val currentTab = tabId(current, entry?.arguments?.getString("handle"))
+    val onTab = currentTab != null && navigation.hasTab(currentTab)
+    var announcementClosed by rememberSaveable { mutableStateOf(false) }
+    val announcement = AppGraph.announcement?.takeIf { !announcementClosed }
     val cartCount = AppGraph.cart.cart.collectAsState().value?.totalQuantity ?: 0
     val snackbar = remember { SnackbarHostState() }
     // a newer message replaces the one showing
@@ -168,9 +231,17 @@ private fun AppNav(startTab: AppTab? = null) {
             // not before the first screen is on the stack: the NavHost below sets the graph while it is laid out, which
             // is after this effect starts, and a NavController without its graph can't navigate
             nav.currentBackStackEntryFlow.first()
-            nav.openTab(startTab.route)
+            nav.selectTab(startTab.route)
         }
-        AppGraph.tabs.selections.collect { nav.openTab(it.route) }
+        AppGraph.tabs.selections.collect { nav.selectTab(it.route) }
+    }
+    // a tapped notification's link (push): opened through Links once the graph is set
+    LaunchedEffect(Unit) {
+        nav.currentBackStackEntryFlow.first()
+        AppGraph.notificationLink.filterNotNull().collect { link ->
+            AppGraph.notificationLink.value = null
+            Links.resolve(link, AppGraph.brand.value?.hosts ?: setOf(AppGraph.shopDomain))?.let { nav.open(it) }
+        }
     }
     // Analytics' `screen_view`, from the one place every screen passes through. By back stack entry: tapping the tab that
     // is already open navigates to the same entry, which is not another view.
@@ -196,13 +267,16 @@ private fun AppNav(startTab: AppTab? = null) {
             val lift = if (current?.startsWith("product/") == true) AppGraph.toast.stickyBarHeight else 0.dp
             SnackbarHost(snackbar, if (onTab) Modifier else Modifier.navigationBarsPadding().padding(bottom = lift))
         },
+        // the settings' announcement, over the top bar of every tab root, until it is closed for the session
+        topBar = { if (onTab && announcement != null) AnnouncementBar(announcement, { nav.open(it) }) { announcementClosed = true } },
         bottomBar = {
             if (onTab) {
                 ArgonBottomBar(
                     // the Cart tab shows how many items are in the cart
-                    AppTab.entries.map { tab -> ArgonBottomBarItem(tab.route, tab.name, tab.icon, badge = if (tab == AppTab.Cart) cartCount else null) },
-                    selectedId = current.orEmpty(),
-                    onSelect = { nav.openTab(it) },
+                    navigation.tabs.map { tab -> ArgonBottomBarItem(tab.id, tab.title, shellIcon(tab.icon), badge = if (tab.id == "cart") cartCount else null) },
+                    selectedId = currentTab.orEmpty(),
+                    onSelect = { nav.openTab(tabRoute(it)) },
+                    showLabels = navigation.labels,
                 )
             }
         },
@@ -224,8 +298,14 @@ private fun AppNav(startTab: AppTab? = null) {
             composable("profile") { ProfileScreen(nav) }
             composable("addresses") { AddressesScreen(nav) }
             composable("policy/{handle}") { PolicyScreen(it.arguments?.getString("handle").orEmpty(), nav) }
+            composable("page/{handle}") { PageScreen(it.arguments?.getString("handle").orEmpty(), nav) }
+            composable("screen/{handle}") { CustomScreen(it.arguments?.getString("handle").orEmpty(), nav) }
+            composable(SEARCH_TAB) { SearchScreen("", nav, isTab = true) }
+            composable(SCREEN_TAB) { CustomScreen(it.arguments?.getString("handle").orEmpty(), nav, isTab = true) }
             if (BuildConfig.DEBUG) composable("components") { ArgonGallery(AppGraph.brand.value?.accent, onBack = { nav.popBackStack() }) }
         }
+        // push: the one offer to turn notifications on, after a first purchase
+        PushOffer()
     }
 }
 

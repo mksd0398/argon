@@ -45,17 +45,31 @@ final class CollectionModel {
 @MainActor
 struct CollectionView: View {
     @State private var model: CollectionModel
+    @State private var screen = ScreenSlot("collection")
+    private let handle: String
     @Environment(Router.self) private var router
     @Environment(\.argonTheme) private var theme
 
     init(handle: String) {
         _model = State(initialValue: CollectionModel(handle: handle))
+        self.handle = handle
     }
 
     var body: some View {
         // the cart is a tab: its count as the badge, none on an empty cart
         let inCart = AppGraph.cart.cart?.totalQuantity ?? 0
-        ListingView(listing: model.listing, emptyText: "No products in this collection.", onOpen: { router.open($0) }, description: model.description)
+        // the store's collection screen (screens v2): its sections over the grid, and its choice of template
+        let above = ScreenSections.has(screen, .above)
+            ? AnyView(ScreenSections(slot: screen, part: .above, collection: (model.title, handle, model.description)).padding(.horizontal, -theme.spacing.l))
+            : nil
+        ListingView(
+            listing: model.listing,
+            emptyText: "No products in this collection.",
+            onOpen: { router.open($0) },
+            description: model.description,
+            template: ScreenTemplate.collectionTemplate(screen.placement.main) ?? AppGraph.collectionTemplate,
+            above: above
+        )
             .background(theme.colors.paper)
             .argonTopBar(
                 title: model.title,
@@ -65,5 +79,6 @@ struct CollectionView: View {
                 ]
             )
             .task { model.listing.start() }
+            .task { await screen.load(owner: .collection(handle)) }
     }
 }

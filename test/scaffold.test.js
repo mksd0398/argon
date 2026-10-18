@@ -183,7 +183,7 @@ test("--demo --yes scaffolds both apps against mock.shop", async () => {
 
     const android = queryFiles(join(dir, "android/app/src/main/assets/queries"));
     const ios = queryFiles(join(dir, "ios/App/Resources/queries"));
-    assert.equal(android.length, 55);
+    assert.equal(android.length, 59);
     assert.deepEqual(ios, android);
 
     // xtool (iOS without a Mac): every file the app reads from its bundle is listed, and each exists
@@ -455,6 +455,7 @@ test("a Firebase file for another app, or one that can't be read, stops the run 
     await refused("--firebase-ios=empty.plist", ["empty.plist is not a GoogleService-Info.plist"]);
     await refused("--firebase-android=broken.json", ["broken.json is not a google-services.json"]);
     await refused("--firebase-android=GoogleService-Info.plist", ["is not a google-services.json"]); // the two files swapped
+    await refused("--push", ["--push needs Firebase"]);
     assert.deepEqual([existsSync(join(t.cwd, "demo-app")), f.urls.length, f.calls.length], [false, 0, 0]);
 
     // --bundle-id is the id the files are checked against
@@ -671,6 +672,34 @@ test("xtoolFiles: the display name is XML-escaped", () => {
   for (const key of off) assert.match(template, new RegExp(`<key>${key}</key>\\s*<false/>`), key);
   assert.ok(files["xtool.yml"].endsWith("- App/Resources/queries/Shop.graphql\n"));
   assert.ok(files["xtool.yml"].includes("\niconPath: App/Assets.xcassets/AppIcon.appiconset/AppIcon.png\n"));
+});
+
+test("push: Firebase Messaging, the iOS push entitlement and the devices URL, only with --push", async () => {
+  const cwd = mkdtempSync(join(tmpdir(), "argon-test-"));
+  try {
+    const base = { appName: "Nalli", bundleId: "com.nalli.app", shopDomain: "nalli.myshopify.com", token: "t", clientId: "", shopId: "1",
+      firebaseAndroid: Buffer.from("{}"), firebaseIos: Buffer.from("<plist/>"), settingsUrl: "https://k.web.app/v1/settings/nalli.myshopify.com" };
+    const dir = join(cwd, "push-app");
+    await scaffold({ ...base, dir, push: true });
+    const props = readFileSync(join(dir, "android/shopify.properties"), "utf8").split("\n");
+    assert.ok(props.includes("PUSH=true"));
+    assert.ok(props.includes("DEVICES_URL=https://k.web.app/v1/devices/nalli.myshopify.com"));
+    assert.match(readFileSync(join(dir, "ios/App/App.entitlements"), "utf8"), /<key>aps-environment<\/key>/);
+    const project = readFileSync(join(dir, "ios/App.xcodeproj/project.pbxproj"), "utf8");
+    assert.equal(project.match(/CODE_SIGN_ENTITLEMENTS = App\/App\.entitlements;/g).length, 2, "the app target's Debug and Release, not the tests");
+    assert.match(readFileSync(join(dir, "ios/Package.swift"), "utf8"), /\.product\(name: "FirebaseMessaging", package: "firebase-ios-sdk"\)/);
+    assert.match(readFileSync(join(dir, "ios/xtool.yml"), "utf8"), /\nentitlementsPath: App\/App\.entitlements\n/);
+    assert.match(readFileSync(join(dir, "ios/Package.swift"), "utf8"), /"GoogleService-Info\.plist", "App\.entitlements"/, "not one of the target's sources");
+
+    const plain = join(cwd, "plain-app");
+    await scaffold({ ...base, dir: plain });
+    assert.ok(readFileSync(join(plain, "android/shopify.properties"), "utf8").split("\n").includes("PUSH=false"));
+    assert.ok(!existsSync(join(plain, "ios/App/App.entitlements")));
+    assert.ok(!readFileSync(join(plain, "ios/Package.swift"), "utf8").includes("FirebaseMessaging"));
+    assert.ok(!readFileSync(join(plain, "ios/xtool.yml"), "utf8").includes("entitlementsPath"));
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
 });
 
 test("Krypton: a settings URL and a customer redirect are written, and no server/ (the backend reports purchases)", async () => {

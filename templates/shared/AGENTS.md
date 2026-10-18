@@ -4,7 +4,8 @@ Two native apps for one Shopify store, kept identical screen for screen: `androi
 
 ## Layout
 
-- `android/shopify.properties`, `ios/Config.xcconfig`: per-store config. Same keys on both (`SHOP_DOMAIN`, `STOREFRONT_TOKEN`, `CUSTOMER_CLIENT_ID`, `SHOP_ID`, `API_VERSION`, `APP_NAME`, `BUNDLE_ID`, `PDP_METAFIELDS`, `HOME_TEMPLATE`, `COLLECTION_TEMPLATE`, `JUDGEME_PUBLIC_TOKEN`, `SHOW_VENDOR`, `ONBOARDING`, `FREE_SHIPPING_THRESHOLD`, `META_APP_ID`, `META_CLIENT_TOKEN`, `MOENGAGE_WORKSPACE_ID`, `MOENGAGE_DATA_CENTER`, `SERVER_PURCHASE`, `SETTINGS_URL`, `CUSTOMER_REDIRECT_URI`). With `SETTINGS_URL` set, the settings it serves override the built-in values at the next launch (`RemoteSettings`).
+- `android/shopify.properties`, `ios/Config.xcconfig`: per-store config. Same keys on both (`SHOP_DOMAIN`, `STOREFRONT_TOKEN`, `CUSTOMER_CLIENT_ID`, `SHOP_ID`, `API_VERSION`, `APP_NAME`, `BUNDLE_ID`, `PDP_METAFIELDS`, `HOME_TEMPLATE`, `COLLECTION_TEMPLATE`, `JUDGEME_PUBLIC_TOKEN`, `SHOW_VENDOR`, `ONBOARDING`, `FREE_SHIPPING_THRESHOLD`, `META_APP_ID`, `META_CLIENT_TOKEN`, `MOENGAGE_WORKSPACE_ID`, `MOENGAGE_DATA_CENTER`, `SERVER_PURCHASE`, `SETTINGS_URL`, `CUSTOMER_REDIRECT_URI`, `PUSH`, `DEVICES_URL`). With `SETTINGS_URL` set, the settings it serves override the built-in values at the next launch (`RemoteSettings`), the app shell too: tabs, top bar, drawer, announcement strip, light/dark (`Navigation`, `Announcement`, `Appearance`; empty or invalid settings keep the built-in five tabs and the template's bar).
+- **Push** (`PUSH=true`, needs Firebase): `PushStore` (`data/Push.kt`, `Data/Push.swift`) subscribes to the FCM topics `all` and `android` / `ios` once the shopper turns notifications on (Account, or the one offer after a first purchase; never at first launch) and reports `{ installId, platform, optedIn }` to `DEVICES_URL`. A notification's `link` opens through `Links.resolve`. Without `PUSH` nothing of it is wired.
 - The app icon and the launch screen are files, made from the store's logo when the project was generated; README.md, "App icon and launch screen", lists them.
 - `android/app/src/main/assets/queries/*.graphql` and `ios/App/Resources/queries/*.graphql`: the same GraphQL documents (Storefront and Customer Account API 2026-10), one operation per file, fragments already inlined. Keep the two folders identical.
 - **Data:** never call GraphQL from screens. Use the typed facades: `StorefrontApi` / `CustomerAccountApi` (`android/app/src/main/java/app/storefront/data/`) and `StorefrontAPI` / `CustomerAccountAPI` (`ios/App/Data/`). Same method names on both; they return typed models and `Page<T>` for lists, and throw `ArgonApiError` / `ArgonAPIError`.
@@ -37,6 +38,21 @@ The home screen is the `mobile_screen` metaobject (handle `home`) whose `section
 2. Add the type to the `sections` field's allowed types on the `mobile_screen` definition.
 3. Select its fields in `HomeScreen.graphql` (both folders).
 4. On each platform add it to `Sections` and a view for the new `Section` type built from `Argon*` components. Unknown types are skipped, never crash.
+
+## Screens v2: add a section type
+
+A screen is the `app_screen` metaobject with its handle (`home`, `product`, ..., or a custom page); its `template` JSON
+lists sections (docs/superpowers/specs/2026-10-19-screens-v2-design.md). Unknown types are skipped, so an old app ignores a new one.
+
+1. Add the type, its settings and defaults to `SECTION_TYPES` in `contract/screens.js` (the editor's strict side) and a case to the sample templates in `contract/fixtures/screens/`.
+2. On each platform add it to `ScreenTemplate.TYPES` and a `SectionContent` case read from its settings (`Screens.kt` / `Screens.swift`); every value goes through a lenient `SectionSettings` reader with the spec's default.
+3. Draw it in `ui/sections/` / `UI/Sections/` from `Argon*` components and the shared blocks, and add the case to `SectionView`. Text goes through `env.text(...)` (Liquid), taps through `env.open(...)` (it reports `select_promotion`). Products and collections it shows are GIDs: add them to `sectionNodeIds` so the one `SectionNodes` query loads them.
+4. Add its decoding to the template tests on both platforms.
+
+## Screens v2: add a Liquid filter
+
+1. Add the case to `contract/fixtures/liquid/cases.json`; when liquidjs lacks it, register it in `test/liquid.test.js` with Shopify's behaviour (`npm test` checks every case against liquidjs).
+2. Add it to the filter `when` / `switch` in `Liquid.kt` and `Liquid.swift` (same name, same output). Both apps' Liquid tests run every case.
 
 ## Rule
 

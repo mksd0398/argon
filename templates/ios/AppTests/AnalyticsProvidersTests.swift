@@ -139,6 +139,16 @@ final class AnalyticsProvidersTests: XCTestCase {
         for event in others { XCTAssertNil(metaEvent(event), event.name) }
     }
 
+    func testPromotionsGoToEveryProviderUnderGoogleAnalyticsNames() {
+        let tapped = AnalyticsEvent.selectPromotion(Promotion(id: "slides", name: "slideshow", slot: "home:1", creative: "s2"))
+        let params: [String: Any] = ["promotion_id": "slides", "promotion_name": "slideshow", "creative_name": "s2", "creative_slot": "home:1"]
+        XCTAssertEqual(ga4Params(tapped) as NSDictionary?, params as NSDictionary)
+        assertMeta(tapped, "select_promotion", nil, params)
+        assertMoEngage(tapped, "select_promotion", params)
+        let seen = AnalyticsEvent.viewPromotion(Promotion(id: "hero", name: "banner", slot: "product:0"))
+        assertMeta(seen, "view_promotion", nil, ["promotion_id": "hero", "promotion_name": "banner", "creative_slot": "product:0"])
+    }
+
     func testMetaExtinfoIsTheSixteenTextsOfTheIosLayout() {
         // empty: the carrier, and the two storage sizes
         XCTAssertEqual(

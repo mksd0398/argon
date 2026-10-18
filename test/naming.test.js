@@ -28,7 +28,7 @@ test("parseArgs: --flag=value, defaults and missing value", () => {
     bundleId: "com.x.y", home: undefined, collection: undefined, judgemeToken: undefined,
     firebaseAndroid: undefined, firebaseIos: undefined, metaAppId: undefined, metaClientToken: undefined,
     moengageWorkspaceId: undefined, moengageDataCenter: undefined, settingsUrl: undefined, customerRedirectUri: undefined,
-    server: false, skipContent: false, yes: false, help: false,
+    server: false, push: false, skipContent: false, yes: false, help: false,
   });
   assert.throws(() => parseArgs(["--store"]), /Missing value for --store/);
   const templates = parseArgs(["app", "--home=grocery", "--collection", "bottom", "--judgeme-token=pub"]);

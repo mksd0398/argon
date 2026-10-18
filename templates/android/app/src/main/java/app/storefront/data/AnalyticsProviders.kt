@@ -82,6 +82,8 @@ fun metaEvent(event: AnalyticsEvent): MetaEvent? = when (event) {
     is AnalyticsEvent.AddPaymentInfo -> MetaEvent("fb_mobile_add_payment_info", null, mapOf("fb_success" to 1))
     is AnalyticsEvent.Purchase ->
         MetaEvent("fb_mobile_purchase", event.value, metaContents(event.items, event.currency) + ("event_id" to "purchase-${event.orderId}"))
+    // no standard event for a promotion: a custom one, under GA4's name and parameters
+    is AnalyticsEvent.ViewPromotion, is AnalyticsEvent.SelectPromotion -> MetaEvent(event.name, null, event.params)
     else -> null
 }
 
@@ -152,6 +154,8 @@ fun moEngageEvent(event: AnalyticsEvent): Pair<String, Map<String, Any>> = when 
         "Coupon" to event.coupon,
     ) + moEngage(event.items)
     AnalyticsEvent.Login -> "Customer Logged In" to emptyMap()
+    // promotions: no name of the integration's own, so GA4's, with its parameters
+    is AnalyticsEvent.ViewPromotion, is AnalyticsEvent.SelectPromotion -> event.name to event.params
 }
 
 /**

@@ -37,6 +37,12 @@ data class RemoteSettings(
     val showVendor: Boolean? = null,
     /** `reviews.judgeMePublicToken`, never blank. */
     val judgeMeToken: String? = null,
+    /** The tab bar, the top bar and the drawer (screens v2, [Navigation]); null: the built-in ones. */
+    val navigation: Navigation? = null,
+    /** The strip above the top bar; null: none. */
+    val announcement: Announcement? = null,
+    /** `appearance.mode`; null: the device's light or dark. */
+    val appearance: Appearance? = null,
 ) {
     /** The free-shipping threshold: the remote one when set (zero: none), else [builtIn]. */
     fun freeShippingThreshold(builtIn: Double?): Double? = when (val remote = freeShippingThreshold) {
@@ -75,6 +81,9 @@ data class RemoteSettings(
                 freeShippingThreshold = root.obj("cart")?.num("freeShippingThreshold")?.takeIf { it >= 0 && it.isFinite() },
                 showVendor = root.obj("product")?.bool("showVendor"),
                 judgeMeToken = root.obj("reviews")?.str("judgeMePublicToken")?.trim()?.ifEmpty { null },
+                navigation = Navigation.decode(root.obj("navigation")),
+                announcement = Announcement.decode(root.obj("announcement")),
+                appearance = Appearance.decode(root.obj("appearance")),
             )
         }
 

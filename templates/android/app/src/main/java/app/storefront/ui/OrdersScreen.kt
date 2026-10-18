@@ -29,8 +29,14 @@ import app.argon.ui.components.ArgonTopBar
 import app.storefront.AppGraph
 import app.storefront.data.OrderSummary
 import app.storefront.data.Page
+import app.storefront.data.Placement
 import app.storefront.ui.account.ErrorText
 import app.storefront.ui.orders.OrderCard
+import app.storefront.ui.sections.SectionEnv
+import app.storefront.ui.sections.bleed
+import app.storefront.ui.sections.rememberScreenSections
+import app.storefront.ui.sections.rememberSectionEnv
+import app.storefront.ui.sections.sectionItems
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
@@ -72,9 +78,12 @@ private class OrderList(first: Page<OrderSummary>) {
     }
 }
 
-/** The customer's orders, newest first (`orders`). */
+/** The customer's orders, newest first (`orders`), between the store's sections for it (screens v2). */
 @Composable
 fun OrdersScreen(nav: NavController) {
+    // screens v2: the store's sections above and below the orders
+    val sections = rememberScreenSections("orders")
+    val env = rememberSectionEnv(sections, { nav.open(it) })
     Scaffold(topBar = { ArgonTopBar("Orders", leading = listOf(nav.backAction())) }) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             Loader({ OrderList(AppGraph.customerAccount.orders()) }) { list ->
@@ -87,7 +96,7 @@ fun OrdersScreen(nav: NavController) {
                         },
                     )
                 } else {
-                    Orders(list, onOpen = { nav.navigate("order/${Uri.encode(it.id)}") })
+                    Orders(list, onOpen = { nav.navigate("order/${Uri.encode(it.id)}") }, sections?.placement, env)
                 }
             }
         }
@@ -95,10 +104,12 @@ fun OrdersScreen(nav: NavController) {
 }
 
 @Composable
-private fun Orders(list: OrderList, onOpen: (OrderSummary) -> Unit) {
+private fun Orders(list: OrderList, onOpen: (OrderSummary) -> Unit, sections: Placement?, env: SectionEnv?) {
     val spacing = ArgonTheme.spacing
     val screen = rememberCoroutineScope()
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(spacing.l), verticalArrangement = Arrangement.spacedBy(spacing.m)) {
+        // the sections reach over the list's margins: they bring their own
+        sectionItems(sections?.above.orEmpty(), env, Modifier.bleed(spacing.l))
         items(list.items, key = { it.id }) { order -> OrderCard(order, onOpen = { onOpen(order) }) }
         if (list.hasNext) {
             item {
@@ -110,6 +121,7 @@ private fun Orders(list: OrderList, onOpen: (OrderSummary) -> Unit) {
                 }
             }
         }
+        sectionItems(sections?.below.orEmpty(), env, Modifier.bleed(spacing.l))
     }
 }
 

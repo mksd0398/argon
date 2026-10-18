@@ -42,6 +42,7 @@ private final class OrderList {
 /// The customer's orders, newest first (route `orders`).
 @MainActor
 struct OrdersView: View {
+    @State private var screen = ScreenSlot("orders")
     @Environment(Router.self) private var router
     @Environment(\.dismiss) private var dismiss
     @Environment(\.argonTheme) private var theme
@@ -55,22 +56,25 @@ struct OrdersView: View {
                     AppGraph.tabs.selected = .shop
                 }
             } else {
-                Orders(list: list) { router.path.append(.order($0.id)) }
+                Orders(list: list, screen: screen) { router.path.append(.order($0.id)) }
             }
         }
         .background(theme.colors.paper)
         .argonTopBar(title: "Orders")
+        .task { await screen.load() }
     }
 }
 
 @MainActor
 private struct Orders: View {
     let list: OrderList
+    let screen: ScreenSlot
     let onOpen: (OrderSummary) -> Void
     @Environment(\.argonTheme) private var theme
 
     var body: some View {
         ScrollView {
+            ScreenSections(slot: screen, part: .above, top: theme.spacing.l)
             LazyVStack(alignment: .leading, spacing: theme.spacing.m) {
                 ForEach(list.items, id: \.id) { order in
                     OrderCard(order: order) { onOpen(order) }
@@ -85,6 +89,7 @@ private struct Orders: View {
                 }
             }
             .padding(theme.spacing.l)
+            ScreenSections(slot: screen, part: .below, bottom: theme.spacing.l)
         }
     }
 }

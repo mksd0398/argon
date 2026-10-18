@@ -1,6 +1,7 @@
 package app.storefront.ui
 
 import app.storefront.data.MetafieldIdentifier
+import app.storefront.data.PRODUCT_BLOCKS
 import app.storefront.data.Money
 import app.storefront.data.Product
 import app.storefront.data.SelectedOption
@@ -92,5 +93,14 @@ class ProductScreenTest {
         assertNull(shownVariant(product, extraLarge, null))
         assertEquals("9", shownVariant(product, extraLarge, RichVariant(extraLarge, variant("9", true, "XL")))?.id)
         assertNull("no such variant: Unavailable", shownVariant(product, extraLarge, RichVariant(extraLarge, null)))
+    }
+
+    @Test
+    fun theDefaultBlockNamesGiveThePagesOwnOrder() {
+        assertEquals("no app_screen: the page as ever", ProductBlock.entries, productBlockList(PRODUCT_BLOCKS))
+        assertEquals(
+            listOf(ProductBlock.Reviews, ProductBlock.Details, ProductBlock.Trust, ProductBlock.Gallery),
+            productBlockList(listOf("reviews", "details", "unknown", "gallery")),
+        )
     }
 }

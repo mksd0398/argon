@@ -730,6 +730,37 @@ struct Metaobject: Decodable, Equatable, Sendable {
     func field(_ key: String) -> MetaobjectField? { fields.first { $0.key == key } }
 }
 
+/// An `app_screen` metaobject (AppScreen): a screen's title and its template, the JSON text `ScreenTemplate.decode`
+/// reads.
+struct AppScreen: Equatable, Sendable {
+    let id: String
+    let handle: String
+    let title: String
+    let template: String?
+    var updatedAt: String? = nil
+}
+
+extension AppScreen: Decodable {
+    private enum CodingKeys: String, CodingKey {
+        case id, handle, updatedAt, title, template
+    }
+
+    private struct Value: Decodable {
+        let value: String?
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        try self.init(
+            id: c.decode(String.self, forKey: .id),
+            handle: c.decode(String.self, forKey: .handle),
+            title: c.decodeIfPresent(Value.self, forKey: .title)?.value ?? "",
+            template: c.decodeIfPresent(Value.self, forKey: .template)?.value,
+            updatedAt: c.decodeIfPresent(String.self, forKey: .updatedAt)
+        )
+    }
+}
+
 struct MetaobjectField: Equatable, Sendable {
     let key: String
     /// Not selected by HomeScreen.
@@ -1208,5 +1239,11 @@ enum Route: Hashable {
     case search(String)
     /// A shop policy's page by its handle (`shipping-policy`, `refund-policy`, ...): the route `policy/<handle>`.
     case policy(String)
+    /// An online store page, drawn in the app (`page/<handle>`).
+    case page(String)
+    /// A custom page of the store's own, the `app_screen` metaobject with this handle (`screen/<handle>`).
+    case screen(String)
+    /// A switch to the tab with this id: `home`, `cart`, `account` or `wishlist` (`AppTab`'s raw values).
+    case tab(String)
     case web(String)
 }

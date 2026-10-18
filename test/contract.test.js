@@ -35,9 +35,9 @@ test("resolveDocument: omits unused fragments and leaves inline fragments alone"
   assert.doesNotMatch(doc, /fragment (Image|ProductCard|CollectionCard|Unused) on/);
 });
 
-test("loadContract: 55 documents, operation name equals key, fragments resolved from the document's own API", async () => {
+test("loadContract: 59 documents, operation name equals key, fragments resolved from the document's own API", async () => {
   const contract = await loadContract();
-  assert.equal(contract.size, 55);
+  assert.equal(contract.size, 59);
   const customer = new Set(readdirSync(join(CONTRACT, "customer")).map((f) => f.replace(/\.graphql$/, "")));
   const definedIn = (file) => new Set([...readFileSync(join(CONTRACT, file), "utf8").matchAll(/^fragment (\w+) on /gm)].map((m) => m[1]));
   const fragments = { storefront: definedIn("fragments.graphql"), customer: definedIn("customer/fragments.graphql") };
@@ -107,6 +107,14 @@ test("live: Storefront documents run against mock.shop", { skip: !process.env.AR
   const home = await call("FallbackHome");
   const products = home.collections.nodes.flatMap((c) => c.products.nodes);
   assert.ok(products.length > 0);
+  // Screens v2: mock.shop has no app_screen and no metafields, so these only prove the documents run
+  assert.equal((await call("AppScreen", { handle: "home" }, { record: false })).metaobject, null);
+  const first = home.collections.nodes[0];
+  const nodes = (await call("SectionNodes", { ids: [products[0].id, first.id] }, { record: false })).nodes;
+  assert.ok(Array.isArray(nodes), "mock.shop answers nodes(ids:) with an empty list, but the document runs");
+  const identifiers = [{ namespace: "custom", key: "promo" }];
+  await call("CollectionMetafields", { handle: first.handle, metafields: identifiers }, { record: false });
+  await call("ShopMetafields", { metafields: identifiers }, { record: false });
   await call("Collections", { first: 3 });
   // hand-written from here on where mock.shop has no data for what the apps decode: filters with swatches, a card with
   // swatches and a rating, a bundle variant with volume pricing

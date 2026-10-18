@@ -50,6 +50,7 @@ import app.storefront.data.BuyerCompany
 import app.storefront.data.Customer
 import app.storefront.data.Money
 import app.storefront.data.OrderSummary
+import app.storefront.data.Placement
 import app.storefront.data.Policy
 import app.storefront.data.Route
 import app.storefront.data.analyticsUser
@@ -61,6 +62,10 @@ import app.storefront.ui.account.creditBalances
 import app.storefront.ui.account.initials
 import app.storefront.ui.account.isSubscribed
 import app.storefront.ui.orders.OrderCard
+import app.storefront.ui.sections.SectionColumn
+import app.storefront.ui.sections.SectionEnv
+import app.storefront.ui.sections.rememberScreenSections
+import app.storefront.ui.sections.rememberSectionEnv
 import java.io.IOException
 import java.time.Instant
 import java.time.ZoneId
@@ -92,15 +97,20 @@ private suspend fun <T> optional(what: String, load: suspend () -> T): T? = try 
 /**
  * The Account tab. Signed out: what an account is for, "Sign in", and on the demo store "Preview with a sample account".
  * With an account (a signed-in customer, or the sample one): the customer, their company, store credit and latest order,
- * and the ways on (orders, profile, addresses, wishlist, policies, help).
+ * and the ways on (orders, profile, addresses, wishlist, policies, help). The store's sections (screens v2) go above
+ * and below either.
  */
 @Composable
 fun AccountScreen(nav: NavController) {
-    Scaffold(topBar = { ArgonTopBar("Account") }) { padding ->
+    // screens v2: the store's sections above and below the account's own content, signed in or not
+    val sections = rememberScreenSections("account")
+    val env = rememberSectionEnv(sections, { nav.open(it) })
+    val placement = sections?.placement
+    Scaffold(topBar = { ArgonTopBar("Account", leading = nav.tabLeading("account")) }) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             val hasAccount by AppGraph.hasAccount.collectAsState()
             // not kept: a new order shows on the next visit, and nothing of this customer outlives a sign-out
-            if (hasAccount) Loader(::loadAccount, keep = false) { SignedIn(it, nav) } else SignedOut(nav)
+            if (hasAccount) Loader(::loadAccount, keep = false) { SignedIn(it, nav, placement, env) } else SignedOut(nav, placement, env)
         }
     }
 }
@@ -111,7 +121,7 @@ private suspend fun loadPolicies(): List<Policy> = optional("policies") { AppGra
 // Signed out
 
 @Composable
-private fun SignedOut(nav: NavController) {
+private fun SignedOut(nav: NavController, sections: Placement?, env: SectionEnv?) {
     val spacing = ArgonTheme.spacing
     val context = LocalContext.current
     val screen = rememberCoroutineScope()
@@ -139,6 +149,7 @@ private fun SignedOut(nav: NavController) {
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(vertical = spacing.l)) {
+        SectionColumn(sections?.above.orEmpty(), env, Modifier.padding(bottom = spacing.l))
         Text(
             "Your account",
             Modifier.padding(horizontal = spacing.l).semantics { heading() },
@@ -169,7 +180,9 @@ private fun SignedOut(nav: NavController) {
         val policies by produceState(emptyList<Policy>()) { value = loadPolicies() }
         StoreRows(policies, nav)
         DebugRows(nav)
+        NotificationsSwitch(Modifier.padding(start = spacing.l, end = spacing.l, top = spacing.l))
         Privacy(Modifier.padding(spacing.l))
+        SectionColumn(sections?.below.orEmpty(), env, Modifier.padding(top = spacing.l))
     }
 }
 
@@ -239,7 +252,7 @@ private suspend fun loadAccount(): Account = coroutineScope {
 }
 
 @Composable
-private fun SignedIn(account: Account, nav: NavController) {
+private fun SignedIn(account: Account, nav: NavController, sections: Placement?, env: SectionEnv?) {
     val spacing = ArgonTheme.spacing
     val customer = account.customer
     val sample by AppGraph.sampleAccount.collectAsState()
@@ -247,6 +260,7 @@ private fun SignedIn(account: Account, nav: NavController) {
     val company by AppGraph.buyer.company.collectAsState()
     val gutter = Modifier.padding(horizontal = spacing.l)
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(vertical = spacing.l), verticalArrangement = Arrangement.spacedBy(spacing.l)) {
+        SectionColumn(sections?.above.orEmpty(), env)
         if (sample) ArgonTag("Sample account: nothing is saved", gutter, style = ArgonTagStyle.Info)
         AccountHeader(customer, gutter)
         company?.let { CompanyCard(it, gutter) }
@@ -275,12 +289,14 @@ private fun SignedIn(account: Account, nav: NavController) {
             )
             DebugRows(nav)
         }
+        NotificationsSwitch(gutter)
         Privacy(gutter)
         Column(gutter, verticalArrangement = Arrangement.spacedBy(spacing.s)) {
             ArgonButton("Sign out", style = ArgonButtonStyle.Secondary, fullWidth = true) { signOut() }
             // no API deletes a customer account, so the store's contact page takes the request (Apple and Google require the entry)
             ArgonButton("Delete account", style = ArgonButtonStyle.Tertiary, fullWidth = true) { nav.open(contactRoute()) }
         }
+        SectionColumn(sections?.below.orEmpty(), env)
     }
 }
 

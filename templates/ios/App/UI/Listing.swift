@@ -230,6 +230,8 @@ struct ListingView: View {
     let onOpen: (Route) -> Void
     var description = ""
     var template = AppGraph.collectionTemplate
+    /// The screen's sections (screens v2), at the top of what scrolls over the grid.
+    var above: AnyView? = nil
     @State private var sortOpen = false
     // the filter sheet: closed (nil), or open at the filter with this id ("": at its top)
     @State private var filtersAt: String? = nil
@@ -304,9 +306,10 @@ struct ListingView: View {
 
     private func heading(_ active: [ActiveFilter], _ count: String?) -> AnyView? {
         let described = !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        if !described && active.isEmpty && count == nil { return nil }
+        if above == nil && !described && active.isEmpty && count == nil { return nil }
         let l = listing
         return AnyView(VStack(alignment: .leading, spacing: theme.spacing.s) {
+            if let above = above { above }
             if described { Description(text: description, expanded: readMore) { readMore = true } }
             if !active.isEmpty {
                 ActiveFilters(

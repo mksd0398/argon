@@ -51,6 +51,7 @@ final class WishlistModel {
 @MainActor
 struct WishlistView: View {
     @State private var model = WishlistModel(fetch: fetchCards)
+    @State private var screen = ScreenSlot("wishlist")
     @Environment(Router.self) private var router
     @Environment(\.argonTheme) private var theme
 
@@ -65,7 +66,10 @@ struct WishlistView: View {
                     hasNext: model.error != nil,
                     onLoadMore: { retry() },
                     onOpen: { router.open(.product($0.handle)) },
-                    error: model.error
+                    error: model.error,
+                    // the store's wishlist screen (screens v2): its sections above and below the cards
+                    header: part(.above),
+                    footer: part(.below)
                 )
             } else if let error = model.error {
                 ErrorView(message: error) { retry() }
@@ -83,6 +87,12 @@ struct WishlistView: View {
         .background(theme.colors.paper)
         .argonTopBar(title: "Wishlist")
         .task(id: ids) { await model.sync(ids) }
+        .task { await screen.load() }
+    }
+
+    private func part(_ part: ScreenSections.Part) -> AnyView? {
+        guard ScreenSections.has(screen, part) else { return nil }
+        return AnyView(ScreenSections(slot: screen, part: part).padding(.horizontal, -theme.spacing.l))
     }
 
     private func retry() {

@@ -351,7 +351,8 @@ class StorefrontApiTest {
             listOf(
                 MenuItem("Tee", Route.Product("tee"), emptyList()),
                 MenuItem("Sale", Route.Collection("sale"), listOf(MenuItem("Story", Route.Web("https://shop.test/blogs/news/story"), emptyList()))),
-                MenuItem("FAQ", Route.Web("https://shop.test/pages/faq"), emptyList()),
+                // a page opens in the app (screens v2)
+                MenuItem("FAQ", Route.Page("faq"), emptyList()),
             ),
             menuTree(menu.items, setOf("shop.test")),
         )
