@@ -624,12 +624,13 @@ final class FixtureTests: XCTestCase {
         XCTAssertEqual(shipping.itemCount, 4)
         XCTAssertEqual(shipping.latestShipmentStatus, "IN_TRANSIT")
         XCTAssertEqual(shipping.estimatedDeliveryAt, "2026-10-14T18:00:00Z")
-        XCTAssertNil(shipping.latestFulfillmentDeliveryDate, "not delivered yet")
+        XCTAssertNil(shipping.deliveredAt, "not delivered yet")
 
         let delivered = page.items[1]
         XCTAssertEqual(delivered.latestShipmentStatus, "DELIVERED")
         XCTAssertNil(delivered.estimatedDeliveryAt)
-        XCTAssertEqual(delivered.latestFulfillmentDeliveryDate, "2026-09-25T13:05:00Z")
+        XCTAssertEqual(delivered.deliveredAt, "2026-09-25T13:05:00Z")
+        XCTAssertEqual(delivered.itemCount, 4, "summed over its lines")
         XCTAssertEqual(delivered.images.count, 3)
 
         XCTAssertNil(page.items[2].latestShipmentStatus, "nothing has shipped")
@@ -738,7 +739,6 @@ final class FixtureTests: XCTestCase {
         XCTAssertEqual(returned.status, "CLOSED")
         XCTAssertEqual(returned.createdAt, "2026-09-27T17:20:00Z")
         XCTAssertEqual(returned.closedAt, "2026-10-02T10:15:00Z")
-        XCTAssertNil(returned.decline)
         XCTAssertEqual(returned.lines.count, 1)
         let returnLine = try XCTUnwrap(returned.lines.first)
         XCTAssertEqual(returnLine.id, "gid://shopify/ReturnLineItem/3100001")
@@ -838,7 +838,7 @@ final class FixtureTests: XCTestCase {
         XCTAssertEqual(options.fees, [
             ReturnFee(kind: "ReturnShippingFee", title: "Return shipping", amount: Money(amount: "8.0", currencyCode: "CAD")),
         ])
-        XCTAssertEqual(options.nonReturnableSummary, "Sweatpants were already returned.")
+        XCTAssertEqual(options.nonReturnableSummary, "Some items were already returned.")
 
         XCTAssertEqual(options.returnableItems.map { $0.lineItemId }, ["gid://shopify/LineItem/5000001", "gid://shopify/LineItem/5000003"])
         let item = try XCTUnwrap(options.returnableItems.first)

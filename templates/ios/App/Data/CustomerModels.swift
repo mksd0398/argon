@@ -95,28 +95,26 @@ struct OrderSummary: Equatable, Sendable {
     var latestShipmentStatus: String? = nil
     /// When the newest shipment should arrive.
     var estimatedDeliveryAt: String? = nil
-    /// When the newest shipment was delivered.
-    var latestFulfillmentDeliveryDate: String? = nil
+    /// When the newest shipment was delivered; nil until it was.
+    var deliveredAt: String? = nil
 }
 
 extension OrderSummary: Decodable {
     private enum CodingKeys: String, CodingKey {
         case id, name, number, processedAt, financialStatus, fulfillmentStatus, cancelledAt, totalPrice, lineItems
-        case lineItemsSummary, fulfillments, latestFulfillmentDeliveryDate
+        case fulfillments
     }
 
     private struct Line: Decodable {
         let title: String?
+        let quantity: Int?
         let image: Img?
-    }
-
-    private struct Summary: Decodable {
-        let totalQuantityOfLineItems: Int?
     }
 
     private struct Shipment: Decodable {
         let latestShipmentStatus: String?
         let estimatedDeliveryAt: String?
+        let updatedAt: String?
     }
 
     init(from decoder: Decoder) throws {
@@ -132,12 +130,13 @@ extension OrderSummary: Decodable {
             fulfillmentStatus: c.decodeIfPresent(String.self, forKey: .fulfillmentStatus),
             cancelledAt: c.decodeIfPresent(String.self, forKey: .cancelledAt),
             total: c.decode(Money.self, forKey: .totalPrice),
-            images: lines.compactMap { $0.image },
-            titles: lines.compactMap { $0.title },
-            itemCount: c.decodeIfPresent(Summary.self, forKey: .lineItemsSummary)?.totalQuantityOfLineItems,
+            images: lines.prefix(3).compactMap { $0.image },
+            titles: lines.prefix(3).compactMap { $0.title },
+            // ponytail: sums the first 50 lines (Orders.graphql), so an order of more lines undercounts. Upgrade: page lineItems.
+            itemCount: lines.reduce(0) { $0 + ($1.quantity ?? 0) },
             latestShipmentStatus: shipments.first?.latestShipmentStatus,
             estimatedDeliveryAt: shipments.first?.estimatedDeliveryAt,
-            latestFulfillmentDeliveryDate: c.decodeIfPresent(String.self, forKey: .latestFulfillmentDeliveryDate)
+            deliveredAt: shipments.first.flatMap { $0.latestShipmentStatus == "DELIVERED" ? $0.updatedAt : nil }
         )
     }
 }
@@ -511,12 +510,6 @@ extension ReturnableItem: Decodable {
     }
 }
 
-/// Why the store declined a return.
-struct ReturnDecline: Decodable, Equatable, Sendable {
-    let reason: String?
-    let note: String?
-}
-
 /// An item going back on a return: `quantity` of an order line, and the reason given.
 struct ReturnLine: Equatable, Sendable {
     let id: String
@@ -576,14 +569,13 @@ struct OrderReturn: Equatable, Sendable {
     let status: String
     var createdAt: String? = nil
     var closedAt: String? = nil
-    var decline: ReturnDecline? = nil
     var lines: [ReturnLine] = []
     var exchangeLines: [ExchangeLine] = []
 }
 
 extension OrderReturn: Decodable {
     private enum CodingKeys: String, CodingKey {
-        case id, name, status, createdAt, closedAt, decline, returnLineItems, exchangeLineItems
+        case id, name, status, createdAt, closedAt, returnLineItems, exchangeLineItems
     }
 
     init(from decoder: Decoder) throws {
@@ -594,7 +586,6 @@ extension OrderReturn: Decodable {
             status: c.decode(String.self, forKey: .status),
             createdAt: c.decodeIfPresent(String.self, forKey: .createdAt),
             closedAt: c.decodeIfPresent(String.self, forKey: .closedAt),
-            decline: c.decodeIfPresent(ReturnDecline.self, forKey: .decline),
             lines: c.nodes(.returnLineItems),
             exchangeLines: c.nodes(.exchangeLineItems)
         )
@@ -643,7 +634,7 @@ struct OrderReturnOptions: Equatable, Sendable {
     /// The store's words about sending the items back.
     var returnShippingMethodNote: String? = nil
     var fees: [ReturnFee] = []
-    /// Why some of the order can't be returned, in the store's words.
+    /// Why some of the order can't be returned.
     var nonReturnableSummary: String? = nil
 }
 
@@ -658,12 +649,15 @@ extension OrderReturnOptions: Decodable {
     }
 
     private struct Summary: Decodable {
-        let summaryMessage: String?
+        let nonReturnableReasons: [String]?
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         let information = try c.nestedContainer(keyedBy: InformationKeys.self, forKey: .returnInformation)
+        let reasons = try information.decodeIfPresent(Summary.self, forKey: .nonReturnableSummary)?.nonReturnableReasons ?? []
+        var notes: [String] = []
+        for note in reasons.map(nonReturnableReason) where !notes.contains(note) { notes.append(note) }
         try self.init(
             orderId: c.decode(String.self, forKey: .id),
             returnableItems: information.nodes(.returnableLineItems),
@@ -674,8 +668,19 @@ extension OrderReturnOptions: Decodable {
             returnShippingMethods: information.decodeIfPresent([String].self, forKey: .returnShippingMethods) ?? [],
             returnShippingMethodNote: information.decodeIfPresent(String.self, forKey: .returnShippingMethodNote),
             fees: information.decodeIfPresent([ReturnFee].self, forKey: .returnFees) ?? [],
-            nonReturnableSummary: information.decodeIfPresent(Summary.self, forKey: .nonReturnableSummary)?.summaryMessage
+            nonReturnableSummary: notes.isEmpty ? nil : notes.joined(separator: " ")
         )
+    }
+}
+
+/// Why some of an order can't be returned, from one of Shopify's NonReturnableReason values.
+func nonReturnableReason(_ reason: String) -> String {
+    switch reason {
+    case "RETURNED": return "Some items were already returned."
+    case "FINAL_SALE": return "Final sale items can't be returned."
+    case "RETURN_WINDOW_EXPIRED": return "The return window has closed."
+    case "UNFULFILLED": return "Items that haven't shipped can't be returned yet."
+    default: return "Some items can't be returned."
     }
 }
 

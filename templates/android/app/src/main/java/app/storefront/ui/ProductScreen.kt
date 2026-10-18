@@ -88,11 +88,9 @@ import app.storefront.ui.product.visibleOptions
 import java.io.IOException
 import java.util.logging.Logger
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 // The product page: this file is its shell (top bar, the list of blocks, the sticky bar) and its state; the blocks are in
 // ui/product/, one file per group, each with the plain functions that decide what it shows.
@@ -407,9 +405,7 @@ private fun share(context: Context, product: Product) {
 /** "Buy now", after the add: Shopify's checkout for the cart, opened as the cart screen opens it. */
 private suspend fun openCheckout(host: ComponentActivity) {
     val url = AppGraph.cart.checkoutUrl() ?: return
-    withContext(Dispatchers.Main) {
-        if (!host.isFinishing && !host.isDestroyed) presentCheckout(url, host) { AppGraph.toast.show(it) }
-    }
+    presentCheckout(url, host) { AppGraph.toast.show(it) }
 }
 
 /** The blocks in one lazy list, in [ProductBlock]'s order, with the overlays they open (the image viewer, the review sheet). */
