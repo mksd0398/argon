@@ -672,3 +672,29 @@ test("xtoolFiles: the display name is XML-escaped", () => {
   assert.ok(files["xtool.yml"].endsWith("- App/Resources/queries/Shop.graphql\n"));
   assert.ok(files["xtool.yml"].includes("\niconPath: App/Assets.xcassets/AppIcon.appiconset/AppIcon.png\n"));
 });
+
+test("Krypton: a settings URL and a customer redirect are written, and no server/ (the backend reports purchases)", async () => {
+  const cwd = mkdtempSync(join(tmpdir(), "argon-test-"));
+  try {
+    const dir = join(cwd, "krypton-app");
+    await scaffold({
+      dir, appName: "Nalli", bundleId: "com.nalli.app", shopDomain: "nalli.myshopify.com", token: "t", clientId: "0123456789abcdef0123456789abcdef", shopId: "1",
+      metaAppId: "123", metaClientToken: "abc",
+      settingsUrl: "https://k.web.app/v1/settings/nalli.myshopify.com", customerRedirectUri: "https://k.web.app/customer-account/callback",
+    });
+    const props = readFileSync(join(dir, "android/shopify.properties"), "utf8").split("\n");
+    assert.ok(props.includes("SETTINGS_URL=https://k.web.app/v1/settings/nalli.myshopify.com"));
+    assert.ok(props.includes("CUSTOMER_REDIRECT_URI=https://k.web.app/customer-account/callback"));
+    // xcconfig keeps the two slashes of a URL with /$()/
+    const xcconfig = readFileSync(join(dir, "ios/Config.xcconfig"), "utf8").split("\n");
+    assert.ok(xcconfig.includes("SETTINGS_URL = https:/$()/k.web.app/v1/settings/nalli.myshopify.com"));
+    assert.ok(!existsSync(join(dir, "server")), "Meta's purchase goes through the backend, not server/");
+
+    const plain = join(cwd, "argon-app");
+    await scaffold({ dir: plain, appName: "Nalli", bundleId: "com.nalli.app", shopDomain: "nalli.myshopify.com", token: "t", clientId: "", shopId: "1" });
+    const plainProps = readFileSync(join(plain, "android/shopify.properties"), "utf8").split("\n");
+    assert.ok(plainProps.includes("SETTINGS_URL=") && plainProps.includes("CUSTOMER_REDIRECT_URI="), "empty without Krypton");
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
