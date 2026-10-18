@@ -1,10 +1,10 @@
 package app.storefront.ui
 
 import android.text.method.LinkMovementMethod
+import android.view.Gravity
 import android.widget.TextView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -90,7 +90,7 @@ fun StoreImage(
 @Composable
 fun StatusBarIcons(light: Boolean) {
     val view = LocalView.current
-    val dark = isSystemInDarkTheme()
+    val dark = isAppDark()
     DisposableEffect(view, light, dark) {
         val bars = view.context.componentActivity()?.window?.let { WindowCompat.getInsetsController(it, view) }
         // "light status bars" is the system's name for a light background: dark icons
@@ -258,9 +258,12 @@ private val STYLE_BLOCKS = Regex("""<(style|script)\b[^>]*>.*?</\1\s*>""", setOf
 /** [html] without its `<style>` and `<script>` blocks: the renderer would show their CSS and code as words. */
 internal fun withoutStyleBlocks(html: String): String = html.replace(STYLE_BLOCKS, "")
 
-/** The merchant's HTML (a product description, a policy) through the platform's HTML renderer: paragraphs, lists, bold, links. */
+/**
+ * The merchant's HTML (a product description, a policy, a section's rich text) through the platform's HTML renderer:
+ * paragraphs, lists, bold, links. [centered]: each line centred (a section's `alignment`).
+ */
 @Composable
-fun HtmlText(html: String, modifier: Modifier = Modifier) {
+fun HtmlText(html: String, modifier: Modifier = Modifier, centered: Boolean = false) {
     if (html.isBlank()) return
     val color = ArgonTheme.colors.ink.toArgb()
     val linkColor = ArgonTheme.colors.accent.toArgb()
@@ -276,6 +279,7 @@ fun HtmlText(html: String, modifier: Modifier = Modifier) {
         update = {
             it.setTextColor(color)
             it.setLinkTextColor(linkColor)
+            it.gravity = if (centered) Gravity.CENTER_HORIZONTAL else Gravity.START
             it.text = HtmlCompat.fromHtml(withoutStyleBlocks(html), HtmlCompat.FROM_HTML_MODE_COMPACT).trimEnd()
         },
         modifier = modifier.fillMaxWidth(),

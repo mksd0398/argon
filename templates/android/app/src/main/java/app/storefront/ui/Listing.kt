@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -224,7 +225,8 @@ private val PillClearance = 80.dp
  * and empty states of [l]. Over the grid, scrolling with it: the [description] (three lines, "Read more"), the selected
  * filters as removable tags with "Clear all", and in the `bottom` template the result count. The sort and filter
  * controls are a bar pinned over the grid (`top`) or a pill floating over its bottom edge (`bottom`); both open the same
- * sort and filter sheets. Filters show only when the list offers any (the whole catalogue has none).
+ * sort and filter sheets. Filters show only when the list offers any (the whole catalogue has none). [above]: items over
+ * all that, scrolling with the grid (a screen's sections, screens v2).
  */
 @Composable
 fun ListingView(
@@ -233,6 +235,7 @@ fun ListingView(
     onOpen: (Route) -> Unit,
     description: String = "",
     template: CollectionTemplate = AppGraph.collectionTemplate,
+    above: LazyGridScope.() -> Unit = {},
 ) {
     val spacing = ArgonTheme.spacing
     var sortOpen by remember { mutableStateOf(false) }
@@ -273,6 +276,7 @@ fun ListingView(
                     loadKey = l.pagesLoaded,
                     contentPadding = PaddingValues(start = spacing.l, top = spacing.l, end = spacing.l, bottom = if (bottom) PillClearance else spacing.l),
                     header = header,
+                    above = above,
                 )
             } else {
                 // no products (yet): the header stays, so a filter that leaves nothing can be taken off again

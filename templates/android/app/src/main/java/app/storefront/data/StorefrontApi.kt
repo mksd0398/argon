@@ -251,6 +251,36 @@ class StorefrontApi(private val execute: suspend (String, JsonObject) -> JsonObj
     /** The first collections, each with its first products: the home of a store without a `mobile_screen`. */
     suspend fun fallbackHome(): List<CollectionCard> = run<List<CollectionCard>?>("FallbackHome", vars(), "collections", "nodes").orEmpty()
 
+    // Screens v2
+
+    /** The `app_screen` metaobject [handle] (a screen: `home`, `product`, ..., or a custom page's); null when there is none. */
+    suspend fun appScreen(handle: String): AppScreen? =
+        run<AppScreenNode?>("AppScreen", vars("handle" to handle), "metaobject")?.let { AppScreen(it.id, it.handle ?: handle, it.title?.value.orEmpty(), it.template?.value, it.updatedAt) }
+
+    /**
+     * The products and collections with these GIDs (a screen's sections, [sectionNodeIds]), by id; ids that are neither
+     * (any more) are left out. No request without ids.
+     */
+    suspend fun sectionNodes(ids: List<String>): SectionNodes {
+        if (ids.isEmpty()) return SectionNodes()
+        // ponytail: one request of up to 250 ids (the API's ceiling); a screen with more drops the rest
+        val nodes = run<List<Reference?>>("SectionNodes", vars("ids" to encode(ids.take(250))), "nodes").filterNotNull()
+        return SectionNodes(nodes.filterIsInstance<ProductCard>().associateBy { it.id }, nodes.filterIsInstance<CollectionCard>().associateBy { it.id })
+    }
+
+    /** The metafields among [identifiers] the collection has a value for; none (and no request) without identifiers. */
+    suspend fun collectionMetafields(handle: String, identifiers: List<MetafieldIdentifier>): List<Metafield> {
+        if (identifiers.isEmpty()) return emptyList()
+        return run<List<Metafield?>?>("CollectionMetafields", vars("handle" to handle, "metafields" to encode(identifiers)), "collection", "metafields")
+            .orEmpty().filterNotNull()
+    }
+
+    /** The metafields among [identifiers] the shop has a value for; none (and no request) without identifiers. */
+    suspend fun shopMetafields(identifiers: List<MetafieldIdentifier>): List<Metafield> {
+        if (identifiers.isEmpty()) return emptyList()
+        return run<List<Metafield?>?>("ShopMetafields", vars("metafields" to encode(identifiers)), "shop", "metafields").orEmpty().filterNotNull()
+    }
+
     // Cart
 
     /** Null when Shopify no longer has the cart (expired, or checked out). */
@@ -312,6 +342,13 @@ class StorefrontApi(private val execute: suspend (String, JsonObject) -> JsonObj
         return cart
     }
 }
+
+// AppScreen's metaobject: its two fields by alias
+@Serializable
+private class AppScreenNode(val id: String, val handle: String? = null, val updatedAt: String? = null, val title: FieldValue? = null, val template: FieldValue? = null)
+
+@Serializable
+private class FieldValue(val value: String? = null)
 
 private fun Map<String, String>.selected() = map { (name, value) -> SelectedOption(name, value) }
 

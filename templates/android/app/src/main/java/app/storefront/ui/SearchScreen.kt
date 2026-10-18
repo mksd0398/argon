@@ -36,6 +36,9 @@ import app.storefront.data.Page
 import app.storefront.data.ProductCard
 import app.storefront.data.Route
 import app.storefront.data.analyticsItem
+import app.storefront.ui.sections.rememberScreenSections
+import app.storefront.ui.sections.rememberSectionEnv
+import app.storefront.ui.sections.sectionItems
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 
@@ -82,16 +85,20 @@ private suspend fun loadSuggestions(query: String): Suggestions {
 
 /**
  * Search (`search?q=`): the field in the top bar, suggestions while typing (queries, collections, products), and the
- * results of a submitted query in the store's collection template ([ListingView], with search's own sorts).
+ * results of a submitted query in the store's collection template ([ListingView], with search's own sorts). [isTab]: the
+ * root of the settings' search tab, without a way back.
  */
 @Composable
-fun SearchScreen(initial: String, nav: NavController) {
+fun SearchScreen(initial: String, nav: NavController, isTab: Boolean = false) {
     val model = viewModel<SearchModel>(factory = viewModelFactory { initializer { SearchModel(initial) } })
     val focus = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     var suggestions by remember { mutableStateOf<Suggestions?>(null) }
     var failure by remember { mutableStateOf<String?>(null) }
     val showResults = model.submitted != null && model.text.trim() == model.submitted
+    // screens v2: the store's sections over the results
+    val sections = rememberScreenSections("search")
+    val env = rememberSectionEnv(sections, { nav.open(it) })
 
     fun submit(query: String) {
         model.submit(query)
@@ -125,7 +132,7 @@ fun SearchScreen(initial: String, nav: NavController) {
                 "Search products",
                 Modifier.focusRequester(focus).padding(bottom = ArgonTheme.spacing.s),
                 variant = ArgonTopBarVariant.Search,
-                leading = listOf(nav.backAction()),
+                leading = if (isTab) emptyList() else listOf(nav.backAction()),
                 trailing = if (model.text.isEmpty()) emptyList() else listOf(ArgonTopBarAction(ArgonIconName.Close, "Clear") { model.text = "" }),
                 searchText = model.text,
                 onSearchTextChange = { model.text = it },
@@ -135,7 +142,12 @@ fun SearchScreen(initial: String, nav: NavController) {
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             if (showResults) {
-                ListingView(model.listing, "No products match \"${model.submitted}\".", { nav.open(it) })
+                ListingView(
+                    model.listing,
+                    "No products match \"${model.submitted}\".",
+                    { nav.open(it) },
+                    above = { sectionItems(sections?.placement?.above.orEmpty(), env, ArgonTheme.spacing.l) },
+                )
             } else {
                 LazyColumn(Modifier.fillMaxSize()) {
                     failure?.let { item { Text(it, Modifier.padding(ArgonTheme.spacing.l), style = ArgonTheme.type.body, color = ArgonTheme.colors.sale) } }

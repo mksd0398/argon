@@ -689,6 +689,7 @@ test("push: Firebase Messaging, the iOS push entitlement and the devices URL, on
     assert.equal(project.match(/CODE_SIGN_ENTITLEMENTS = App\/App\.entitlements;/g).length, 2, "the app target's Debug and Release, not the tests");
     assert.match(readFileSync(join(dir, "ios/Package.swift"), "utf8"), /\.product\(name: "FirebaseMessaging", package: "firebase-ios-sdk"\)/);
     assert.match(readFileSync(join(dir, "ios/xtool.yml"), "utf8"), /\nentitlementsPath: App\/App\.entitlements\n/);
+    assert.match(readFileSync(join(dir, "ios/Package.swift"), "utf8"), /"GoogleService-Info\.plist", "App\.entitlements"/, "not one of the target's sources");
 
     const plain = join(cwd, "plain-app");
     await scaffold({ ...base, dir: plain });

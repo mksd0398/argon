@@ -11,7 +11,9 @@ read from the store, so a merchant (through Krypton, or Shopify's own metaobject
 adds sections above and below the product, collection, cart, search, account, orders and wishlist screens, and makes
 pages of their own, with no release. The native code is the section catalogue; the store holds the layout.
 
-Old apps and stores keep working: a screen without a v2 template is drawn exactly as today.
+Old apps and stores keep working: a screen without a v2 template is drawn exactly as today. The one change every
+store sees is the link rules (*Links*): `/pages/x`, `/cart`, `/account`, `/wishlist` and `/` open in the app instead
+of the browser (a page with no body text, such as one built from theme sections, still opens in the browser).
 
 ## Where screens live
 

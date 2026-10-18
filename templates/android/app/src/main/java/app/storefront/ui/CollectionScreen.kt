@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModel
@@ -15,14 +16,20 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.navigation.NavController
+import app.argon.ui.ArgonTheme
 import app.argon.ui.components.ArgonIconName
 import app.argon.ui.components.ArgonTopBar
 import app.argon.ui.components.ArgonTopBarAction
 import app.storefront.AppGraph
 import app.storefront.data.AnalyticsEvent
 import app.storefront.data.Route
+import app.storefront.data.ScreenContext
 import app.storefront.data.analyticsItem
+import app.storefront.data.collectionFilters
 import app.storefront.data.gidTail
+import app.storefront.ui.sections.rememberScreenSections
+import app.storefront.ui.sections.rememberSectionEnv
+import app.storefront.ui.sections.sectionItems
 
 /**
  * One collection's products. Handle "all" is the whole catalogue: Storefront has no `collection(handle: "all")`, so it
@@ -63,12 +70,19 @@ class CollectionModel(private val handle: String) : ViewModel() {
 
 /**
  * A collection (`collection/{handle}`): its title in the top bar with search and the cart, and its products in the
- * store's collection template ([ListingView]).
+ * store's collection template ([ListingView]), under the store's sections for it (screens v2).
  */
 @Composable
 fun CollectionScreen(handle: String, nav: NavController) {
     val model = viewModel<CollectionModel>(factory = viewModelFactory { initializer { CollectionModel(handle) } })
     val cart by AppGraph.cart.cart.collectAsState()
+    // screens v2: the store's sections over the grid, and its choice of where sort and filter go
+    val sections = rememberScreenSections("collection", collection = handle)
+    val placement = sections?.placement
+    val liquid = remember(handle, model.title, model.description, sections) {
+        ScreenContext.collection(handle, model.title, model.description, sections?.ownMetafields.orEmpty())
+    }
+    val env = rememberSectionEnv(sections, { nav.open(it) }, collection = liquid)
     Scaffold(
         topBar = {
             ArgonTopBar(
@@ -83,7 +97,14 @@ fun CollectionScreen(handle: String, nav: NavController) {
         },
     ) { padding ->
         Box(Modifier.padding(padding)) {
-            ListingView(model.listing, "No products in this collection.", { nav.open(it) }, description = model.description)
+            ListingView(
+                model.listing,
+                "No products in this collection.",
+                { nav.open(it) },
+                description = model.description,
+                template = collectionFilters(placement?.main) ?: AppGraph.collectionTemplate,
+                above = { sectionItems(placement?.above.orEmpty(), env, ArgonTheme.spacing.l) },
+            )
         }
     }
 }

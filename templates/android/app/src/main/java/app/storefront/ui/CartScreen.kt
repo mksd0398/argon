@@ -74,6 +74,7 @@ import app.storefront.data.CartLine
 import app.storefront.data.CartLineComponent
 import app.storefront.data.Money
 import app.storefront.data.PASSWORD_PROTECTED_CHECKOUT
+import app.storefront.data.Placement
 import app.storefront.data.ProductCard
 import app.storefront.data.QuantityRule
 import app.storefront.data.Route
@@ -83,6 +84,10 @@ import app.storefront.data.isStorePage
 import app.storefront.data.passwordProtected
 import app.storefront.data.purchase
 import app.storefront.data.viewCart
+import app.storefront.ui.sections.SectionEnv
+import app.storefront.ui.sections.rememberScreenSections
+import app.storefront.ui.sections.rememberSectionEnv
+import app.storefront.ui.sections.sectionItems
 import com.shopify.checkoutsheetkit.CheckoutException
 import com.shopify.checkoutsheetkit.CheckoutExpiredException
 import com.shopify.checkoutsheetkit.CheckoutSheetKitDialog
@@ -142,6 +147,8 @@ internal suspend fun presentCheckout(url: String, host: ComponentActivity, onErr
         override fun onCheckoutCompleted(checkoutCompletedEvent: CheckoutCompletedEvent) {
             AppGraph.analytics.track(purchase(checkoutCompletedEvent.orderDetails))
             AppGraph.scope.launch { AppGraph.cart.completed() }
+            // push: the one offer to turn notifications on comes after a first purchase
+            AppGraph.push?.purchased()
         }
 
         override fun onWebPixelEvent(event: PixelEvent) {
@@ -225,7 +232,8 @@ internal fun suggestions(recommended: List<ProductCard>, cart: Cart?): List<Prod
 
 /**
  * The Cart tab: one scrolling list (free-shipping progress, the lines, the discount code, "You may also like") over a
- * pinned summary with "Checkout"; an empty cart offers "Start shopping".
+ * pinned summary with "Checkout", with the store's sections (screens v2) at the top and the end of the list; an empty
+ * cart offers "Start shopping".
  */
 @Composable
 fun CartScreen(nav: NavController) {
@@ -237,6 +245,9 @@ fun CartScreen(nav: NavController) {
     var loading by remember { mutableStateOf(true) }
     var failure by remember { mutableStateOf<String?>(null) }
     var attempt by remember { mutableIntStateOf(0) }
+    // screens v2: the store's sections above and below the cart's own content
+    val sections = rememberScreenSections("cart")
+    val env = rememberSectionEnv(sections, { nav.open(it) })
 
     // The app loaded the cart at start; load again on each visit so the screen is current (and Retry has something to run).
     LaunchedEffect(attempt) {
@@ -298,7 +309,7 @@ fun CartScreen(nav: NavController) {
     }
 
     Scaffold(
-        topBar = { ArgonTopBar("Cart") },
+        topBar = { ArgonTopBar("Cart", leading = nav.tabLeading("cart")) },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
         // imePadding: typing a discount code, the list ends at the keyboard
@@ -312,6 +323,8 @@ fun CartScreen(nav: NavController) {
                     onOpen = { nav.open(it) },
                     onQuantity = { line, quantity -> act(AppGraph.scope) { AppGraph.cart.update(line.id, quantity) } },
                     onCheckout = { activity?.let(::checkout) },
+                    sections = sections?.placement,
+                    env = env,
                 )
                 loading && current == null -> Spinner()
                 error != null && current == null -> ErrorView(error) { attempt++ }
@@ -333,13 +346,22 @@ private fun EmptyCart() = Column(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun CartContent(cart: Cart, busy: Boolean, onOpen: (Route) -> Unit, onQuantity: (CartLine, Int) -> Unit, onCheckout: () -> Unit) {
+private fun CartContent(
+    cart: Cart,
+    busy: Boolean,
+    onOpen: (Route) -> Unit,
+    onQuantity: (CartLine, Int) -> Unit,
+    onCheckout: () -> Unit,
+    sections: Placement? = null,
+    env: SectionEnv? = null,
+) {
     val spacing = ArgonTheme.spacing
     val gutter = Modifier.padding(horizontal = spacing.l)
     val shipping = freeShipping(cart.total, AppGraph.freeShippingThreshold, shopCurrency())
     val alsoLike = alsoLike(cart)
     Column(Modifier.fillMaxSize()) {
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.l), contentPadding = PaddingValues(vertical = spacing.l)) {
+            sectionItems(sections?.above.orEmpty(), env)
             if (shipping != null) item(key = "free-shipping") { FreeShippingBar(shipping, gutter) }
             items(cart.lines, key = { it.id }) { line -> CartLineRow(line, busy, gutter) { onQuantity(line, it) } }
             item(key = "discount-code") { DiscountCode(cart, gutter) }
@@ -351,6 +373,7 @@ private fun CartContent(cart: Cart, busy: Boolean, onOpen: (Route) -> Unit, onQu
                     }
                 }
             }
+            sectionItems(sections?.below.orEmpty(), env)
         }
         // While the keyboard is up (the discount code) the list has the room; the summary is back when it is gone.
         if (!WindowInsets.isImeVisible) Summary(cartSummary(cart), busy, onCheckout)

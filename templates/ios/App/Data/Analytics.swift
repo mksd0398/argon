@@ -20,6 +20,16 @@ struct AnalyticsItem: Equatable, Sendable {
     var quantity = 1
 }
 
+/// A screen's section as Google Analytics 4's promotion (screens v2): `id` is the section's id, `name` its `track` name
+/// (else its type), `slot` `<screen>:<index>` (its place in the screen's template), `creative` the id of the block
+/// tapped, if any.
+struct Promotion: Equatable, Sendable {
+    let id: String
+    let name: String
+    let slot: String
+    var creative: String? = nil
+}
+
 /// What the shopper did, one case per event.
 enum AnalyticsEvent: Equatable, Sendable {
     case screenView(String)
@@ -44,6 +54,10 @@ enum AnalyticsEvent: Equatable, Sendable {
         items: [AnalyticsItem]
     )
     case login
+    /// A screen section came into view: once per section per visit of its screen.
+    case viewPromotion(Promotion)
+    /// A section's link, button, product or collection was tapped.
+    case selectPromotion(Promotion)
 
     /// Google Analytics 4's name for the event.
     var name: String {
@@ -61,6 +75,8 @@ enum AnalyticsEvent: Equatable, Sendable {
         case .addPaymentInfo: return "add_payment_info"
         case .purchase: return "purchase"
         case .login: return "login"
+        case .viewPromotion: return "view_promotion"
+        case .selectPromotion: return "select_promotion"
         }
     }
 
@@ -106,6 +122,11 @@ enum AnalyticsEvent: Equatable, Sendable {
             ])
         case .login:
             return []
+        case let .viewPromotion(promotion), let .selectPromotion(promotion):
+            return present([
+                "promotion_id": promotion.id, "promotion_name": promotion.name, "creative_name": promotion.creative,
+                "creative_slot": promotion.slot,
+            ])
         }
     }
 }

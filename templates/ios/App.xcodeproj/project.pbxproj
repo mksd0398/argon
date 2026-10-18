@@ -29,6 +29,19 @@
 		A7C0DE000000000000000009 /* AppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		A7C0DE000000000000000030 /* Exceptions for "AppTests" folder in "AppTests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Fixtures/liquid/cases.json,
+				Fixtures/screens/about.json,
+				Fixtures/screens/home.json,
+				Fixtures/screens/product.json,
+			);
+			target = A7C0DE000000000000000013 /* AppTests */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		A7C0DE00000000000000000A /* App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
@@ -37,6 +50,9 @@
 		};
 		A7C0DE00000000000000000B /* AppTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A7C0DE000000000000000030 /* Exceptions for "AppTests" folder in "AppTests" target */,
+			);
 			path = AppTests;
 			sourceTree = "<group>";
 		};

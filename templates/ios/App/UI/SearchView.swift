@@ -66,6 +66,7 @@ private func loadSuggestions(_ query: String) async throws -> Suggestions {
 @MainActor
 struct SearchView: View {
     @State private var model: SearchModel
+    @State private var screen = ScreenSlot("search")
     @State private var suggestions: Suggestions? = nil
     @State private var failure: String? = nil
     @State private var searching = false
@@ -80,7 +81,15 @@ struct SearchView: View {
         let typed = model.text.trimmingCharacters(in: .whitespacesAndNewlines)
         VStack(spacing: 0) {
             if let submitted = model.submitted, typed == submitted {
-                ListingView(listing: model.listing, emptyText: "No products match \"\(submitted)\".", onOpen: { router.open($0) })
+                ListingView(
+                    listing: model.listing,
+                    emptyText: "No products match \"\(submitted)\".",
+                    onOpen: { router.open($0) },
+                    // the store's search screen (screens v2): its sections over the results
+                    above: ScreenSections.has(screen, .above)
+                        ? AnyView(ScreenSections(slot: screen, part: .above).padding(.horizontal, -theme.spacing.l))
+                        : nil
+                )
             } else {
                 suggestionList
             }
@@ -90,6 +99,7 @@ struct SearchView: View {
         // the native field brings its own clear button
         .argonTopBar(variant: .search, title: "Search products", searchText: $model.text, isSearching: $searching)
         .onSubmit(of: .search) { model.submit(model.text) }
+        .task { await screen.load() }
         .task {
             model.start()
             // opened to type: the field has the keyboard

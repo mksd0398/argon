@@ -1,7 +1,8 @@
 import ArgonUI
 import SwiftUI
 
-/// Two-column grid of product cards, with `header` (when given) across both columns above them, scrolling with them.
+/// Two-column grid of product cards, with `header` and `footer` (when given) across both columns above and below them,
+/// scrolling with them.
 /// While `hasNext`, a footer spinner calls `onLoadMore` as it scrolls into view; if loading failed (`error`) the footer
 /// is the message and a Retry button instead. `loadKey` must change whenever a page arrives, even one that adds no items,
 /// or the footer would stall (the default, the item count, is enough for a list that only grows). `bottomPadding` is the
@@ -16,6 +17,8 @@ struct ProductGrid: View {
     var loadKey: Int? = nil
     var bottomPadding: CGFloat? = nil
     var header: AnyView? = nil
+    /// Across both columns under the cards.
+    var footer: AnyView? = nil
     @Environment(\.argonTheme) private var theme
 
     var body: some View {
@@ -30,16 +33,17 @@ struct ProductGrid: View {
                             ProductCardView(card: card) { onOpen(card) }
                         }
                     } footer: {
-                        if hasNext { footer.frame(maxWidth: .infinity).padding(theme.spacing.s) }
+                        if hasNext { loadMore.frame(maxWidth: .infinity).padding(theme.spacing.s) }
                     }
                 }
+                if let footer = self.footer { footer }
             }
             .padding([.horizontal, .top], theme.spacing.l)
             .padding(.bottom, bottomPadding ?? theme.spacing.l)
         }
     }
 
-    @ViewBuilder private var footer: some View {
+    @ViewBuilder private var loadMore: some View {
         if let error = error {
             VStack(spacing: theme.spacing.s) {
                 Text(error).font(theme.type.label).foregroundStyle(theme.colors.muted).multilineTextAlignment(.center)

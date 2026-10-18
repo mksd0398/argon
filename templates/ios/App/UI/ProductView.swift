@@ -351,8 +351,9 @@ private struct ShareSheet: UIViewControllerRepresentable {
     func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }
 
-/// The blocks in one scrolling column, in `ProductBlock`'s order, over the sticky bar, with the overlays they open (the
-/// image viewer, the review sheet, checkout).
+/// The blocks in one scrolling column, over the sticky bar, with the overlays they open (the image viewer, the review
+/// sheet, checkout). The store's `app_screen` "product" (screens v2) puts its sections above and below the blocks, and
+/// orders and hides the blocks (`main.blocks`); without one they are in `ProductPageBlock`'s order.
 @MainActor
 private struct ProductContent: View {
     @Bindable var state: ProductState
@@ -360,18 +361,22 @@ private struct ProductContent: View {
     @State private var viewerPage: Int? = nil
     @State private var writingReview = false
     @State private var reviewForm = ReviewForm()
+    @State private var screen = ScreenSlot("product")
     @Environment(Router.self) private var router
     @Environment(\.argonTheme) private var theme
 
     var body: some View {
         let product = state.product
         let variant = state.variant
+        let blocks = ScreenTemplate.productBlocks(screen.placement.main)
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(spacing: 0) {
-                    top(showReviews: { withAnimation { proxy.scrollTo(ProductBlock.reviews, anchor: .top) } })
-                    buying
-                    more
+                    ScreenSections(slot: screen, part: .above, product: product, top: theme.spacing.l, bottom: theme.spacing.l)
+                    ForEach(blocks, id: \.self) { block in
+                        self.block(block, showReviews: { withAnimation { proxy.scrollTo(ProductBlock.reviews, anchor: .top) } })
+                    }
+                    ScreenSections(slot: screen, part: .below, product: product, top: theme.spacing.xl)
                 }
                 // the sticky bar sits under this column (the safe-area inset); the bottom padding is only breathing room
                 .padding(.bottom, theme.spacing.xxl)
@@ -388,6 +393,7 @@ private struct ProductContent: View {
             )
         }
         .task { await state.loadRest() }
+        .task { await screen.load(owner: .product(product.handle)) }
         .task(id: state.selection) { await state.loadVariant() }
         .task(id: variant?.id) { await state.loadPickup() }
         // on the page, not in a block: an overlay must not go away with the block that opened it
@@ -410,65 +416,69 @@ private struct ProductContent: View {
         router.open(route)
     }
 
-    /// Blocks 1 to 4: gallery, title, price, options.
+    /// One block of the page; each hides itself when it has nothing to show.
     @ViewBuilder
-    private func top(showReviews: @escaping () -> Void) -> some View {
+    private func block(_ block: ProductPageBlock, showReviews: @escaping () -> Void) -> some View {
         let product = state.product
         let variant = state.variant
-        ProductGallery(images: product.images, title: product.title, page: $state.galleryPage, tags: galleryTags(variant)) {
-            viewerPage = $0
-        }
-        // the stars lead to the reviews, when the page has them
-        ProductTitle(product: product, summary: state.reviews.summary, onRating: state.reviews.isShown ? showReviews : nil)
-        ProductPrice(variant: variant, price: state.price, quantity: state.quantity, companyName: AppGraph.buyer.company?.companyName)
-        ProductOptions(options: visibleOptions(product), selection: state.selection, variants: product.variants) { option, value in
-            state.select(option, value)
-            // a variant with an image of its own brings the gallery to it
-            if let page = imageIndex(product.images, Variants.match(product.variants, selection: state.selection)?.image) {
-                withAnimation { state.galleryPage = page }
+        switch block {
+        case .gallery:
+            ProductGallery(images: product.images, title: product.title, page: $state.galleryPage, tags: galleryTags(variant)) {
+                viewerPage = $0
             }
+        case .title:
+            // the stars lead to the reviews, when the page has them
+            ProductTitle(product: product, summary: state.reviews.summary, onRating: state.reviews.isShown ? showReviews : nil)
+        case .price:
+            ProductPrice(variant: variant, price: state.price, quantity: state.quantity, companyName: AppGraph.buyer.company?.companyName)
+        case .options:
+            ProductOptions(options: visibleOptions(product), selection: state.selection, variants: product.variants) { option, value in
+                state.select(option, value)
+                // a variant with an image of its own brings the gallery to it
+                if let page = imageIndex(product.images, Variants.match(product.variants, selection: state.selection)?.image) {
+                    withAnimation { state.galleryPage = page }
+                }
+            }
+        case .purchase:
+            // availability, purchase options, quantity with Buy now
+            ProductAvailability(variant: variant, pickup: state.pickup)
+            ProductPurchaseOptions(variant: variant, requiresSellingPlan: product.requiresSellingPlan, plan: state.plan) {
+                state.planId = $0
+            }
+            if state.canBuy {
+                ProductQuantity(
+                    quantity: state.quantity,
+                    rule: variant?.quantityRule,
+                    canBuyNow: state.isIdle,
+                    isBuying: state.isBuying,
+                    onQuantity: { state.chosenQuantity = $0 },
+                    onBuyNow: { state.add(thenCheckout: true) }
+                )
+            }
+        case .bundle:
+            ProductBundle(variant: variant, onOpen: open)
+        case .details:
+            // the details, and the trust row under them
+            ProductDetails(
+                descriptionHtml: product.descriptionHtml,
+                metafields: state.metafields ?? [],
+                policies: state.policies,
+                open: state.openDetails
+            ) {
+                state.toggleDetails($0)
+            }
+            TrustRow(onOpen: open).padding(.horizontal, theme.spacing.l).padding(.top, theme.spacing.xl)
+        case .reviews:
+            let reviews = state.reviews
+            if reviews.isShown {
+                ProductReviews(reviews: reviews, onWrite: { writingReview = true }, onLoadMore: { Task { await reviews.loadMore() } })
+                    .id(ProductBlock.reviews)
+            }
+        case .rails:
+            ProductPageRail(title: "Pairs well with", cards: state.complementary ?? [], style: .compact, onOpen: open)
+            ProductPageRail(title: "You may also like", cards: state.related ?? [], style: .standard, onOpen: open)
+            ProductPageRail(title: "Recently viewed", cards: state.recent ?? [], style: .standard, onOpen: open)
         }
-    }
-
-    /// Blocks 5 to 8: availability, purchase options, quantity with Buy now, bundle.
-    @ViewBuilder private var buying: some View {
-        let variant = state.variant
-        ProductAvailability(variant: variant, pickup: state.pickup)
-        ProductPurchaseOptions(variant: variant, requiresSellingPlan: state.product.requiresSellingPlan, plan: state.plan) {
-            state.planId = $0
-        }
-        if state.canBuy {
-            ProductQuantity(
-                quantity: state.quantity,
-                rule: variant?.quantityRule,
-                canBuyNow: state.isIdle,
-                isBuying: state.isBuying,
-                onQuantity: { state.chosenQuantity = $0 },
-                onBuyNow: { state.add(thenCheckout: true) }
-            )
-        }
-        ProductBundle(variant: variant, onOpen: open)
-    }
-
-    /// Blocks 9 to 14: details, the trust row, reviews, and the three rails.
-    @ViewBuilder private var more: some View {
-        ProductDetails(
-            descriptionHtml: state.product.descriptionHtml,
-            metafields: state.metafields ?? [],
-            policies: state.policies,
-            open: state.openDetails
-        ) {
-            state.toggleDetails($0)
-        }
-        TrustRow(onOpen: open).padding(.horizontal, theme.spacing.l).padding(.top, theme.spacing.xl)
-        let reviews = state.reviews
-        if reviews.isShown {
-            ProductReviews(reviews: reviews, onWrite: { writingReview = true }, onLoadMore: { Task { await reviews.loadMore() } })
-                .id(ProductBlock.reviews)
-        }
-        ProductPageRail(title: "Pairs well with", cards: state.complementary ?? [], style: .compact, onOpen: open)
-        ProductPageRail(title: "You may also like", cards: state.related ?? [], style: .standard, onOpen: open)
-        ProductPageRail(title: "Recently viewed", cards: state.recent ?? [], style: .standard, onOpen: open)
     }
 }
 

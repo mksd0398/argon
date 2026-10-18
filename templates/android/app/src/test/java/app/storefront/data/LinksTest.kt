@@ -31,10 +31,10 @@ class LinksTest {
     }
 
     @Test
-    fun blankOrRootIsNull() {
+    fun blankIsNull() {
         assertNull(Links.resolve("", hosts))
         assertNull(Links.resolve(null, hosts))
-        assertNull(Links.resolve("/", hosts))
+        assertNull("a menu's header item", Links.resolve("#", hosts))
     }
 
     @Test
@@ -44,7 +44,28 @@ class LinksTest {
 
     @Test
     fun otherStorePathOpensInBrowserOnShopDomain() {
-        assertEquals(Route.Web("https://nalli.com/pages/shipping"), Links.resolve("/pages/shipping", hosts))
+        assertEquals(Route.Web("https://nalli.com/blogs/news"), Links.resolve("/blogs/news", hosts))
+    }
+
+    @Test
+    fun pageOpensInApp() {
+        assertEquals(Route.Page("shipping"), Links.resolve("/pages/shipping", hosts))
+        assertEquals(Route.Page("about"), Links.resolve("https://nalli.com/en-in/pages/about", hosts))
+    }
+
+    @Test
+    fun appScreenOpensCustomPage() {
+        assertEquals(Route.Screen("size-guide"), Links.resolve("app://screens/size-guide", hosts))
+        assertNull("another app link", Links.resolve("app://other/x", hosts))
+    }
+
+    @Test
+    fun tabPaths() {
+        assertEquals(Route.Tab("cart"), Links.resolve("/cart", hosts))
+        assertEquals(Route.Tab("account"), Links.resolve("/account", hosts))
+        assertEquals(Route.Tab("wishlist"), Links.resolve("/wishlist/", hosts))
+        assertEquals(Route.Tab("home"), Links.resolve("/", hosts))
+        assertEquals(Route.Tab("home"), Links.resolve("https://nalli.com/", hosts))
     }
 
     @Test

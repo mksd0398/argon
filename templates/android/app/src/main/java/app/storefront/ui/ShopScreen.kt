@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -44,7 +45,7 @@ private suspend fun loadMenu(): List<MenuItem> {
 @Composable
 fun ShopScreen(nav: NavController) {
     Scaffold(
-        topBar = { ArgonTopBar("Shop", trailing = listOf(ArgonTopBarAction(ArgonIconName.Search, "Search") { nav.open(Route.Search("")) })) },
+        topBar = { ArgonTopBar("Shop", leading = nav.tabLeading("shop"), trailing = shopActions(nav)) },
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             Loader(::loadMenu) { menu ->
@@ -88,4 +89,13 @@ private fun MenuRow(item: MenuItem, depth: Int, onOpen: (Route) -> Unit) {
             for (child in item.children) MenuRow(child, depth + 1, onOpen)
         }
     }
+}
+
+/** Search; and the cart with its count when the bar has no cart tab (the settings' `navigation.tabs`). */
+@Composable
+private fun shopActions(nav: NavController): List<ArgonTopBarAction> {
+    val count = AppGraph.cart.cart.collectAsState().value?.totalQuantity ?: 0
+    val search = ArgonTopBarAction(ArgonIconName.Search, "Search") { nav.open(Route.Search("")) }
+    if (AppGraph.navigation.hasTab("cart")) return listOf(search)
+    return listOf(search, ArgonTopBarAction(ArgonIconName.Bag, "Cart", badge = count.takeIf { it > 0 }) { AppGraph.tabs.select(AppTab.Cart) })
 }

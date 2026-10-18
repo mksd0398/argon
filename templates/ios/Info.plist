@@ -40,6 +40,10 @@
 	<string>$(SETTINGS_URL)</string>
 	<key>CustomerRedirectUri</key>
 	<string>$(CUSTOMER_REDIRECT_URI)</string>
+	<key>Push</key>
+	<string>$(PUSH)</string>
+	<key>DevicesUrl</key>
+	<string>$(DEVICES_URL)</string>
 	<!-- Analytics. The keys the providers' SDKs read themselves; nothing reads them in an app without the SDK.
 	     Meta's app (META_APP_ID, META_CLIENT_TOKEN): -->
 	<key>FacebookAppID</key>

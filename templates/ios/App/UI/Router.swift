@@ -20,6 +20,12 @@ enum Destination: Hashable {
     case addresses
     /// The shop policy with this handle: `privacy-policy`, `terms-of-service`, `refund-policy`, `shipping-policy`, ...
     case policy(String)
+    /// An online store page (`page/<handle>`), drawn in the app.
+    case page(String)
+    /// A custom page from the store's `app_screen` metaobjects (`screen/<handle>`).
+    case screen(String)
+    /// The root screen of a tab the bar leaves out (`shop`, `wishlist`, `cart`, `account`), pushed instead.
+    case tabRoot(String)
     /// The ArgonUI gallery (linked from Account in debug builds only).
     case components
 
@@ -35,6 +41,9 @@ enum Destination: Hashable {
         case .profile: return "profile"
         case .addresses: return "addresses"
         case .policy: return "policy"
+        case .page: return "page"
+        case .screen: return "screen"
+        case let .tabRoot(id): return id
         case .components: return "components"
         }
     }
@@ -43,14 +52,14 @@ enum Destination: Hashable {
 /// Analytics' `screen_view`, once each time the screen comes into view: when it opens, when its tab is chosen, and when
 /// a screen pushed over it is closed. A redraw, or its tab tapped again, is not another view.
 private struct ScreenTracker: ViewModifier {
-    let name: String
+    let name: String?
     // in view since the last onDisappear: SwiftUI doesn't promise one onAppear per appearance
     @State private var shown = false
 
     func body(content: Content) -> some View {
         content
             .onAppear {
-                if shown { return }
+                guard !shown, let name = name else { return }
                 shown = true
                 AppGraph.analytics.track(.screenView(name))
             }
@@ -60,7 +69,8 @@ private struct ScreenTracker: ViewModifier {
 
 extension View {
     /// Reports this screen to analytics as `name` each time it is shown: put it where a tab or a destination is declared.
-    func trackScreen(_ name: String) -> some View {
+    /// Nil reports nothing.
+    func trackScreen(_ name: String?) -> some View {
         modifier(ScreenTracker(name: name))
     }
 }
@@ -79,6 +89,9 @@ final class Router {
         case let .collection(handle): path.append(.collection(handle))
         case let .search(query): path.append(.search(query))
         case let .policy(handle): path.append(.policy(handle))
+        case let .page(handle): path.append(.page(handle))
+        case let .screen(handle): path.append(.screen(handle))
+        case let .tab(id): AppGraph.tabs.select(id)
         case let .web(link):
             // SFSafariViewController takes only http(s) (anything else would crash it): nothing to open otherwise
             guard let url = URL(string: link), ["http", "https"].contains(url.scheme?.lowercased() ?? "") else { return }
@@ -87,13 +100,25 @@ final class Router {
     }
 }
 
-/// A tab: its own stack and Router, which the screens inside read from the environment.
+/// A tab: its own stack and Router, which the screens inside read from the environment. `id` is its `ShellTab.id`;
+/// over its root (not the screens pushed on it) the settings' announcement strip shows until it is closed.
 @MainActor
 struct TabStack<Root: View>: View {
+    let id: String
     let root: Root
     @State private var router = Router()
 
     var body: some View {
+        VStack(spacing: 0) {
+            if router.path.isEmpty, let announcement = AppGraph.announcement, !AppGraph.tabs.announcementClosed {
+                AnnouncementBar(announcement: announcement, onOpen: { router.open($0) }) { AppGraph.tabs.announcementClosed = true }
+            }
+            stack
+        }
+        .onAppear { AppGraph.tabs.register(router, for: id) }
+    }
+
+    private var stack: some View {
         NavigationStack(path: $router.path) {
             root.navigationDestination(for: Destination.self) { destination in
                 Group {
@@ -107,6 +132,9 @@ struct TabStack<Root: View>: View {
                     case .profile: ProfileView()
                     case .addresses: AddressesView()
                     case let .policy(handle): PolicyView(handle: handle)
+                    case let .page(handle): PageView(handle: handle)
+                    case let .screen(handle): CustomScreenView(handle: handle)
+                    case let .tabRoot(id): TabRoot(id: id, tracks: false)
                     case .components: ArgonGallery()
                     }
                 }
@@ -128,17 +156,100 @@ struct SafariView: UIViewControllerRepresentable {
     func updateUIViewController(_ controller: SFSafariViewController, context: Context) {}
 }
 
-/// The app's five tabs.
+/// The app's built-in tabs, by their ids (the bar itself is `AppGraph.navigation.tabs`, which may add `search` and
+/// `screen:<handle>` and leave any of these but home out).
 enum AppTab: String, CaseIterable {
     case home, shop, wishlist, cart, account
 }
 
-/// The tab on show (`AppGraph.tabs`): a screen sets `selected` to send the shopper to another tab ("See all" to Shop,
-/// "Sign in" to Account).
+/// The tab on show (`AppGraph.tabs`): a screen sets `selected`, or calls `select`, to send the shopper to another tab
+/// ("See all" to Shop, "Sign in" to Account). A tab the bar leaves out is pushed onto the tab on show instead.
 @MainActor
 @Observable
 final class TabState {
-    var selected = AppTab.home
+    /// The `ShellTab.id` on show.
+    var selectedId = AppTab.home.rawValue
+    /// The settings' announcement was closed: it stays away for the session.
+    var announcementClosed = false
+    /// The home's drawer (the settings' `navigation.drawer`) is open.
+    var drawerOpen = false
+    // each tab's Router (by tab id), and a route asked for before the tab on show had one (a notification's at launch)
+    @ObservationIgnored private var routers: [String: Router] = [:]
+    @ObservationIgnored private var pending: Route? = nil
+
+    /// The built-in tab on show (home for a search or custom-page tab).
+    var selected: AppTab {
+        get { AppTab(rawValue: selectedId) ?? .home }
+        set { select(newValue.rawValue) }
+    }
+
+    /// Goes to tab `id`: switches to it when it is in the bar; otherwise pushes its screen onto the tab on show, which
+    /// then has a way back.
+    func select(_ id: String) {
+        if id == AppTab.home.rawValue || AppGraph.navigation.hasTab(id) {
+            selectedId = id
+            return
+        }
+        let router = routers[selectedId]
+        if id == "search" {
+            router?.path.append(.search(""))
+        } else if id.hasPrefix("screen:") {
+            router?.path.append(.screen(String(id.dropFirst("screen:".count))))
+        } else if AppTab(rawValue: id) != nil {
+            router?.path.append(.tabRoot(id))
+        }
+    }
+
+    /// Opens `route` on the tab on show (a notification's link); before that tab is drawn, as soon as it is.
+    func open(_ route: Route) {
+        if let router = routers[selectedId] { router.open(route) } else { pending = route }
+    }
+
+    func register(_ router: Router, for id: String) {
+        routers[id] = router
+        if id == selectedId, let route = pending {
+            pending = nil
+            router.open(route)
+        }
+    }
+}
+
+/// A settings icon name (`Navigation.icons`) as the component library's icon.
+func shellIcon(_ name: String) -> ArgonIconName {
+    switch name {
+    case "home": return .home
+    case "grid": return .grid
+    case "search": return .search
+    case "heart": return .heart
+    case "bag": return .bag
+    case "person": return .person
+    case "tag": return .tag
+    case "menu": return .menu
+    default: return .star
+    }
+}
+
+/// The root screen of the tab `id`, reporting itself to analytics under its name.
+@MainActor
+struct TabRoot: View {
+    let id: String
+    /// Off where a pushed destination reports it already.
+    var tracks = true
+
+    var body: some View {
+        Group {
+            switch id {
+            case "home": HomeView()
+            case "shop": ShopView()
+            case "wishlist": WishlistView()
+            case "cart": CartView()
+            case "account": AccountView()
+            case "search": SearchView(initial: "")
+            default: CustomScreenView(handle: id.hasPrefix("screen:") ? String(id.dropFirst("screen:".count)) : id)
+            }
+        }
+        .trackScreen(tracks ? (id.hasPrefix("screen:") ? "screen" : id) : nil)
+    }
 }
 
 /// A short message shown over the tabs for a few seconds (`AppGraph.toast`): iOS's stand-in for Android's snackbar.
@@ -194,36 +305,31 @@ private struct ToastView: View {
 @MainActor
 struct Tabs: View {
     var body: some View {
-        // the Cart tab shows how many items are in the cart (no badge at 0)
-        let items = [
-            ArgonBottomBarItem(id: AppTab.home.rawValue, title: "Home", icon: .home),
-            ArgonBottomBarItem(id: AppTab.shop.rawValue, title: "Shop", icon: .grid),
-            ArgonBottomBarItem(id: AppTab.wishlist.rawValue, title: "Wishlist", icon: .heart),
-            ArgonBottomBarItem(id: AppTab.cart.rawValue, title: "Cart", icon: .bag, badge: AppGraph.cart.cart?.totalQuantity),
-            ArgonBottomBarItem(id: AppTab.account.rawValue, title: "Account", icon: .person),
-        ]
+        // The bar's tabs: the settings', else the built-in five. The Cart tab shows how many items are in the cart (no
+        // badge at 0).
+        let navigation = AppGraph.navigation
+        let items = navigation.tabs.map { tab in
+            ArgonBottomBarItem(id: tab.id, title: tab.title, icon: shellIcon(tab.icon), badge: tab.id == "cart" ? AppGraph.cart.cart?.totalQuantity : nil)
+        }
         ArgonBottomBar(
             items: items,
-            selectedId: AppGraph.tabs.selected.rawValue,
-            onSelect: { id in
-                if let tab = AppTab(rawValue: id) { AppGraph.tabs.selected = tab }
-            }
+            selectedId: AppGraph.tabs.selectedId,
+            onSelect: { AppGraph.tabs.select($0) },
+            showLabels: navigation.labels
         ) { item in
-            Group {
-                // each root reports itself from inside its stack: a screen pushed over it hides it, and closing that shows it again
-                switch AppTab(rawValue: item.id) ?? .home {
-                case .home: TabStack(root: HomeView().trackScreen("home"))
-                case .shop: TabStack(root: ShopView().trackScreen("shop"))
-                case .wishlist: TabStack(root: WishlistView().trackScreen("wishlist"))
-                case .cart: TabStack(root: CartView().trackScreen("cart"))
-                case .account: TabStack(root: AccountView().trackScreen("account"))
-                }
-            }
-            // The bar tints itself with the theme's accent; the screens that still draw native controls keep the tint
-            // they had (the brand colour, else the system's).
-            .tint(brandColor(AppGraph.brand.value?.accent) ?? .accentColor)
+            // each root reports itself from inside its stack: a screen pushed over it hides it, and closing that shows it again
+            TabStack(id: item.id, root: TabRoot(id: item.id))
+                // The bar tints itself with the theme's accent; the screens that still draw native controls keep the tint
+                // they had (the brand colour, else the system's).
+                .tint(brandColor(AppGraph.brand.value?.accent) ?? .accentColor)
         }
         .overlay(alignment: .bottom) { ToastView() }
+        // the settings' drawer, over the whole screen; the home's menu button opens it
+        .overlay {
+            if let menu = navigation.drawerMenu { HomeDrawer(menu: menu) }
+        }
+        // the one offer of notifications, after a first purchase (push only)
+        .modifier(PushOffer())
         // the Cart tab's badge needs the stored cart before that tab is ever opened
         .task {
             do {

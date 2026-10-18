@@ -1,6 +1,7 @@
 import ArgonUI
 import ShopifyCheckoutSheetKit
 import SwiftUI
+import UserNotifications
 
 // The target is named App (its module is ArgonStorefront); the qualified protocol keeps "App" unambiguous.
 // This file imports Checkout Kit, whose public `Image` would clash with SwiftUI's: no unqualified `Image` here.
@@ -17,21 +18,34 @@ struct ArgonApp: SwiftUI.App {
     }
 
     var body: some Scene {
-        WindowGroup { AppRoot() }
+        // light or dark: the merchant's choice (`appearance.mode`), else the device's
+        WindowGroup { AppRoot().preferredColorScheme(AppGraph.appearance.colorScheme) }
     }
 }
 
 /// Builds `AppGraph.analytics` as the app finishes launching: that is when the providers' SDKs (Firebase, Meta, MoEngage)
 /// ask to be started, which its sinks do. `ArgonApp.init` is too early for them: there is no `UIApplication` yet. Then
-/// fetches the merchant's settings for the next launch, in the background.
+/// fetches the merchant's settings for the next launch, in the background. With push, it takes the notifications (taps and
+/// banners) and, for a shopper who turned them on, registers again for the APNs token Firebase needs.
 private final class Launch: NSObject, UIApplicationDelegate {
+    // kept: the notification centre holds its delegate weakly
+    private let presenter = PushPresenter()
+
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         _ = AppGraph.analytics
         AppGraph.refreshSettings()
+        if let push = AppGraph.push {
+            UNUserNotificationCenter.current().delegate = presenter
+            if push.optedIn { application.registerForRemoteNotifications() }
+        }
         return true
+    }
+
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        pushRegistered(deviceToken)
     }
 }
 

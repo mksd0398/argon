@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Push (PUSH): asked for only when the shopper turns notifications on (Account, or the offer after a first purchase) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".StorefrontApp"
@@ -47,5 +50,19 @@
         <meta-data android:name="firebase_analytics_collection_enabled" android:value="false" />
         <meta-data android:name="com.facebook.sdk.AutoLogAppEventsEnabled" android:value="false" />
         <meta-data android:name="com.facebook.sdk.AdvertiserIDCollectionEnabled" android:value="false" />
+        <!-- Push, with PUSH only: the service that shows a message arriving in the foreground (src/firebase; in an app
+             without Firebase the class isn't there, and the service stays off), and FCM's token, made only for push. A
+             notification FCM shows itself (the app in the background) uses this icon. -->
+        <service
+            android:name=".data.PushService"
+            android:enabled="${push}"
+            android:exported="false"
+            tools:ignore="MissingClass">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+        <meta-data android:name="firebase_messaging_auto_init_enabled" android:value="${push}" />
+        <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/launcher_logo" />
     </application>
 </manifest>

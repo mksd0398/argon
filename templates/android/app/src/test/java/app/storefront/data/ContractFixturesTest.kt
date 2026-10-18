@@ -64,6 +64,31 @@ class ContractFixturesTest(private val operation: String) {
     private suspend fun check() {
         when (operation) {
             // Storefront API
+            "AppScreen" -> storefront.appScreen("home")!!.let {
+                assertEquals("home", it.handle)
+                assertEquals("Home", it.title)
+                assertEquals("2026-10-19T08:00:00Z", it.updatedAt)
+                val template = ScreenTemplate.decode(it.template)!!
+                assertEquals(listOf("shop.custom.promo"), template.metafields)
+                // hidden, unknown and other-platform sections are left out; "picks" is Android's
+                assertEquals(listOf("hero", "slides", "cats", "new", "picks", "story", "atelier", "film", "sale", "gap", "bad"), template.sections.map { s -> s.id })
+            }
+            "CollectionMetafields" -> assertEquals(
+                "the null is dropped",
+                listOf(Metafield("custom", "banner_text", "single_line_text_field", "Up to 40% off")),
+                storefront.collectionMetafields("men", listOf(MetafieldIdentifier("custom", "banner_text"), MetafieldIdentifier("custom", "other"))),
+            )
+            "SectionNodes" -> storefront.sectionNodes(listOf("gid://shopify/Product/7982904639510", "gid://shopify/Collection/429493780502", "gid://shopify/Product/1")).let {
+                assertEquals("hoodie-old", it.products["gid://shopify/Product/7982904639510"]?.handle)
+                val men = it.collections["gid://shopify/Collection/429493780502"]!!
+                assertEquals("men", men.handle)
+                assertEquals(listOf("hoodie-old", "men-t-shirt"), men.products.map { p -> p.handle })
+                assertEquals("the null node is left out", 1, it.products.size)
+            }
+            "ShopMetafields" -> assertEquals(
+                listOf(Metafield("custom", "promo", "single_line_text_field", "Free shipping over $75")),
+                storefront.shopMetafields(listOf(MetafieldIdentifier("custom", "promo"), MetafieldIdentifier("custom", "other"))),
+            )
             "Article" -> storefront.article("news", "making-liquid")!!.let {
                 assertEquals("Making Liquid", it.title)
                 assertEquals("Teddy Hwang", it.authorV2?.name)

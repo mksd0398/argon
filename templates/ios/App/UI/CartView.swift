@@ -103,6 +103,8 @@ private struct CheckoutPresenter: ViewModifier {
     let onDismiss: (_ failure: String?) -> Void
     // A checkout failure, handed on once the sheet is gone: a message raised while it is still dismissing can be lost.
     @State private var failure: String? = nil
+    // an order was placed in this checkout: once it has gone, push (when the app has it) may be offered
+    @State private var ordered = false
 
     func body(content: Content) -> some View {
         content.sheet(isPresented: $isPresented, onDismiss: { dismissed() }) {
@@ -116,6 +118,7 @@ private struct CheckoutPresenter: ViewModifier {
                     // the sheet stays open on the order confirmation until the shopper closes it (onCancel)
                     .onComplete { event in
                         AppGraph.analytics.track(purchase(event.orderDetails))
+                        ordered = true
                         Task { await AppGraph.cart.completed() }
                     }
                     .onPixelEvent { event in
@@ -168,6 +171,10 @@ private struct CheckoutPresenter: ViewModifier {
     private func dismissed() {
         let reason = failure
         failure = nil
+        if ordered {
+            ordered = false
+            AppGraph.push?.offerAfterPurchase()
+        }
         onDismiss(reason)
     }
 }
@@ -213,6 +220,7 @@ struct CartView: View {
     // the currency of the shop's own prices, which `FREE_SHIPPING_THRESHOLD` is a number in; nil until the shop has answered
     @State private var shopCurrency: String? = nil
     @State private var keyboardUp = false
+    @State private var screen = ScreenSlot("cart")
     @Environment(Router.self) private var router
     @Environment(\.argonTheme) private var theme
 
@@ -242,6 +250,7 @@ struct CartView: View {
         // Warm up checkout once the shopper is looking at a non-empty cart, and again after every change to it.
         .task(id: cart) { await preload(cart) }
         .task(id: firstProduct) { await suggest(firstProduct) }
+        .task { await screen.load() }
         // the shop is fetched once for the whole app, so this is rarely a call; when it can't be asked, the row stays away
         .task { if let shop = try? await AppGraph.storefront.shop() { shopCurrency = shop.paymentSettings.currencyCode } }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in keyboardUp = true }
@@ -264,6 +273,7 @@ struct CartView: View {
         return VStack(spacing: 0) {
             ScrollView {
                 VStack(spacing: theme.spacing.l) {
+                    ScreenSections(slot: screen, part: .above)
                     if let shipping = shipping {
                         FreeShippingBar(shipping: shipping).padding(.horizontal, gutter)
                     }
@@ -283,6 +293,7 @@ struct CartView: View {
                             ProductCardRow(cards: alsoLike, style: .compact, cardWidth: 132) { router.open(.product($0.handle)) }
                         }
                     }
+                    ScreenSections(slot: screen, part: .below)
                 }
                 .padding(.vertical, theme.spacing.l)
             }

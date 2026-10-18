@@ -105,6 +105,9 @@ func metaEvent(_ event: AnalyticsEvent) -> MetaEvent? {
         var params = metaContents(items, currency: currency)
         params["event_id"] = "purchase-\(orderId)"
         return MetaEvent(name: "fb_mobile_purchase", value: value, params: params)
+    case .viewPromotion, .selectPromotion:
+        // no standard event for a promotion: a custom one, under GA4's name and parameters
+        return MetaEvent(name: event.name, value: nil, params: event.params)
     default:
         return nil
     }
@@ -191,5 +194,11 @@ func moEngageEvent(_ event: AnalyticsEvent) -> (name: String, attributes: [Strin
         return ("Order Placed", moEngage(own, items))
     case .login:
         return ("Customer Logged In", [:])
+    case let .viewPromotion(promotion), let .selectPromotion(promotion):
+        // promotions: no name of the integration's own, so GA4's, with its parameters
+        return (event.name, values([
+            "promotion_id": promotion.id, "promotion_name": promotion.name, "creative_name": promotion.creative,
+            "creative_slot": promotion.slot,
+        ]))
     }
 }

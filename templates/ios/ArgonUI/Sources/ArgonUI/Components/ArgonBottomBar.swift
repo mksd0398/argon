@@ -16,12 +16,13 @@ public struct ArgonBottomBarItem: Identifiable {
 }
 
 /// The app's tabs: the native tab view and tab bar, showing `content` for the selected item. The caller owns the
-/// selection.
+/// selection. Without `showLabels` the bar shows the icons alone (each still named for VoiceOver).
 @MainActor
 public struct ArgonBottomBar<Content: View>: View {
     let items: [ArgonBottomBarItem]
     let selectedId: String
     let onSelect: (String) -> Void
+    let showLabels: Bool
     let content: (ArgonBottomBarItem) -> Content
     @Environment(\.argonTheme) private var theme
 
@@ -29,11 +30,13 @@ public struct ArgonBottomBar<Content: View>: View {
         items: [ArgonBottomBarItem],
         selectedId: String,
         onSelect: @escaping (String) -> Void,
+        showLabels: Bool = true,
         @ViewBuilder content: @escaping (ArgonBottomBarItem) -> Content
     ) {
         self.items = items
         self.selectedId = selectedId
         self.onSelect = onSelect
+        self.showLabels = showLabels
         self.content = content
     }
 
@@ -41,7 +44,13 @@ public struct ArgonBottomBar<Content: View>: View {
         TabView(selection: Binding(get: { selectedId }, set: { onSelect($0) })) {
             ForEach(items) { item in
                 content(item)
-                    .tabItem { Label(item.title, systemImage: item.icon.systemName) }
+                    .tabItem {
+                        if showLabels {
+                            Label(item.title, systemImage: item.icon.systemName)
+                        } else {
+                            Image(systemName: item.icon.systemName).accessibilityLabel(item.title)
+                        }
+                    }
                     .tag(item.id)
                     .badge(badgeText(item.badge))
             }

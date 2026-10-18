@@ -27,20 +27,22 @@ private func loadPolicies() async -> [ShopPolicy] {
 /// and the ways on (orders, profile, addresses, wishlist, policies, help).
 @MainActor
 struct AccountView: View {
+    @State private var screen = ScreenSlot("account")
     @Environment(\.argonTheme) private var theme
 
     var body: some View {
         Group {
             if AppGraph.hasAccount {
                 // not kept: a new order shows on the next visit, and nothing of this customer outlives a sign-out
-                FreshLoader(load: loadAccount) { SignedIn(account: $0) }
+                FreshLoader(load: loadAccount) { SignedIn(account: $0, screen: screen) }
             } else {
-                SignedOut()
+                SignedOut(screen: screen)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(theme.colors.paper)
         .argonTopBar(title: "Account")
+        .task { await screen.load() }
     }
 }
 
@@ -48,6 +50,7 @@ struct AccountView: View {
 
 @MainActor
 private struct SignedOut: View {
+    let screen: ScreenSlot
     @State private var starting = false
     @State private var failure: String? = nil
     @State private var policies: [ShopPolicy] = []
@@ -58,6 +61,7 @@ private struct SignedOut: View {
         let canSignIn = trimmedText(AppGraph.customerClientId) != nil
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
+                ScreenSections(slot: screen, part: .above, bottom: theme.spacing.l)
                 Text("Your account")
                     .font(theme.type.title)
                     .foregroundStyle(theme.colors.ink)
@@ -97,6 +101,8 @@ private struct SignedOut: View {
                 .buttonStyle(.plain)
                 .padding(.horizontal, theme.spacing.l)
                 Privacy().padding(theme.spacing.l)
+                NotificationsRow().padding([.horizontal, .bottom], theme.spacing.l)
+                ScreenSections(slot: screen, part: .below, top: theme.spacing.l)
             }
             .padding(.vertical, theme.spacing.l)
         }
@@ -193,6 +199,7 @@ private func loadAccount() async throws -> Account {
 @MainActor
 private struct SignedIn: View {
     let account: Account
+    let screen: ScreenSlot
     @Environment(Router.self) private var router
     @Environment(\.argonTheme) private var theme
 
@@ -202,6 +209,7 @@ private struct SignedIn: View {
         let latest = account.latestOrder
         ScrollView {
             VStack(alignment: .leading, spacing: spacing.l) {
+                ScreenSections(slot: screen, part: .above)
                 Group {
                     if AppGraph.sampleAccount {
                         ArgonTag(text: "Sample account: nothing is saved", style: .info)
@@ -237,6 +245,7 @@ private struct SignedIn: View {
                     }
                     .buttonStyle(.plain)
                     Privacy()
+                    NotificationsRow()
                     VStack(spacing: spacing.s) {
                         ArgonButton(title: "Sign out", style: .secondary, fullWidth: true) { signOut() }
                         // no API deletes a customer account, so the store's contact page takes the request (Apple and Google require the entry)
@@ -244,6 +253,7 @@ private struct SignedIn: View {
                     }
                 }
                 .padding(.horizontal, spacing.l)
+                ScreenSections(slot: screen, part: .below)
             }
             .padding(.vertical, spacing.l)
         }

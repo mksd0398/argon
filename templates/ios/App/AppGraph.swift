@@ -20,6 +20,16 @@ enum AppGraph {
     /// The merchant's settings as the last launch fetched them (`settingsStore`); nil without a `settingsUrl`. Read before
     /// any value below: each one that the merchant can set reads it first, and a set value wins over the built-in one.
     static let remote: RemoteSettings? = settingsUrl.isEmpty ? nil : settingsStore.load()
+    /// The tab bar, the top bar and the drawer: the merchant's, else the built-in five tabs and the template's bar.
+    static let navigation = remote?.navigation ?? Navigation()
+    /// The strip above the top bar on the tab roots (the merchant's); nil: none.
+    static let announcement = remote?.announcement
+    /// Light or dark: the merchant's, else the device's.
+    static let appearance = remote?.appearance ?? .system
+    /// Push notifications (`PUSH`, true only for an app built with `--push`, which has Firebase Messaging): see `push`.
+    static let pushEnabled = info("Push").trimmingCharacters(in: .whitespaces).lowercased() == "true"
+    /// Where the app reports its push opt-in (`DEVICES_URL`, Krypton's); empty: nowhere.
+    static let devicesUrl = info("DevicesUrl").trimmingCharacters(in: .whitespaces)
     /// Which home page and which collection page the app shows; an unknown value is the default.
     static let homeTemplate = remote?.homeTemplate ?? HomeTemplate(config: info("HomeTemplate"))
     static let collectionTemplate = remote?.collectionTemplate ?? CollectionTemplate(config: info("CollectionTemplate"))
@@ -132,6 +142,10 @@ enum AppGraph {
         companies: { try await AppGraph.customerAccount.companies() },
         sample: { AppGraph.sampleAccount }
     )
+
+    /// Push notifications: only in an app built with `PUSH` and Firebase Messaging (`firebasePush`); nil otherwise, and
+    /// then nothing of push is on screen.
+    @MainActor static let push: PushStore? = pushEnabled ? firebasePush() : nil
 
     /// The tab on show: set `tabs.selected` to send the shopper to another one ("See all" to Shop, "Sign in" to Account).
     @MainActor static let tabs = TabState()
