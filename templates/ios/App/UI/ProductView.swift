@@ -275,7 +275,7 @@ final class ProductState {
                 try await AppGraph.cart.add(id, quantity: quantity, sellingPlanId: planId)
                 if thenCheckout {
                     // Shopify's checkout for the cart, opened as the cart screen opens it
-                    if let link = await AppGraph.cart.checkoutUrl(), let url = URL(string: link) {
+                    if let url = try await checkoutToOpen() {
                         checkout = url
                         checkingOut = true
                     }

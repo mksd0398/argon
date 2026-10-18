@@ -66,16 +66,19 @@ import app.argon.ui.components.ArgonTag
 import app.argon.ui.components.ArgonTagStyle
 import app.argon.ui.components.ArgonTopBar
 import app.storefront.AppGraph
+import app.storefront.BuildConfig
 import app.storefront.data.Cart
 import app.storefront.data.CartDiscount
 import app.storefront.data.CartLine
 import app.storefront.data.CartLineComponent
 import app.storefront.data.Money
+import app.storefront.data.PASSWORD_PROTECTED_CHECKOUT
 import app.storefront.data.ProductCard
 import app.storefront.data.QuantityRule
 import app.storefront.data.Route
 import app.storefront.data.beginCheckout
 import app.storefront.data.checkoutStep
+import app.storefront.data.passwordProtected
 import app.storefront.data.purchase
 import app.storefront.data.viewCart
 import com.shopify.checkoutsheetkit.CheckoutException
@@ -87,9 +90,11 @@ import com.shopify.checkoutsheetkit.pixelevents.PixelEvent
 import java.math.BigDecimal
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** The activity a composition runs in (Checkout Kit needs a ComponentActivity); its context may be a wrapper around one. */
 internal tailrec fun Context.componentActivity(): ComponentActivity? = when (this) {
@@ -107,7 +112,11 @@ internal tailrec fun Context.componentActivity(): ComponentActivity? = when (thi
  * shipping and payment steps from the checkout's web pixel events, and the purchase from the completed order, which
  * comes once (the pixel's `checkout_completed` is left alone).
  */
-internal fun presentCheckout(url: String, host: ComponentActivity, onError: (String) -> Unit) {
+internal suspend fun presentCheckout(url: String, host: ComponentActivity, onError: (String) -> Unit) {
+    // Behind a storefront password the sheet would end up on the shop's web pages: say so instead of opening it. A debug
+    // build opens it anyway, so checkout can be tried on a development store (they all have a password): enter it, close
+    // the sheet, and Checkout again
+    if (!BuildConfig.DEBUG && passwordProtected(url, AppGraph.http)) return onError(PASSWORD_PROTECTED_CHECKOUT)
     val processor = object : DefaultCheckoutEventProcessor(host) {
         override fun onCheckoutCompleted(checkoutCompletedEvent: CheckoutCompletedEvent) {
             AppGraph.analytics.track(purchase(checkoutCompletedEvent.orderDetails))
@@ -119,14 +128,19 @@ internal fun presentCheckout(url: String, host: ComponentActivity, onError: (Str
         }
 
         override fun onCheckoutFailed(error: CheckoutException) {
+            ShopifyCheckoutSheetKit.invalidate()
             if (error is CheckoutExpiredException) AppGraph.scope.launch { runCatching { AppGraph.cart.load() } }
             onError(error.errorDescription)
         }
 
-        override fun onCheckoutCanceled() {}
+        // A closed sheet is not reused: the page it was left on (a link it followed, say) is not checkout any more
+        override fun onCheckoutCanceled() = ShopifyCheckoutSheetKit.invalidate()
     }
-    AppGraph.cart.cart.value?.let { AppGraph.analytics.track(beginCheckout(it)) }
-    ShopifyCheckoutSheetKit.present(url, host, processor)
+    withContext(Dispatchers.Main) {
+        if (host.isFinishing || host.isDestroyed) return@withContext
+        AppGraph.cart.cart.value?.let { AppGraph.analytics.track(beginCheckout(it)) }
+        ShopifyCheckoutSheetKit.present(url, host, processor)
+    }
 }
 
 /** "Men's T-shirt · Small / Olive × 1": a bundle's part on a cart line (the variant left out when it is "Default Title"). */

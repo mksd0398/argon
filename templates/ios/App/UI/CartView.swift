@@ -108,7 +108,11 @@ private struct CheckoutPresenter: ViewModifier {
         content.sheet(isPresented: $isPresented, onDismiss: { dismissed() }) {
             if let url = url {
                 CheckoutSheet(checkout: url)
-                    .onCancel { isPresented = false }
+                    // A closed sheet is not reused: the page it was left on (a link it followed, say) is not checkout any more
+                    .onCancel {
+                        ShopifyCheckoutSheetKit.invalidate()
+                        isPresented = false
+                    }
                     // the sheet stays open on the order confirmation until the shopper closes it (onCancel)
                     .onComplete { event in
                         AppGraph.analytics.track(purchase(event.orderDetails))
@@ -118,6 +122,7 @@ private struct CheckoutPresenter: ViewModifier {
                         if let step = checkoutStep(event) { AppGraph.analytics.track(step) }
                     }
                     .onFail { error in
+                        ShopifyCheckoutSheetKit.invalidate()
                         // the cart is kept; one Shopify no longer has (expired, already paid) is dropped by loading it again
                         if case .checkoutExpired = error { Task { _ = try? await AppGraph.cart.load() } }
                         failure = checkoutMessage(error)
@@ -137,6 +142,19 @@ private struct CheckoutPresenter: ViewModifier {
         failure = nil
         onDismiss(reason)
     }
+}
+
+/// The cart's checkout to open (nil without a cart): what the cart's "Checkout" and the product page's "Buy now" open.
+/// Throws `CheckoutUnavailable` behind a storefront password, where the sheet would end up on the shop's web pages. A
+/// debug build opens it anyway, so checkout can be tried on a development store (they all have a password): enter it,
+/// close the sheet, and Checkout again.
+@MainActor
+func checkoutToOpen() async throws -> URL? {
+    guard let link = await AppGraph.cart.checkoutUrl(), let url = URL(string: link) else { return nil }
+    #if !DEBUG
+    if await passwordProtected(url) { throw CheckoutUnavailable() }
+    #endif
+    return url
 }
 
 extension View {
@@ -337,7 +355,7 @@ struct CartView: View {
 
     private func startCheckout() {
         act {
-            guard let link = await AppGraph.cart.checkoutUrl(), let url = URL(string: link) else { return }
+            guard let url = try await checkoutToOpen() else { return }
             checkout = url
             checkingOut = true
         }
