@@ -183,7 +183,7 @@ test("--demo --yes scaffolds both apps against mock.shop", async () => {
 
     const android = queryFiles(join(dir, "android/app/src/main/assets/queries"));
     const ios = queryFiles(join(dir, "ios/App/Resources/queries"));
-    assert.equal(android.length, 55);
+    assert.equal(android.length, 59);
     assert.deepEqual(ios, android);
 
     // xtool (iOS without a Mac): every file the app reads from its bundle is listed, and each exists

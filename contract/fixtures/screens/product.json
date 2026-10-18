@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "metafields": ["product.custom.fabric", "product.custom.care"],
+  "sections": [
+    { "id": "promo", "type": "rich_text", "settings": { "text": "<p>{% if product.available %}In stock: ships today{% else %}Back soon{% endif %}</p>" } },
+    { "id": "main", "type": "main", "settings": { "blocks": [
+      { "type": "gallery" }, { "type": "title" }, { "type": "price" }, { "type": "options" }, { "type": "purchase" },
+      { "type": "details" }, { "type": "reviews", "hidden": true }, { "type": "teleporter" }
+    ] } },
+    { "id": "fabric", "type": "rich_text", "settings": { "heading": "Fabric", "text": "{{ product.metafields.custom.fabric | default: 'See label' }}" } }
+  ]
+}

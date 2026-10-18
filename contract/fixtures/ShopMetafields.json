@@ -1,0 +1,14 @@
+{
+  "shop": {
+    "id": "gid://shopify/Shop/1",
+    "metafields": [
+      {
+        "namespace": "custom",
+        "key": "promo",
+        "type": "single_line_text_field",
+        "value": "Free shipping over $75"
+      },
+      null
+    ]
+  }
+}

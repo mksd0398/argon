@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "sections": [
+    { "id": "intro", "type": "custom", "settings": { "render": "native", "html": "<h2>Hello {{ customer.first_name | default: 'there' }}</h2><p>Made in <strong><a href=\"/pages/about\">Italy</a></strong></p>", "nodes": [
+      { "type": "heading", "level": 2, "text": "Hello {{ customer.first_name | default: 'there' }}" },
+      { "type": "paragraph", "runs": [{ "text": "Made in " }, { "text": "Italy", "bold": true, "link": "/pages/about" }] },
+      { "type": "list", "ordered": true, "items": [[{ "text": "One" }], [{ "text": "Two", "italic": true }]] },
+      { "type": "image", "url": "https://cdn.shopify.com/s/files/1/about.jpg", "alt": "Workshop", "link": "" },
+      { "type": "button", "label": "Shop now", "link": "/collections/all" },
+      { "type": "divider" },
+      { "type": "product", "id": "gid://shopify/Product/7982904639510" },
+      { "type": "collection", "id": "gid://shopify/Collection/429493780502", "limit": 4 },
+      { "type": "marquee", "text": "unknown node" }
+    ] } },
+    { "id": "table", "type": "custom", "settings": { "render": "web", "html": "<style>td{padding:4px}</style><table><tr><td>{{ shop.name }}</td></tr></table>", "height": 0 } },
+    { "id": "lost", "type": "custom", "settings": { "render": "native", "html": "<p>No nodes: drawn as web</p>" } }
+  ]
+}

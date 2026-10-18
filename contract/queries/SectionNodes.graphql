@@ -1,0 +1,15 @@
+query SectionNodes(
+  $ids: [ID!]!
+  $country: CountryCode
+  $language: LanguageCode
+  $buyer: BuyerInput
+) @inContext(country: $country, language: $language, buyer: $buyer) {
+  nodes(ids: $ids) {
+    __typename
+    ... on Product { ...ProductCard }
+    ... on Collection {
+      ...CollectionCard
+      products(first: 24) { nodes { ...ProductCard } }
+    }
+  }
+}

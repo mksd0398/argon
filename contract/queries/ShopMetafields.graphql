@@ -1,0 +1,11 @@
+query ShopMetafields(
+  $metafields: [HasMetafieldsIdentifier!]!
+  $country: CountryCode
+  $language: LanguageCode
+  $buyer: BuyerInput
+) @inContext(country: $country, language: $language, buyer: $buyer) {
+  shop {
+    id
+    metafields(identifiers: $metafields) { namespace key type value }
+  }
+}

@@ -23,7 +23,7 @@ const docs = [...(await loadContract())].map(([name, text]) => {
 });
 
 test("every document validates against its API's 2026-10 schema and selects no deprecated field", () => {
-  assert.equal(docs.filter((d) => !d.customer).length, 41);
+  assert.equal(docs.filter((d) => !d.customer).length, 45);
   assert.equal(docs.filter((d) => d.customer).length, 14);
   const errors = docs.flatMap((d) => validate(d.schema, d.ast, [...specifiedRules, NoDeprecatedCustomRule]).map((e) => `${d.name}: ${e.message}`));
   assert.deepEqual(errors, []);

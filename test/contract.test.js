@@ -35,9 +35,9 @@ test("resolveDocument: omits unused fragments and leaves inline fragments alone"
   assert.doesNotMatch(doc, /fragment (Image|ProductCard|CollectionCard|Unused) on/);
 });
 
-test("loadContract: 55 documents, operation name equals key, fragments resolved from the document's own API", async () => {
+test("loadContract: 59 documents, operation name equals key, fragments resolved from the document's own API", async () => {
   const contract = await loadContract();
-  assert.equal(contract.size, 55);
+  assert.equal(contract.size, 59);
   const customer = new Set(readdirSync(join(CONTRACT, "customer")).map((f) => f.replace(/\.graphql$/, "")));
   const definedIn = (file) => new Set([...readFileSync(join(CONTRACT, file), "utf8").matchAll(/^fragment (\w+) on /gm)].map((m) => m[1]));
   const fragments = { storefront: definedIn("fragments.graphql"), customer: definedIn("customer/fragments.graphql") };
