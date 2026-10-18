@@ -22,6 +22,8 @@ import app.storefront.data.JudgeMe
 import app.storefront.data.LogSink
 import app.storefront.data.OnboardingStore
 import app.storefront.data.RecentlyViewedStore
+import app.storefront.data.RemoteSettings
+import app.storefront.data.RemoteSettingsStore
 import app.storefront.data.Storefront
 import app.storefront.data.StorefrontApi
 import app.storefront.data.WishlistStore
@@ -58,6 +60,9 @@ import okhttp3.OkHttpClient
 class StorefrontApp : Application(), SingletonImageLoader.Factory {
     override fun onCreate() {
         super.onCreate()
+        // First: the per-store values read the cached settings. The fetch only refreshes that cache, for the next launch.
+        AppGraph.settingsStore = RemoteSettingsStore(filesDir, AppGraph.settingsUrl, AppGraph.http)
+        AppGraph.scope.launch { AppGraph.settingsStore.refresh() }
         AppGraph.assets = assets
         AppGraph.analyticsConsent = AnalyticsConsentStore(prefs("analytics"), AppGraph.scope)
         // Every sink the app has. A provider's factory starts its SDK and returns its sink; in an app without the
@@ -80,7 +85,9 @@ class StorefrontApp : Application(), SingletonImageLoader.Factory {
         AppGraph.auth = AuthStore(
             domain = AppGraph.shopDomain,
             clientId = AppGraph.customerClientId,
-            redirectUri = "shop.${AppGraph.shopId}.app://callback", // the scheme is the manifest's authScheme
+            shopId = AppGraph.shopId,
+            callbackUri = "shop.${AppGraph.shopId}.app://callback", // the scheme is the manifest's authScheme
+            redirectUri = AppGraph.customerRedirectUri,
             http = AppGraph.http,
             prefs = prefs("auth"),
             encrypt = TokenCrypto::encrypt,
@@ -153,29 +160,51 @@ object AppGraph {
     val apiVersion: String = BuildConfig.API_VERSION
     val pdpMetafields: String = BuildConfig.PDP_METAFIELDS
 
-    /** The home screen's layout (`HOME_TEMPLATE`); fashion when unset or unknown. */
-    val homeTemplate: HomeTemplate = HomeTemplate.of(BuildConfig.HOME_TEMPLATE)
-
-    /** Where product lists keep sort and filter (`COLLECTION_TEMPLATE`); top when unset or unknown. */
-    val collectionTemplate: CollectionTemplate = CollectionTemplate.of(BuildConfig.COLLECTION_TEMPLATE)
-
-    /** The store's Judge.me public token (`JUDGEME_PUBLIC_TOKEN`); empty: reviews without their star breakdown ([judgeMe]). */
-    val judgeMeToken: String = BuildConfig.JUDGEME_PUBLIC_TOKEN
+    /** Where the merchant's settings are read (`SETTINGS_URL`); empty: the app runs on shopify.properties alone. */
+    val settingsUrl: String = BuildConfig.SETTINGS_URL
 
     /**
-     * Whether product cards and the product page show the vendor (`SHOW_VENDOR`, false unless it is `true`): many stores'
-     * vendor is their own name on every product, or an internal label.
+     * The https page Shopify sends the browser back to after sign-in (`CUSTOMER_REDIRECT_URI`), which passes it on to the
+     * app's own callback; empty: Shopify comes straight back to the app (see [AuthStore]).
      */
-    val showVendor: Boolean = BuildConfig.SHOW_VENDOR.trim().equals("true", ignoreCase = true)
+    val customerRedirectUri: String = BuildConfig.CUSTOMER_REDIRECT_URI
 
-    /** Whether a first launch starts with the welcome pages (`ONBOARDING`, true unless it is `false`). */
-    val onboarding: Boolean = !BuildConfig.ONBOARDING.trim().equals("false", ignoreCase = true)
+    /** Made first thing in [StorefrontApp.onCreate]: the values below read [settings]. */
+    internal lateinit var settingsStore: RemoteSettingsStore
+
+    /** The merchant's settings this launch runs with (cached by an earlier launch); null: shopify.properties alone. */
+    val settings: RemoteSettings? get() = settingsStore.current
+
+    /** The home screen's layout (the settings', else `HOME_TEMPLATE`); fashion when unset or unknown. */
+    val homeTemplate: HomeTemplate by lazy { settings?.homeTemplate ?: HomeTemplate.of(BuildConfig.HOME_TEMPLATE) }
+
+    /** Where product lists keep sort and filter (the settings', else `COLLECTION_TEMPLATE`); top when unset or unknown. */
+    val collectionTemplate: CollectionTemplate by lazy { settings?.collectionTemplate ?: CollectionTemplate.of(BuildConfig.COLLECTION_TEMPLATE) }
+
+    /**
+     * The store's Judge.me public token (the settings', else `JUDGEME_PUBLIC_TOKEN`); empty: reviews without their star
+     * breakdown ([judgeMe]).
+     */
+    val judgeMeToken: String by lazy { settings?.judgeMeToken ?: BuildConfig.JUDGEME_PUBLIC_TOKEN }
+
+    /**
+     * Whether product cards and the product page show the vendor (the settings', else `SHOW_VENDOR`, false unless it is
+     * `true`): many stores' vendor is their own name on every product, or an internal label.
+     */
+    val showVendor: Boolean by lazy { settings?.showVendor ?: BuildConfig.SHOW_VENDOR.trim().equals("true", ignoreCase = true) }
+
+    /** Whether a first launch starts with the welcome pages (the settings', else `ONBOARDING`, true unless it is `false`). */
+    val onboarding: Boolean by lazy { settings?.onboarding ?: !BuildConfig.ONBOARDING.trim().equals("false", ignoreCase = true) }
 
     /**
      * The order value from which the store ships for free, in the shop's currency (`FREE_SHIPPING_THRESHOLD`); null when
-     * unset or not a number above zero: the cart then shows no free-shipping progress.
+     * unset or not a number above zero: the cart then shows no free-shipping progress. The settings' threshold wins when
+     * they have one (zero there: no progress either).
      */
-    val freeShippingThreshold: Double? = BuildConfig.FREE_SHIPPING_THRESHOLD.trim().toDoubleOrNull()?.takeIf { it > 0 && it.isFinite() }
+    val freeShippingThreshold: Double? by lazy {
+        val builtIn = BuildConfig.FREE_SHIPPING_THRESHOLD.trim().toDoubleOrNull()?.takeIf { it > 0 && it.isFinite() }
+        settings.let { if (it == null) builtIn else it.freeShippingThreshold(builtIn) }
+    }
 
     internal lateinit var assets: AssetManager
 
@@ -271,6 +300,10 @@ object AppGraph {
     /** The loaded brand (null until [loadBrand] succeeds); the theme follows it. */
     val brand: StateFlow<Brand?> = brandState
 
-    /** Shop name, logo, accent and link hosts. The shop is fetched once; a failed fetch is retried by the next caller. */
-    suspend fun loadBrand(): Brand = brandState.value ?: storefront.shop().toBrand(shopDomain).also { brandState.value = it }
+    /**
+     * Shop name, logo, accent (the settings' when they have one) and link hosts. The shop is fetched once; a failed fetch
+     * is retried by the next caller.
+     */
+    suspend fun loadBrand(): Brand = brandState.value
+        ?: storefront.shop().toBrand(shopDomain).let { settings?.brand(it) ?: it }.also { brandState.value = it }
 }

@@ -9,20 +9,34 @@ enum AppGraph {
     static let shopId = info("ShopId")
     static let apiVersion = info("ApiVersion")
     static let pdpMetafields = info("PdpMetafields")
+    /// Where the merchant's settings are (`SETTINGS_URL`, an app Krypton generated); empty: none.
+    static let settingsUrl = info("SettingsUrl").trimmingCharacters(in: .whitespaces)
+    /// The page Shopify sends the sign-in back to (`CUSTOMER_REDIRECT_URI`, an app Krypton generated): it passes the
+    /// callback on to the app. Empty: Shopify sends it to the app's own callback directly.
+    static let customerRedirectUri = info("CustomerRedirectUri").trimmingCharacters(in: .whitespaces)
+    private static let settingsStore = RemoteSettingsStore(
+        file: URL.applicationSupportDirectory.appending(path: "remote-settings.json")
+    )
+    /// The merchant's settings as the last launch fetched them (`settingsStore`); nil without a `settingsUrl`. Read before
+    /// any value below: each one that the merchant can set reads it first, and a set value wins over the built-in one.
+    static let remote: RemoteSettings? = settingsUrl.isEmpty ? nil : settingsStore.load()
     /// Which home page and which collection page the app shows; an unknown value is the default.
-    static let homeTemplate = HomeTemplate(config: info("HomeTemplate"))
-    static let collectionTemplate = CollectionTemplate(config: info("CollectionTemplate"))
+    static let homeTemplate = remote?.homeTemplate ?? HomeTemplate(config: info("HomeTemplate"))
+    static let collectionTemplate = remote?.collectionTemplate ?? CollectionTemplate(config: info("CollectionTemplate"))
     /// Judge.me's public token; empty: reviews without their star breakdown (`judgeMe`).
-    static let judgeMeToken = info("JudgemePublicToken").trimmingCharacters(in: .whitespaces)
+    static let judgeMeToken = remote?.judgeMeToken ?? info("JudgemePublicToken").trimmingCharacters(in: .whitespaces)
     /// Whether product cards and the product page show the vendor (`SHOW_VENDOR`, false unless it is `true`): many
     /// stores' vendor is their own name on every product, or an internal label.
-    static let showVendor = info("ShowVendor").trimmingCharacters(in: .whitespaces).lowercased() == "true"
+    static let showVendor = remote?.showVendor ?? (info("ShowVendor").trimmingCharacters(in: .whitespaces).lowercased() == "true")
     /// Whether a first launch starts with the welcome pages (`ONBOARDING`, true unless it is `false`).
-    static let onboarding = info("Onboarding").trimmingCharacters(in: .whitespaces).lowercased() != "false"
+    static let onboarding = remote?.onboarding ?? (info("Onboarding").trimmingCharacters(in: .whitespaces).lowercased() != "false")
     /// The order value from which the store ships for free, in the shop's currency (`FREE_SHIPPING_THRESHOLD`); nil when
     /// unset or not a number above zero: the cart then shows no free-shipping progress.
-    static let freeShippingThreshold: Double? = Double(info("FreeShippingThreshold").trimmingCharacters(in: .whitespaces))
-        .flatMap { $0 > 0 && $0.isFinite ? $0 : nil }
+    static let freeShippingThreshold: Double? = {
+        let builtIn = Double(info("FreeShippingThreshold").trimmingCharacters(in: .whitespaces)).flatMap { $0 > 0 && $0.isFinite ? $0 : nil }
+        guard let remote = remote else { return builtIn }
+        return remote.freeShippingThreshold(over: builtIn)
+    }()
     /// Meta's app id and client token (`META_APP_ID`, `META_CLIENT_TOKEN`); without both the app reports nothing to Meta.
     static let metaAppId = info("MetaAppId").trimmingCharacters(in: .whitespaces)
     static let metaClientToken = info("MetaClientToken").trimmingCharacters(in: .whitespaces)
@@ -127,11 +141,13 @@ enum AppGraph {
     @MainActor static let toast = ToastState()
 
     @MainActor private static let browser = BrowserSignIn()
-    // The callback scheme shop.<SHOP_ID>.app is the one Shopify allows a mobile client; the browser session catches it.
+    // The callback scheme shop.<SHOP_ID>.app is the one Shopify allows a mobile client; the browser session catches it,
+    // straight from Shopify or through the `customerRedirectUri` page.
     @MainActor static let auth = AuthStore(
         domain: shopDomain,
         clientId: customerClientId,
-        redirectUri: "shop.\(shopId).app://callback",
+        shopId: shopId,
+        redirectUri: customerRedirectUri,
         loadDocument: AppGraph.document,
         open: { url in try await AppGraph.browser.open(url, scheme: "shop.\(AppGraph.shopId).app") }
     )
@@ -152,9 +168,17 @@ enum AppGraph {
             storefront.context = StorefrontContext.device(localization)
         }
         let shop = try await storefront.shop()
-        let loaded = Brand(shop: shop, configDomain: shopDomain)
+        let loaded = Brand(shop: shop, configDomain: shopDomain, accent: remote?.accent)
         brand.value = loaded
         return loaded
+    }
+
+    /// Fetches the merchant's settings in the background for the next launch (nothing without a `settingsUrl`).
+    static func refreshSettings() {
+        // this launch's settings are read first: the fetch is only for the next one
+        _ = remote
+        guard !settingsUrl.isEmpty, let url = URL(string: settingsUrl) else { return }
+        Task.detached(priority: .utility) { await settingsStore.refresh(from: url) }
     }
 
     /// The GraphQL document `queries/<name>.graphql` (written by the CLI from contract/).
