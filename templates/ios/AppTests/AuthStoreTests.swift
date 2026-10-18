@@ -164,13 +164,15 @@ final class AuthStoreTests: XCTestCase {
     /// A store over this test's Keychain. `open` is the browser: by default the shopper closes it.
     @MainActor
     private func store(
+        redirectUri: String = "",
         read: ((String) async -> Data?)? = nil,
         open: @escaping (URL) async throws -> URL = { _ in throw CancellationError() }
     ) -> AuthStore {
         AuthStore(
             domain: "shop.test",
             clientId: "client-1",
-            redirectUri: "shop.1.app://callback",
+            shopId: "1",
+            redirectUri: redirectUri,
             loadDocument: { name in "query \(name) { customer { firstName } }" },
             open: open,
             session: session,
@@ -230,6 +232,33 @@ final class AuthStoreTests: XCTestCase {
         XCTAssertEqual(Array(keychain.keys), ["tokens"])
         let restarted = try await store().validAccessToken()
         XCTAssertEqual(restarted, "a1")
+    }
+
+    @MainActor
+    func testWithARedirectPageShopifySendsTheSignInThereAndTheAppStillTakesTheCallback() async throws {
+        let page = "https://krypton.test/customer-account/callback"
+        let s = store(redirectUri: page)
+        let authorize = try await start(s)
+        XCTAssertEqual(authorize["redirect_uri"], page)
+        // the page reads the shop id before the first dot, then sends the browser to shop.1.app://callback
+        let state = try XCTUnwrap(authorize["state"])
+        XCTAssertTrue(state.hasPrefix("1."))
+        XCTAssertGreaterThan(state.count, "1.".count)
+
+        let otherHost = await thrown { try await s.handleCallback("https://krypton.test/customer-account/callback?code=c1&state=\(state)") }
+        XCTAssertTrue(otherHost is AuthException, "the page itself isn't the app's callback")
+        try await s.handleCallback("shop.1.app://callback?code=c1&state=\(state)")
+        XCTAssertTrue(s.signedIn)
+        let exchange = try XCTUnwrap(requests.last(where: { $0.url?.path == "/authentication/oauth/token" }))
+        XCTAssertEqual(form(exchange)["redirect_uri"], page, "the token request names the same redirect_uri")
+    }
+
+    @MainActor
+    func testWithoutARedirectPageTheStateHasNoShopId() async throws {
+        // the rest of the old behaviour (redirect_uri is the app's callback) is in the tests around this one
+        let state = try await start(store())["state"] ?? ""
+        XCTAssertEqual(state.count, 64)
+        XCTAssertFalse(state.contains("."))
     }
 
     @MainActor

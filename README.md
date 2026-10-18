@@ -158,7 +158,7 @@ cd my-store-app
 - **iOS**: open `ios/App.xcodeproj` in Xcode 16+, pick a simulator, Run.
 - **Android**: open `android/` in Android Studio, or `cd android && ./gradlew assembleDebug`.
 
-Per-store values live in `ios/Config.xcconfig` and `android/shopify.properties`, with the same nineteen keys on both (`SHOP_DOMAIN`, `STOREFRONT_TOKEN`, `CUSTOMER_CLIENT_ID`, `SHOP_ID`, `API_VERSION`, `APP_NAME`, `BUNDLE_ID`, `PDP_METAFIELDS`, `HOME_TEMPLATE`, `COLLECTION_TEMPLATE`, `JUDGEME_PUBLIC_TOKEN`, `SHOW_VENDOR`, `ONBOARDING`, `FREE_SHIPPING_THRESHOLD`, `META_APP_ID`, `META_CLIENT_TOKEN`, `MOENGAGE_WORKSPACE_ID`, `MOENGAGE_DATA_CENTER`, `SERVER_PURCHASE`). The generated README explains each. With an empty token on a store other than `mock.shop`, the app shows a setup screen naming the missing key instead of failing at run time.
+Per-store values live in `ios/Config.xcconfig` and `android/shopify.properties`, with the same twenty-one keys on both (`SHOP_DOMAIN`, `STOREFRONT_TOKEN`, `CUSTOMER_CLIENT_ID`, `SHOP_ID`, `API_VERSION`, `APP_NAME`, `BUNDLE_ID`, `PDP_METAFIELDS`, `HOME_TEMPLATE`, `COLLECTION_TEMPLATE`, `JUDGEME_PUBLIC_TOKEN`, `SHOW_VENDOR`, `ONBOARDING`, `FREE_SHIPPING_THRESHOLD`, `META_APP_ID`, `META_CLIENT_TOKEN`, `MOENGAGE_WORKSPACE_ID`, `MOENGAGE_DATA_CENTER`, `SERVER_PURCHASE`, `SETTINGS_URL`, `CUSTOMER_REDIRECT_URI`). The generated README explains each; the last two are for [Krypton](https://github.com/mksd0398/krypton), which connects the apps through a Shopify app instead of the Headless channel. With an empty token on a store other than `mock.shop`, the app shows a setup screen naming the missing key instead of failing at run time.
 
 ---
 
@@ -292,6 +292,8 @@ Edit them under **Content → Metaobjects**. The home screen is the `mobile_scre
 | `--moengage-workspace-id=ID` | MoEngage: the workspace ID. |
 | `--moengage-data-center=N` | MoEngage: the data center, `1` to `6`. Default `1`. |
 | `--server` | Report the purchase to Google Analytics from `server/` instead of from the app (`SERVER_PURCHASE=true`). `server/` itself is written with Google Analytics or Meta anyway. |
+| `--settings-url=URL` | Read the merchant's settings from this URL at launch (`SETTINGS_URL`). Krypton passes it; with it, the Headless steps are skipped and `server/` is not written (Krypton's backend reports purchases). |
+| `--customer-redirect-uri=URL` | Send customer login back through this https page (`CUSTOMER_REDIRECT_URI`). Krypton passes it. |
 | `--skip-content` | Don't create the metaobject definitions or the `home` entry. |
 | `--yes` | Accept defaults and ask nothing. |
 | `--help` | Show help. |
