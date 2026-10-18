@@ -157,7 +157,7 @@ private fun WebSection(html: String, height: Int, section: ScreenSection, env: S
         """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <style>@font-face{font-family:ArgonText;src:url('$FONT_PATH')}
 :root{--accent:${colors.accent.css()};--text:${colors.ink.css()};--background:${colors.paper.css()}}
-body{margin:0;font-family:ArgonText,sans-serif;color:var(--text);background:var(--background)}
+body{margin:0;padding:0 16px;font-family:ArgonText,sans-serif;color:var(--text);background:var(--background)}
 img{max-width:100%;height:auto}a{color:var(--accent)}</style></head><body>$html
 <script>(function(){function report(){ArgonBridge.height(document.documentElement.scrollHeight)}
 window.addEventListener('load',report);window.addEventListener('resize',report);

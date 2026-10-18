@@ -184,8 +184,8 @@ and `ShopMetafields.graphql`), and only those storefront-accessible: others read
 `html` is HTML with Liquid. Two ways to draw it:
 
 - **web** (default): Liquid is evaluated over the whole html, which is shown in a WebView in a page with the app's
-  font, colours and accent as CSS variables (`--accent`, `--text`, `--background`), `max-width: 100%` images, and no
-  margins. Height fits the content (measured in the page), or `height` when set. Links in it go through
+  font, colours and accent as CSS variables (`--accent`, `--text`, `--background`), `max-width: 100%` images, no
+  margins and 16px side padding (the native sections' gutter; the merchant's CSS can change it). Height fits the content (measured in the page), or `height` when set. Links in it go through
   `Links.resolve`: store links open in the app, others in the browser. JavaScript is on (the merchant's own).
 - **native**: Krypton compiles html that stays within a known subset into `nodes`, and the app draws them with its
   components. Liquid is only in text and attributes (evaluated per node). The subset: `h1`-`h3`, `p`, `strong`/`b`,

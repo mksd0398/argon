@@ -131,7 +131,7 @@ func customDocument(_ html: String, accent: String, text: String, background: St
     <!doctype html><html><head><meta charset="utf-8">\
     <meta name="viewport" content="width=device-width, initial-scale=1">\
     <style>:root{--accent:\(accent);--text:\(text);--background:\(background)}\
-    body{margin:0;font-family:"Hanken Grotesk",-apple-system,sans-serif;color:var(--text);background:var(--background)}\
+    body{margin:0;padding:0 16px;font-family:"Hanken Grotesk",-apple-system,sans-serif;color:var(--text);background:var(--background)}\
     img{max-width:100%;height:auto}a{color:var(--accent)}</style></head><body>\(html)</body></html>
     """
 }
