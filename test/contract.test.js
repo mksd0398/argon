@@ -107,6 +107,14 @@ test("live: Storefront documents run against mock.shop", { skip: !process.env.AR
   const home = await call("FallbackHome");
   const products = home.collections.nodes.flatMap((c) => c.products.nodes);
   assert.ok(products.length > 0);
+  // Screens v2: mock.shop has no app_screen and no metafields, so these only prove the documents run
+  assert.equal((await call("AppScreen", { handle: "home" }, { record: false })).metaobject, null);
+  const first = home.collections.nodes[0];
+  const nodes = (await call("SectionNodes", { ids: [products[0].id, first.id] }, { record: false })).nodes;
+  assert.ok(Array.isArray(nodes), "mock.shop answers nodes(ids:) with an empty list, but the document runs");
+  const identifiers = [{ namespace: "custom", key: "promo" }];
+  await call("CollectionMetafields", { handle: first.handle, metafields: identifiers }, { record: false });
+  await call("ShopMetafields", { metafields: identifiers }, { record: false });
   await call("Collections", { first: 3 });
   // hand-written from here on where mock.shop has no data for what the apps decode: filters with swatches, a card with
   // swatches and a rating, a bundle variant with volume pricing
