@@ -36,6 +36,10 @@
 	<string>$(MOENGAGE_DATA_CENTER)</string>
 	<key>ServerPurchase</key>
 	<string>$(SERVER_PURCHASE)</string>
+	<key>SettingsUrl</key>
+	<string>$(SETTINGS_URL)</string>
+	<key>CustomerRedirectUri</key>
+	<string>$(CUSTOMER_REDIRECT_URI)</string>
 	<!-- Analytics. The keys the providers' SDKs read themselves; nothing reads them in an app without the SDK.
 	     Meta's app (META_APP_ID, META_CLIENT_TOKEN): -->
 	<key>FacebookAppID</key>

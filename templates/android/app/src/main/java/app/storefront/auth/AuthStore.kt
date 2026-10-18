@@ -42,11 +42,17 @@ class AuthException(message: String, val status: Int? = null) : Exception(messag
  * The customer's Customer Account API session: the OAuth 2.0 authorization code flow for a public client with PKCE (S256),
  * as in shopify.dev/docs/api/customer. Endpoints come from the shop's discovery documents. Everything this store writes to
  * [prefs] goes through [encrypt] (an Android Keystore key, see TokenCrypto); a value [decrypt] can't open reads as signed out.
+ *
+ * The browser always comes back to the app at [callbackUri] (`shop.{shopId}.app://callback`). With a [redirectUri] (an
+ * https page, `CUSTOMER_REDIRECT_URI`) Shopify is sent there instead, and the `state` starts with `{shopId}.` so that page
+ * knows which app to send the browser on to, with the same query. Empty: Shopify comes straight back to [callbackUri].
  */
 class AuthStore(
     private val domain: String,
     private val clientId: String,
-    private val redirectUri: String,
+    private val callbackUri: String,
+    redirectUri: String,
+    private val shopId: String,
     private val http: OkHttpClient,
     private val prefs: DataStore<Preferences>,
     private val encrypt: (String) -> String,
@@ -54,6 +60,13 @@ class AuthStore(
     private val loadDocument: (String) -> String,
     private val now: () -> Long = System::currentTimeMillis,
 ) {
+    /**
+     * The `redirect_uri` Shopify sends the browser back to: the https page that relays it to [callbackUri] when there is
+     * one (Shopify then only knows that page), else [callbackUri] itself.
+     */
+    private val redirectUri = redirectUri.trim().ifEmpty { callbackUri }
+    private val relayed = this.redirectUri != callbackUri
+
     private class Tokens(val access: String, val refresh: String?, val idToken: String?, val expiresAt: Long)
 
     private val tokensKey = stringPreferencesKey("tokens")
@@ -100,7 +113,8 @@ class AuthStore(
             ensureLoaded()
             signInErrorState.value = null
             val verifier = Pkce.verifier()
-            val state = Pkce.verifier()
+            // the relay page reads the shop id off the front of the state to find the app: shop.{id}.app://callback
+            val state = if (relayed) "$shopId.${Pkce.verifier()}" else Pkce.verifier()
             val nonce = Pkce.verifier()
             // the code goes back to the token endpoint: one that isn't https stops the sign-in before the browser opens
             openId().endpoint("token_endpoint")
@@ -121,7 +135,7 @@ class AuthStore(
     }
 
     /**
-     * The browser came back to [redirectUri] with [uri]. A callback that isn't for the sign-in in progress (none, or another
+     * The browser came back to [callbackUri] with [uri]. A callback that isn't for the sign-in in progress (none, or another
      * `state`) throws and changes nothing. Otherwise that attempt ends here: an `error` answer or a failed exchange throws and
      * sets [signInError]; a `code` is exchanged for tokens once the id_token's nonce matches.
      */
@@ -129,7 +143,7 @@ class AuthStore(
         lock.withLock {
             ensureLoaded()
             val callback = URI(uri)
-            val expected = URI(redirectUri)
+            val expected = URI(callbackUri)
             val params = callback.rawQuery.orEmpty().split('&').mapNotNull { pair ->
                 pair.split('=', limit = 2).takeIf { it.size == 2 }?.let { (k, v) -> URLDecoder.decode(k, "UTF-8") to URLDecoder.decode(v, "UTF-8") }
             }.toMap()

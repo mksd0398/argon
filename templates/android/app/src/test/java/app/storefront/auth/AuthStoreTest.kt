@@ -104,10 +104,16 @@ class AuthStoreTest {
         return disk()
     }
 
-    private fun store(prefs: DataStore<Preferences> = disk(), decrypt: (String) -> String = { it.removePrefix("sealed:") }) = AuthStore(
+    private fun store(
+        prefs: DataStore<Preferences> = disk(),
+        decrypt: (String) -> String = { it.removePrefix("sealed:") },
+        redirectUri: String = "",
+    ) = AuthStore(
         domain = "shop.test",
         clientId = "client-1",
-        redirectUri = "shop.1.app://callback",
+        callbackUri = "shop.1.app://callback",
+        redirectUri = redirectUri,
+        shopId = "1",
         http = http,
         prefs = prefs,
         encrypt = { "sealed:$it" },
@@ -160,6 +166,29 @@ class AuthStoreTest {
         assertEquals(1, values.size)
         assertTrue(values.single().toString().startsWith("sealed:"))
         assertEquals("a1", store(saved).validAccessToken())
+    }
+
+    @Test
+    fun aRedirectPageGetsShopifysAnswerAndTheAppStillTakesItsCallback() = runBlocking {
+        val relay = "https://krypton.test/customer-account/callback"
+        val s = store(redirectUri = relay)
+        val authorize = s.start()
+        assertEquals(relay, authorize.queryParameter("redirect_uri"))
+        val state = authorize.queryParameter("state")!!
+        assertTrue("the relay page finds the app by the state's prefix", state.startsWith("1."))
+        assertTrue(state.length > "1.".length)
+
+        // the page sends the browser on to the app's own callback with the same query
+        s.handleCallback("shop.1.app://callback?code=c1&state=$state")
+        assertTrue(s.signedIn.value)
+        val form = requests.last { it.url.encodedPath == "/authentication/oauth/token" }.form()
+        assertEquals("the token request names the redirect_uri the code was issued for", relay, form["redirect_uri"])
+    }
+
+    @Test
+    fun withoutARedirectPageTheStateIsBare() = runBlocking {
+        val state = store().start().queryParameter("state")!!
+        assertFalse(state.contains('.'))
     }
 
     @Test

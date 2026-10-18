@@ -51,8 +51,8 @@ private fun controlsHeight(buttons: Int): Dp {
 
 /**
  * The first-launch welcome, shown once before the tabs (`AppGraph.onboarding`): three full-screen pages
- * ([Onboarding.pages]) to swipe through, each a picture with a heading and a line of text over a bottom shade. "Skip"
- * (pages 1 and 2) and "Get started" (page 3) end it; so does "Sign in" on page 3, offered when the store has sign-in
+ * ([Onboarding.pages], in the settings' words where they have some) to swipe through, each a picture with a heading and a
+ * line of text over a bottom shade. "Skip" (pages 1 and 2) and "Get started" (page 3) end it; so does "Sign in" on page 3, offered when the store has sign-in
  * set up, which also asks for the Account tab ([onDone]'s `signIn`).
  */
 @Composable
@@ -69,7 +69,7 @@ fun OnboardingScreen(onDone: (signIn: Boolean) -> Unit) {
         }
     }
     val brand = loaded ?: Brand(BuildConfig.APP_NAME, logo = null, cover = null, accent = null, hosts = emptySet())
-    val pages = remember(brand) { Onboarding.pages(brand, AppGraph.homeTemplate) }
+    val pages = remember(brand) { Onboarding.pages(brand, AppGraph.homeTemplate).let { AppGraph.settings?.pages(it) ?: it } }
     val canSignIn = AppGraph.customerClientId.isNotBlank()
     val pager = rememberPagerState { pages.size }
     val scope = rememberCoroutineScope()

@@ -1135,15 +1135,16 @@ struct Brand: Equatable {
 }
 
 extension Brand {
-    /// `configDomain` is SHOP_DOMAIN; together with the primary domain it decides which links stay in the app.
-    init(shop: Shop, configDomain: String) {
+    /// `configDomain` is SHOP_DOMAIN; together with the primary domain it decides which links stay in the app. `accent`
+    /// (the merchant's settings) replaces the shop's brand colour.
+    init(shop: Shop, configDomain: String, accent: String? = nil) {
         var hosts = [configDomain]
         if !hosts.contains(shop.primaryDomain.host) { hosts.append(shop.primaryDomain.host) }
         self.init(
             name: shop.name,
             logo: shop.brand?.logo,
             cover: shop.brand?.coverImage,
-            accent: shop.brand?.primaryColors.first?.background,
+            accent: accent ?? shop.brand?.primaryColors.first?.background,
             hosts: hosts,
             shortDescription: shop.brand?.shortDescription,
             slogan: shop.brand?.slogan
@@ -1160,8 +1161,14 @@ struct OnboardingPage: Equatable {
 
 enum Onboarding {
     /// The three welcome pages, over `template`'s three stock banners: the shop in its own words (its brand's short
-    /// description, else its slogan, else a line with its name), then what the app is good for.
-    static func pages(brand: Brand, template: HomeTemplate, image: (HomeTemplate, Int) -> String? = StockImages.url) -> [OnboardingPage] {
+    /// description, else its slogan, else a line with its name), then what the app is good for. A non-empty heading or
+    /// text in `words` (the merchant's settings, page by page) replaces that page's own.
+    static func pages(
+        brand: Brand,
+        template: HomeTemplate,
+        words: [RemoteSettings.Page] = [],
+        image: (HomeTemplate, Int) -> String? = StockImages.url
+    ) -> [OnboardingPage] {
         let own = [brand.shortDescription, brand.slogan]
             .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .first { !$0.isEmpty }
@@ -1169,7 +1176,15 @@ enum Onboarding {
             ("Welcome to \(brand.name)", own ?? "Everything from \(brand.name), in one app."),
             ("Find it fast", "Search, filter and save what you love."),
             ("Checkout in a few taps", "Track your orders and returns from your account."),
-        ].enumerated().map { index, words in OnboardingPage(image: image(template, index + 1), heading: words.0, text: words.1) }
+        ].enumerated().map { index, own in
+            let set = index < words.count ? words[index] : RemoteSettings.Page()
+            return OnboardingPage(image: image(template, index + 1), heading: nonEmpty(set.heading) ?? own.0, text: nonEmpty(set.text) ?? own.1)
+        }
+    }
+
+    private static func nonEmpty(_ value: String?) -> String? {
+        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? nil : trimmed
     }
 }
 

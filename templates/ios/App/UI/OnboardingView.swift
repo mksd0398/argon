@@ -14,7 +14,7 @@ struct OnboardingView: View {
     var body: some View {
         // The shop's own name and words once it answers; the app's name until then, and when it can't be reached.
         let brand = AppGraph.brand.value ?? Brand(name: AppGraph.appName, logo: nil, cover: nil, accent: nil, hosts: [])
-        let pages = Onboarding.pages(brand: brand, template: AppGraph.homeTemplate)
+        let pages = Onboarding.pages(brand: brand, template: AppGraph.homeTemplate, words: AppGraph.remote?.pages ?? [])
         let canSignIn = trimmedText(AppGraph.customerClientId) != nil
         let current = page ?? 0
         let last = current == pages.count - 1

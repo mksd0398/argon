@@ -19,12 +19,16 @@ final class ConfigTests: XCTestCase {
         XCTAssertEqual(xcconfigKey("MoengageWorkspaceId"), "MOENGAGE_WORKSPACE_ID")
         XCTAssertEqual(xcconfigKey("MoengageDataCenter"), "MOENGAGE_DATA_CENTER")
         XCTAssertEqual(xcconfigKey("ServerPurchase"), "SERVER_PURCHASE")
+        XCTAssertEqual(xcconfigKey("SettingsUrl"), "SETTINGS_URL")
+        XCTAssertEqual(xcconfigKey("CustomerRedirectUri"), "CUSTOMER_REDIRECT_URI")
     }
 
-    /// An Xcode build (the one these tests run in) takes the values through Info.plist: it has to name each analytics key
-    /// `AppGraph` asks for, whatever the store's value is, an empty one too.
+    /// An Xcode build (the one these tests run in) takes the values through Info.plist: it has to name each analytics and
+    /// Krypton key `AppGraph` asks for, whatever the store's value is, an empty one too.
     func testInfoPlistNamesTheAnalyticsKeys() {
-        for key in ["MetaAppId", "MetaClientToken", "MoengageWorkspaceId", "MoengageDataCenter", "ServerPurchase"] {
+        for key in [
+            "MetaAppId", "MetaClientToken", "MoengageWorkspaceId", "MoengageDataCenter", "ServerPurchase", "SettingsUrl", "CustomerRedirectUri",
+        ] {
             XCTAssertNotNil(Bundle.main.object(forInfoDictionaryKey: key) as? String, "Info.plist has no \(key)")
         }
     }
@@ -36,6 +40,8 @@ final class ConfigTests: XCTestCase {
         STOREFRONT_TOKEN =
         APP_NAME = Nalli = Silks
         PDP_METAFIELDS = https:/$()/example.com/a
+        SETTINGS_URL = https:/$()/krypton-mksd.web.app/v1/settings/nalli.myshopify.com
+        CUSTOMER_REDIRECT_URI = https:/$()/krypton-mksd.web.app/customer-account/callback
         not a setting
         """
         let values = xcconfigValues(text)
@@ -43,6 +49,8 @@ final class ConfigTests: XCTestCase {
         XCTAssertEqual(values["STOREFRONT_TOKEN"], "", "an empty value stays empty")
         XCTAssertEqual(values["APP_NAME"], "Nalli = Silks", "only the first = separates")
         XCTAssertEqual(values["PDP_METAFIELDS"], "https://example.com/a")
-        XCTAssertEqual(values.count, 4)
+        XCTAssertEqual(values["SETTINGS_URL"], "https://krypton-mksd.web.app/v1/settings/nalli.myshopify.com")
+        XCTAssertEqual(values["CUSTOMER_REDIRECT_URI"], "https://krypton-mksd.web.app/customer-account/callback")
+        XCTAssertEqual(values.count, 6)
     }
 }

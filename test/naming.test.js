@@ -27,7 +27,8 @@ test("parseArgs: --flag=value, defaults and missing value", () => {
     name: "app", demo: false, store: "a.myshopify.com", token: "t=1", clientId: undefined,
     bundleId: "com.x.y", home: undefined, collection: undefined, judgemeToken: undefined,
     firebaseAndroid: undefined, firebaseIos: undefined, metaAppId: undefined, metaClientToken: undefined,
-    moengageWorkspaceId: undefined, moengageDataCenter: undefined, server: false, skipContent: false, yes: false, help: false,
+    moengageWorkspaceId: undefined, moengageDataCenter: undefined, settingsUrl: undefined, customerRedirectUri: undefined,
+    server: false, skipContent: false, yes: false, help: false,
   });
   assert.throws(() => parseArgs(["--store"]), /Missing value for --store/);
   const templates = parseArgs(["app", "--home=grocery", "--collection", "bottom", "--judgeme-token=pub"]);
@@ -49,6 +50,16 @@ test("parseArgs: analytics flags", () => {
   // Meta's SDK needs both values, so one without the other is refused
   assert.throws(() => parseArgs(["--meta-app-id=123"]), /--meta-app-id and --meta-client-token go together/);
   assert.throws(() => parseArgs(["--meta-client-token=abc"]), /--meta-app-id and --meta-client-token go together/);
+});
+
+test("parseArgs: Krypton's settings URL and customer redirect", () => {
+  const o = parseArgs(["app", "--settings-url=https://k.web.app/v1/settings/a.myshopify.com", "--customer-redirect-uri", "https://k.web.app/customer-account/callback"]);
+  assert.deepEqual([o.settingsUrl, o.customerRedirectUri], ["https://k.web.app/v1/settings/a.myshopify.com", "https://k.web.app/customer-account/callback"]);
+  for (const flag of ["--settings-url", "--customer-redirect-uri"]) {
+    for (const value of ["http://k.web.app/x", "k.web.app/x", "https://", "https://a b/c"]) {
+      assert.throws(() => parseArgs([`${flag}=${value}`]), new RegExp(`${flag} must be an https:// URL`));
+    }
+  }
 });
 
 // run(): console and TTY are swapped out so --help and the no-terminal check can be asserted

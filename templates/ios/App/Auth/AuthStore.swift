@@ -89,7 +89,12 @@ final class AuthStore {
 
     private let domain: String
     private let clientId: String
+    /// Where the browser ends the sign-in, `shop.<shopId>.app://callback`: the callback must come back on it.
+    private let callbackUri: String
+    /// The `redirect_uri` Shopify gets: `callbackUri`, or the https page that passes the callback on to it.
     private let redirectUri: String
+    /// Starts each `state` when the sign-in goes through that page: it reads the shop id there to find the app.
+    private let statePrefix: String
     private let loadDocument: (String) throws -> String
     private let open: (URL) async throws -> URL
     private let session: URLSession
@@ -110,7 +115,8 @@ final class AuthStore {
     init(
         domain: String,
         clientId: String,
-        redirectUri: String,
+        shopId: String,
+        redirectUri: String = "",
         loadDocument: @escaping (String) throws -> String,
         open: @escaping (URL) async throws -> URL,
         session: URLSession = .shared,
@@ -121,7 +127,9 @@ final class AuthStore {
     ) {
         self.domain = domain
         self.clientId = clientId
-        self.redirectUri = redirectUri
+        callbackUri = "shop.\(shopId).app://callback"
+        self.redirectUri = redirectUri.isEmpty ? callbackUri : redirectUri
+        statePrefix = redirectUri.isEmpty ? "" : "\(shopId)."
         self.loadDocument = loadDocument
         self.open = open
         self.session = session
@@ -169,7 +177,7 @@ final class AuthStore {
             _ = try endpoint(config, "token_endpoint")
             let authorize = try endpoint(config, "authorization_endpoint")
             let verifier = Pkce.verifier()
-            let state = Pkce.verifier()
+            let state = statePrefix + Pkce.verifier()
             let nonce = Pkce.verifier()
             let url = authorize.appending(queryItems: [
                 URLQueryItem(name: "scope", value: "openid email customer-account-api:full"),
@@ -186,14 +194,14 @@ final class AuthStore {
         }
     }
 
-    /// The browser came back to `redirectUri` with `uri`. A callback that isn't for the sign-in in progress (none, or another
+    /// The browser came back to `callbackUri` with `uri`. A callback that isn't for the sign-in in progress (none, or another
     /// `state`) throws and changes nothing. Otherwise that attempt ends here: an `error` answer or a failed exchange throws and
     /// sets `signInError`; a `code` is exchanged for tokens once the id_token's nonce matches.
     func handleCallback(_ uri: String) async throws {
         try await locked {
             await ensureLoaded()
             let components = URLComponents(string: uri)
-            let expected = URLComponents(string: redirectUri)
+            let expected = URLComponents(string: callbackUri)
             let fields = components.map(formFields) ?? [:]
             guard let attempt = pending, let callback = components,
                   callback.scheme == expected?.scheme, callback.host == expected?.host,
