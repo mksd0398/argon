@@ -14,18 +14,15 @@
           "financialStatus": "PAID",
           "fulfillmentStatus": "IN_PROGRESS",
           "cancelledAt": null,
-          "latestFulfillmentDeliveryDate": null,
           "totalPrice": {
             "amount": "158.9",
             "currencyCode": "CAD"
-          },
-          "lineItemsSummary": {
-            "totalQuantityOfLineItems": 4
           },
           "lineItems": {
             "nodes": [
               {
                 "title": "Half Zip",
+                "quantity": 2,
                 "image": {
                   "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/9e803ec74aad4ea090069ff99a4b82b78a023a76b84e53b457632b624166e67d.jpg",
                   "altText": null
@@ -33,6 +30,7 @@
               },
               {
                 "title": "Workout Shirt",
+                "quantity": 2,
                 "image": {
                   "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/23e2d44fd51df6adb548fd353a5bd9388a96d0c8352cec564e13c4c089b252e2.jpg",
                   "altText": null
@@ -44,7 +42,8 @@
             "nodes": [
               {
                 "latestShipmentStatus": "IN_TRANSIT",
-                "estimatedDeliveryAt": "2026-10-14T18:00:00Z"
+                "estimatedDeliveryAt": "2026-10-14T18:00:00Z",
+                "updatedAt": "2026-10-10T08:30:00Z"
               }
             ]
           }
@@ -57,18 +56,15 @@
           "financialStatus": "PARTIALLY_REFUNDED",
           "fulfillmentStatus": "FULFILLED",
           "cancelledAt": null,
-          "latestFulfillmentDeliveryDate": "2026-09-25T13:05:00Z",
           "totalPrice": {
             "amount": "271.9",
             "currencyCode": "CAD"
-          },
-          "lineItemsSummary": {
-            "totalQuantityOfLineItems": 4
           },
           "lineItems": {
             "nodes": [
               {
                 "title": "Men's Crewneck",
+                "quantity": 1,
                 "image": {
                   "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/4ecbbab490d5a90c04074428b4b0e09358c6895050db590ffbb84e1f8e05fbbc.jpg",
                   "altText": null
@@ -76,6 +72,7 @@
               },
               {
                 "title": "Sweatpants",
+                "quantity": 2,
                 "image": {
                   "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/e4fe192f0e86ffc74d3b906f754119d4b5f4432cf01120d090ab7eb5182e8897.jpg",
                   "altText": null
@@ -83,6 +80,7 @@
               },
               {
                 "title": "Men's T-shirt",
+                "quantity": 1,
                 "image": {
                   "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/c99af4de567f8baafab47fa2d5267d83a997f9082892f01d7145c0eaa5403832.jpg",
                   "altText": null
@@ -94,7 +92,8 @@
             "nodes": [
               {
                 "latestShipmentStatus": "DELIVERED",
-                "estimatedDeliveryAt": null
+                "estimatedDeliveryAt": null,
+                "updatedAt": "2026-09-25T13:05:00Z"
               }
             ]
           }
@@ -107,18 +106,15 @@
           "financialStatus": "PAID",
           "fulfillmentStatus": "UNFULFILLED",
           "cancelledAt": null,
-          "latestFulfillmentDeliveryDate": null,
           "totalPrice": {
             "amount": "113.7",
             "currencyCode": "CAD"
-          },
-          "lineItemsSummary": {
-            "totalQuantityOfLineItems": 1
           },
           "lineItems": {
             "nodes": [
               {
                 "title": "Hoodie",
+                "quantity": 1,
                 "image": {
                   "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/3d4d46da1bdbda2bf52f92987e6d4108770eb0a8f233f63a279849fce731f5af.jpg",
                   "altText": null
@@ -138,18 +134,15 @@
           "financialStatus": "REFUNDED",
           "fulfillmentStatus": "UNFULFILLED",
           "cancelledAt": "2026-07-14T16:00:00Z",
-          "latestFulfillmentDeliveryDate": null,
           "totalPrice": {
             "amount": "147.6",
             "currencyCode": "CAD"
-          },
-          "lineItemsSummary": {
-            "totalQuantityOfLineItems": 1
           },
           "lineItems": {
             "nodes": [
               {
                 "title": "Women's Crewneck",
+                "quantity": 1,
                 "image": {
                   "url": "https://cdn.shopify.com/mock-shop-production-media/_seeds/demostore/085e04f1a4d35f4558b5f63769e26716b4d2be95bab0bee52d1f6a85d97d4f31.jpg",
                   "altText": null

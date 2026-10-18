@@ -83,7 +83,7 @@ fun moreItems(itemCount: Int?, shown: Int): Int = ((itemCount ?: shown) - shown)
  */
 fun deliveryNote(order: OrderSummary, date: (String) -> String = ::displayDate): String? {
     if (order.cancelledAt != null) return null
-    order.latestFulfillmentDeliveryDate?.let { return "Delivered ${date(it)}" }
+    order.deliveredAt?.let { return "Delivered ${date(it)}" }
     return order.estimatedDeliveryAt?.let { "Arrives ${date(it)}" }
 }
 

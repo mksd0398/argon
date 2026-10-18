@@ -12,7 +12,7 @@ query OrderReturnOptions($id: ID!) {
         title
         amountSet { presentmentMoney { ...Money } }
       }
-      nonReturnableSummary { summaryMessage }
+      nonReturnableSummary { nonReturnableReasons }
       returnableLineItems(first: 50) {
         nodes {
           quantity

@@ -230,7 +230,7 @@ private struct OrderBusiness: View {
     }
 }
 
-/// A return: its name, status and date, what went back and why, what comes instead, and why the store declined it.
+/// A return: its name, status and date, what went back and why, and what comes instead.
 @MainActor
 private struct ReturnCard: View {
     let item: OrderReturn
@@ -260,10 +260,6 @@ private struct ReturnCard: View {
             }
             ForEach(item.exchangeLines, id: \.id) { line in
                 ItemRow(image: line.image, title: line.title, details: itemDetails(line.variantTitle, sku: nil, quantity: line.quantity))
-            }
-            if let decline = item.decline {
-                let why = [decline.reason.map(displayStatus), trimmedText(decline.note)].compactMap { $0 }.joined(separator: ": ")
-                ErrorText(why.isEmpty ? "Declined" : "Declined: \(why)")
             }
         }
     }

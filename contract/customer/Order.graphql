@@ -93,7 +93,6 @@ query Order($id: ID!) {
         status
         createdAt
         closedAt
-        decline { reason note }
         returnLineItems(first: 20) {
           nodes {
             __typename

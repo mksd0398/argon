@@ -200,7 +200,7 @@ private fun OrderBusiness(order: Order) = Panel(title = "Business details") {
     }
 }
 
-/** A return: its name, status and date, what went back and why, what comes instead, and why the store declined it. */
+/** A return: its name, status and date, what went back and why, and what comes instead. */
 @Composable
 private fun ReturnCard(item: Return) = Panel {
     Row(horizontalArrangement = Arrangement.spacedBy(ArgonTheme.spacing.s), verticalAlignment = Alignment.CenterVertically) {
@@ -215,10 +215,6 @@ private fun ReturnCard(item: Return) = Panel {
     }
     if (item.exchangeLines.isNotEmpty()) Text("Exchanged for", style = ArgonTheme.type.label, color = ArgonTheme.colors.ink)
     for (line in item.exchangeLines) ItemRow(line.image, line.title, itemDetails(line.variantTitle, null, line.quantity))
-    item.decline?.let { decline ->
-        val why = listOfNotNull(decline.reason?.let(::displayStatus), decline.note?.takeIf { it.isNotBlank() }).joinToString(": ")
-        ErrorText(if (why.isEmpty()) "Declined" else "Declined: $why")
-    }
 }
 
 /** "Return or exchange items" (when something can go back), "Buy again", "View order status page" and "Need help?". */

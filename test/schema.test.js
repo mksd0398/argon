@@ -29,6 +29,28 @@ test("every document validates against its API's 2026-10 schema and selects no d
   assert.deepEqual(errors, []);
 });
 
+// Customer Account fields Hydrogen's schema has but shopify.dev's public 2026-10 reference doesn't: the live API refuses
+// a third-party client's whole query over any of them ("Field ... doesn't exist on type ...").
+const HYDROGEN_ONLY = [
+  "Order.latestFulfillmentDeliveryDate", "Order.lineItemsSummary",
+  "Return.decline", "Return.timelineEvents", "Return.tmpReturnLineItemsCount",
+  "OrderNonReturnableSummary.summaryMessage",
+];
+
+test("no Customer Account document selects a field public clients don't get", () => {
+  const found = [];
+  for (const d of docs.filter((d) => d.customer)) {
+    const info = new TypeInfo(d.schema);
+    visit(d.ast, visitWithTypeInfo(info, {
+      Field(node) {
+        const field = `${info.getParentType()?.name}.${node.name.value}`;
+        if (HYDROGEN_ONLY.includes(field)) found.push(`${d.name}: ${field}`);
+      },
+    }));
+  }
+  assert.deepEqual(found, []);
+});
+
 test("every Storefront operation takes $country, $language and $buyer and runs @inContext with them", () => {
   for (const { name, op } of docs.filter((d) => !d.customer)) {
     const vars = Object.fromEntries((op.variableDefinitions ?? []).map((v) => [v.variable.name.value, print(v.type)]));
