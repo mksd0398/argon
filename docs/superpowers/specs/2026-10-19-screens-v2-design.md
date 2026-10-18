@@ -239,10 +239,17 @@ New RemoteSettings fields, decoded leniently like the rest; applied at the next 
   links through `Links.resolve`, closable for the session when `dismissible`.
 - `appearance.mode`: `system` | `light` | `dark`.
 
+## Push notifications
+
+With `--push` (needs the Firebase files), the apps subscribe to the store's Firebase Cloud Messaging topics `all`
+and `ios` / `android` once the customer allows notifications (from Account, or after their first purchase; never at
+first launch), and report the opt-in to Krypton (`/v1/devices/{shop}`, an anonymous install id). A notification's
+`link` opens through `Links.resolve`. The sending side is Krypton's (its dashboard spec, "Push notifications").
+
 ## Out of scope here
 
-Push notifications (Firebase Cloud Messaging; a later spec), drag-and-drop editing in the app, section types loaded
-at runtime, mid-session settings changes.
+Drag-and-drop editing in the app, section types loaded at runtime, mid-session settings changes, rich images in
+iOS notifications (a notification service extension).
 
 ## Testing
 
