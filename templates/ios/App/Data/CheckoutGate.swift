@@ -34,3 +34,17 @@ func passwordProtected(
     guard let (_, response) = try? await fetch(request), let http = response as? HTTPURLResponse else { return false }
     return (300..<400).contains(http.statusCode) && (http.value(forHTTPHeaderField: "Location") ?? "").contains("/password")
 }
+
+// The paths on the store's own domains that are checkout, not the shop's website: checkout itself (also under the shop's
+// id), the cart link it starts from, and the policies it links to.
+private let checkoutPaths = try! NSRegularExpression(pattern: #"^/(\d+/)?(checkouts|cart/c|policies)(/|$)"#)
+
+/// Whether `url` is a page of the store's own website (its home page, a product, its cart, the password page): never
+/// shown in the checkout sheet, which goes back to the app's cart instead. `storeHosts` are the store's domains (the
+/// shop domain, its primary domain); other domains (payment pages, Shop Pay, help pages) are not the store's website.
+func isStorePage(_ url: URL, storeHosts: Set<String>) -> Bool {
+    guard let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https",
+          let host = url.host?.lowercased(), storeHosts.contains(where: { $0.lowercased() == host }) else { return false }
+    let path = url.path.isEmpty ? "/" : url.path
+    return checkoutPaths.firstMatch(in: path, range: NSRange(path.startIndex..., in: path)) == nil
+}

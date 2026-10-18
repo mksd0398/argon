@@ -2,6 +2,7 @@ package app.storefront.ui
 
 import android.content.Context
 import android.content.ContextWrapper
+import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -78,11 +79,13 @@ import app.storefront.data.QuantityRule
 import app.storefront.data.Route
 import app.storefront.data.beginCheckout
 import app.storefront.data.checkoutStep
+import app.storefront.data.isStorePage
 import app.storefront.data.passwordProtected
 import app.storefront.data.purchase
 import app.storefront.data.viewCart
 import com.shopify.checkoutsheetkit.CheckoutException
 import com.shopify.checkoutsheetkit.CheckoutExpiredException
+import com.shopify.checkoutsheetkit.CheckoutSheetKitDialog
 import com.shopify.checkoutsheetkit.DefaultCheckoutEventProcessor
 import com.shopify.checkoutsheetkit.ShopifyCheckoutSheetKit
 import com.shopify.checkoutsheetkit.lifecycleevents.CheckoutCompletedEvent
@@ -117,7 +120,25 @@ internal suspend fun presentCheckout(url: String, host: ComponentActivity, onErr
     // build opens it anyway, so checkout can be tried on a development store (they all have a password): enter it, close
     // the sheet, and Checkout again
     if (!BuildConfig.DEBUG && passwordProtected(url, AppGraph.http)) return onError(PASSWORD_PROTECTED_CHECKOUT)
+
+    // The sheet shows checkout and nothing of the shop's website: a store page (a link, a redirect, "Continue shopping")
+    // closes it and opens the app's cart instead. A debug build lets the password page through, as above.
+    val hosts = AppGraph.brand.value?.hosts.orEmpty() + setOfNotNull(AppGraph.shopDomain, Uri.parse(url).host)
+    val storePage = { link: String ->
+        isStorePage(link, hosts) && !(BuildConfig.DEBUG && link.substringBefore('?').endsWith("/password"))
+    }
+    var sheet: CheckoutSheetKitDialog? = null
+    val leave = {
+        sheet?.dismiss()
+        ShopifyCheckoutSheetKit.invalidate()
+        AppGraph.tabs.select(AppTab.Cart)
+    }
     val processor = object : DefaultCheckoutEventProcessor(host) {
+        // the links checkout hands out (ones that open a new window): the store's go to the app's cart, others open as usual
+        override fun onCheckoutLinkClicked(uri: Uri) {
+            if (storePage(uri.toString())) leave() else super.onCheckoutLinkClicked(uri)
+        }
+
         override fun onCheckoutCompleted(checkoutCompletedEvent: CheckoutCompletedEvent) {
             AppGraph.analytics.track(purchase(checkoutCompletedEvent.orderDetails))
             AppGraph.scope.launch { AppGraph.cart.completed() }
@@ -139,7 +160,8 @@ internal suspend fun presentCheckout(url: String, host: ComponentActivity, onErr
     withContext(Dispatchers.Main) {
         if (host.isFinishing || host.isDestroyed) return@withContext
         AppGraph.cart.cart.value?.let { AppGraph.analytics.track(beginCheckout(it)) }
-        ShopifyCheckoutSheetKit.present(url, host, processor)
+        sheet = ShopifyCheckoutSheetKit.present(url, host, processor)
+        guardCheckoutSheet(storePage, leave)
     }
 }
 

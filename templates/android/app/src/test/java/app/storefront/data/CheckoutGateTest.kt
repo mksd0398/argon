@@ -37,6 +37,26 @@ class CheckoutGateTest {
         assertFalse(passwordProtected(checkout, answering(200)))
     }
 
+    private val hosts = setOf("shop.myshopify.com", "www.shop.com")
+
+    @Test
+    fun theStoresOwnPagesAreStorePages() {
+        for (page in listOf(
+            "https://shop.myshopify.com/", "https://www.shop.com", "https://www.shop.com/products/pants?variant=1",
+            "https://shop.myshopify.com/cart", "https://shop.myshopify.com/password", "https://WWW.SHOP.COM/collections/all",
+        )) assertTrue(page, isStorePage(page, hosts))
+    }
+
+    @Test
+    fun checkoutAndOtherDomainsAreNot() {
+        for (page in listOf(
+            "https://shop.myshopify.com/checkouts/cn/abc/en-us", "https://shop.myshopify.com/checkouts/cn/abc/thank-you",
+            "https://shop.myshopify.com/cart/c/abc?key=k", "https://shop.myshopify.com/123456/checkouts/cn/abc",
+            "https://www.shop.com/policies/refund-policy", "https://www.paypal.com/checkoutnow", "https://shop.app/pay",
+            "https://help.shopify.com/en/manual", "mailto:help@shop.com", "not a url",
+        )) assertFalse(page, isStorePage(page, hosts))
+    }
+
     @Test
     fun aNetworkFailureNeverStopsCheckout() = runBlocking {
         assertFalse(passwordProtected(checkout, answering(0, offline = true)))

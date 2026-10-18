@@ -33,4 +33,22 @@ final class CheckoutGateTests: XCTestCase {
         let offline = await passwordProtected(checkout, fetch: { _ in throw URLError(.notConnectedToInternet) })
         XCTAssertFalse(offline)
     }
+
+    private let hosts: Set<String> = ["shop.myshopify.com", "www.shop.com"]
+
+    func testTheStoresOwnPagesAreStorePages() {
+        for page in [
+            "https://shop.myshopify.com/", "https://www.shop.com", "https://www.shop.com/products/pants?variant=1",
+            "https://shop.myshopify.com/cart", "https://shop.myshopify.com/password", "https://WWW.SHOP.COM/collections/all",
+        ] { XCTAssertTrue(isStorePage(URL(string: page)!, storeHosts: hosts), page) }
+    }
+
+    func testCheckoutAndOtherDomainsAreNot() {
+        for page in [
+            "https://shop.myshopify.com/checkouts/cn/abc/en-us", "https://shop.myshopify.com/checkouts/cn/abc/thank-you",
+            "https://shop.myshopify.com/cart/c/abc?key=k", "https://shop.myshopify.com/123456/checkouts/cn/abc",
+            "https://www.shop.com/policies/refund-policy", "https://www.paypal.com/checkoutnow", "https://shop.app/pay",
+            "https://help.shopify.com/en/manual", "mailto:help@shop.com",
+        ] { XCTAssertFalse(isStorePage(URL(string: page)!, storeHosts: hosts), page) }
+    }
 }

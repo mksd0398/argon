@@ -128,12 +128,40 @@ private struct CheckoutPresenter: ViewModifier {
                         failure = checkoutMessage(error)
                         isPresented = false
                     }
+                    // the links checkout hands out (ones that open a new window): the store's go to the app's cart, others
+                    // open as usual
+                    .onLinkClick { link in
+                        if storePage(link, checkout: url) { leave() } else { UIApplication.shared.open(link) }
+                    }
+                    .onAppear {
+                        // the kit builds its web view as the sheet appears: guarded once it is there
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            guardCheckoutSheet(isStorePage: { storePage($0, checkout: url) }, leave: leave)
+                        }
+                    }
                     .ignoresSafeArea()
             }
         }
         .onChange(of: isPresented) { _, presented in
             if presented, let cart = AppGraph.cart.cart { AppGraph.analytics.track(beginCheckout(cart)) }
         }
+    }
+
+    /// The sheet shows checkout and nothing of the shop's website: a store page (a link, a redirect, "Continue shopping")
+    /// closes it and opens the app's cart instead (`leave`). A debug build lets the password page through, as
+    /// `checkoutToOpen` does.
+    private func storePage(_ link: URL, checkout: URL) -> Bool {
+        let hosts = Set(AppGraph.brand.value?.hosts ?? []).union([AppGraph.shopDomain, checkout.host].compactMap { $0 })
+        #if DEBUG
+        if link.path.hasSuffix("/password") { return false }
+        #endif
+        return isStorePage(link, storeHosts: hosts)
+    }
+
+    private func leave() {
+        ShopifyCheckoutSheetKit.invalidate()
+        isPresented = false
+        AppGraph.tabs.selected = .cart
     }
 
     /// Runs once the sheet has finished dismissing, whoever dismissed it (the shopper, the kit or `onFail`).

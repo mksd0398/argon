@@ -25,3 +25,19 @@ suspend fun passwordProtected(checkoutUrl: String, http: OkHttpClient): Boolean 
         }
     }.getOrDefault(false)
 }
+
+// The paths on the store's own domains that are checkout, not the shop's website: checkout itself (also under the shop's
+// id), the cart link it starts from, and the policies it links to.
+private val CHECKOUT_PATHS = Regex("""^/(\d+/)?(checkouts|cart/c|policies)(/|$)""")
+
+/**
+ * Whether [url] is a page of the store's own website (its home page, a product, its cart, the password page): never
+ * shown in the checkout sheet, which goes back to the app's cart instead. [storeHosts] are the store's domains (the
+ * shop domain, its primary domain); other domains (payment pages, Shop Pay, help pages) are not the store's website.
+ */
+fun isStorePage(url: String, storeHosts: Set<String>): Boolean {
+    val uri = runCatching { java.net.URI(url) }.getOrNull() ?: return false
+    val host = uri.host?.lowercase() ?: return false
+    if (uri.scheme?.lowercase() !in setOf("http", "https") || storeHosts.none { it.equals(host, ignoreCase = true) }) return false
+    return !CHECKOUT_PATHS.containsMatchIn(uri.rawPath.orEmpty().ifEmpty { "/" })
+}
