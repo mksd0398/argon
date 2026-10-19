@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -15,6 +16,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.ViewModel
@@ -157,9 +159,12 @@ class SectionEnv(
 
     /** Opens [route], reported as a tap on [section] (its [block]). */
     fun open(route: Route, section: ScreenSection, block: SectionBlock? = null) {
-        AppGraph.analytics.track(AnalyticsEvent.SelectPromotion(promotion(section, block)))
+        tapped(section, block)
         onOpen(route)
     }
+
+    /** Reports a tap on [section] (its [block]) that opens nothing of its own: an FAQ's question. */
+    fun tapped(section: ScreenSection, block: SectionBlock? = null) = AppGraph.analytics.track(AnalyticsEvent.SelectPromotion(promotion(section, block)))
 
     /** Reports [section] in view, once per visit of the screen. */
     fun viewed(section: ScreenSection) {
@@ -192,6 +197,10 @@ fun rememberSectionEnv(
     }
     return SectionEnv(sections, context, model.seen, onOpen)
 }
+
+/** The screen's background behind its sections (the template's `screen.background`): the theme's while they load, or without one. */
+@Composable
+fun screenBackground(sections: ScreenSections?): Color = sections?.template?.screen?.background?.let(::color) ?: MaterialTheme.colorScheme.background
 
 /** [sections] as items of a lazy list, one item each (its `view_promotion` when it is first composed). */
 fun LazyListScope.sectionItems(sections: List<ScreenSection>, env: SectionEnv?, modifier: Modifier = Modifier) {

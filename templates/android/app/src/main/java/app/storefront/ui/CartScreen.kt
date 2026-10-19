@@ -86,6 +86,7 @@ import app.storefront.data.purchase
 import app.storefront.data.viewCart
 import app.storefront.ui.sections.SectionEnv
 import app.storefront.ui.sections.rememberScreenSections
+import app.storefront.ui.sections.screenBackground
 import app.storefront.ui.sections.rememberSectionEnv
 import app.storefront.ui.sections.sectionItems
 import com.shopify.checkoutsheetkit.CheckoutException
@@ -311,6 +312,7 @@ fun CartScreen(nav: NavController) {
     Scaffold(
         topBar = { ArgonTopBar("Cart", leading = nav.tabLeading("cart")) },
         snackbarHost = { SnackbarHost(snackbar) },
+        containerColor = screenBackground(sections),
     ) { padding ->
         // imePadding: typing a discount code, the list ends at the keyboard
         Box(Modifier.padding(padding).consumeWindowInsets(padding).imePadding().fillMaxSize()) {

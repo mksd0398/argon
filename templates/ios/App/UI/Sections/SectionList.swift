@@ -148,8 +148,9 @@ final class ScreenSlot {
 struct SectionScope {
     let context: [String: JSONValue]
     let nodes: [String: Node]
-    /// A route, and the id of the block it was tapped in (nil: the section's own).
-    let open: (Route, String?) -> Void
+    /// A route (nil: a tap that opens nothing, a question opened, but is still a `select_promotion`), and the id of the
+    /// block it was tapped in (nil: the section's own).
+    let open: (Route?, String?) -> Void
     var block: SectionBlock? = nil
 
     /// The scope of a block inside the section: its Liquid has `block`.
@@ -217,18 +218,27 @@ struct SectionList: View {
         context["section"] = .object(["id": .string(section.id), "settings": .object(section.settings.values)])
         return SectionScope(context: context, nodes: screen.nodes) { route, block in
             AppGraph.analytics.track(.selectPromotion(promotion(section, creative: block)))
-            router.open(route)
+            if let route = route { router.open(route) }
         }
     }
 }
 
-/// One section, drawn by its type's view.
+/// One section, drawn by its type's view, with its style: `padding` above and below, inside its `background`, which
+/// runs edge to edge.
 @MainActor
 struct SectionView: View {
     let section: ScreenSection
     let scope: SectionScope
 
     var body: some View {
+        content
+            .padding(.vertical, section.padding)
+            .frame(maxWidth: .infinity)
+            .background { ArgonTheme.color(hex: section.background) }
+    }
+
+    @ViewBuilder
+    private var content: some View {
         switch section.type {
         case "banner": BannerSection(settings: section.settings, scope: scope)
         case "slideshow": SlideshowSection(section: section, scope: scope)
@@ -240,6 +250,10 @@ struct SectionView: View {
         case "countdown": CountdownSection(settings: section.settings, scope: scope)
         case "spacer": SpacerSection(settings: section.settings)
         case "custom": CustomSection(settings: section.settings, scope: scope)
+        case "marquee": MarqueeSection(settings: section.settings, scope: scope)
+        case "faq": FaqSection(section: section, scope: scope)
+        case "features": FeaturesSection(section: section, scope: scope)
+        case "image_grid": ImageGridSection(section: section, scope: scope)
         default: EmptyView()
         }
     }
@@ -276,5 +290,36 @@ struct ScreenSections: View {
     static func has(_ slot: ScreenSlot, _ part: Part) -> Bool {
         let placement = slot.placement
         return !(part == .above ? placement.above : placement.below).isEmpty
+    }
+}
+
+/// A screen's sections from the top edge of the screen with its bar lying over the first one (the home with
+/// `transparentOnHome` or `screen.top_bar` transparent, a custom page with it): the bar is clear while that section is
+/// in view and solid once it has scrolled under the bar (`solid`, set from `heroSolid`, as the fashion page's hero).
+@MainActor
+struct SectionsUnderBar: View {
+    let screen: LoadedScreen
+    @Binding var solid: Double
+    @Environment(\.argonTheme) private var theme
+
+    var body: some View {
+        let sections = screen.template.content
+        let context = screen.context()
+        GeometryReader { proxy in
+            // the bar with the status bar: what the page keeps clear of at its top
+            let barHeight = proxy.safeAreaInsets.top
+            ScrollView {
+                VStack(spacing: theme.spacing.xl) {
+                    SectionList(sections: Array(sections.prefix(1)), screen: screen, context: context)
+                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame in
+                            let now = heroSolid(scrolled: -frame.minY, heroHeight: frame.height, barHeight: barHeight)
+                            if now != solid { solid = now }
+                        }
+                    SectionList(sections: Array(sections.dropFirst()), screen: screen, context: context)
+                }
+                .padding(.bottom, theme.spacing.xl)
+            }
+            .ignoresSafeArea(edges: .top)
+        }
     }
 }

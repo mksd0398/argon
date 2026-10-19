@@ -1,7 +1,9 @@
 package app.storefront.ui.sections
 
 import androidx.compose.ui.graphics.toArgb
+import app.argon.ui.components.ArgonIconName
 import app.storefront.data.CollectionCard
+import app.storefront.data.FEATURE_ICONS
 import app.storefront.data.Money
 import app.storefront.data.PriceRange
 import app.storefront.data.ProductCard
@@ -11,6 +13,7 @@ import app.storefront.data.SectionNodes
 import java.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SectionViewsTest {
@@ -48,5 +51,16 @@ class SectionViewsTest {
         assertNull(color("red"))
         assertEquals(4f / 5f, bannerRatio("large"))
         assertEquals(21f / 9f, bannerRatio("small"))
+    }
+
+    @Test
+    fun featureIconsAndTheMarqueesLine() {
+        assertEquals(ArgonIconName.Truck, featureIcon("truck"))
+        assertEquals(ArgonIconName.Location, featureIcon("location"))
+        assertEquals("every icon of the catalogue is Argon's", FEATURE_ICONS.size, FEATURE_ICONS.map(::featureIcon).toSet().size)
+        assertEquals(ArgonIconName.Check, featureIcon("rocket"))
+        val line = marqueeLine("Sale")
+        assertTrue(line.length >= 120)
+        assertTrue(line.startsWith("Sale      Sale"))
     }
 }

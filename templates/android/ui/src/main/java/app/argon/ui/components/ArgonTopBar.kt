@@ -22,6 +22,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
@@ -29,6 +30,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
@@ -50,13 +52,19 @@ enum class ArgonTopBarVariant { Standard, LargeTitle, CenteredLogo, Search, Over
  *  [badge] a count on the icon, none when null. */
 data class ArgonTopBarAction(val icon: ArgonIconName, val contentDescription: String, val badge: Int? = null, val action: () -> Unit)
 
+/** The solid bar's own colours, an app's (a merchant's settings): its [container] and its title and icons ([content]). Unspecified: the theme's. */
+data class ArgonBarColors(val container: Color = Color.Unspecified, val content: Color = Color.Unspecified)
+
+/** The [ArgonBarColors] every [ArgonTopBar] under it is drawn with (the Search field aside). */
+val LocalArgonBarColors = staticCompositionLocalOf { ArgonBarColors() }
+
 /**
  * The screen's top bar: native [TopAppBar], [LargeTopAppBar], [CenterAlignedTopAppBar] or [SearchBar] by [variant].
  * For Search, [title] is the placeholder, [searchText] the query and [onSearch] runs on the keyboard's search key.
  * For Overlay, put the bar on top of the content (not in a scaffold's top bar slot) and let the content start at the
  * top edge of the screen, under the status bar: at [solid] 0 the bar has no background and its logo, title and actions
- * are light over a short dark shade; towards 1 (as the picture under it scrolls away) the normal bar fades in. Only
- * Overlay reads [solid].
+ * are light over a short dark shade ([lightContent] false: dark over a light one, for a light picture); towards 1 (as
+ * the picture under it scrolls away) the normal bar fades in. Only Overlay reads [solid] and [lightContent].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,7 +79,16 @@ fun ArgonTopBar(
     onSearchTextChange: (String) -> Unit = {},
     onSearch: (String) -> Unit = {},
     solid: Float = 0f,
+    lightContent: Boolean = true,
 ) {
+    val bar = LocalArgonBarColors.current
+    val barColors = TopAppBarDefaults.topAppBarColors(
+        containerColor = bar.container,
+        scrolledContainerColor = bar.container,
+        navigationIconContentColor = bar.content,
+        titleContentColor = bar.content,
+        actionIconContentColor = bar.content,
+    )
     val navigation = @Composable { Row { leading.forEach { ActionButton(it) } } }
     val actions: @Composable RowScope.() -> Unit = { trailing.forEach { ActionButton(it) } }
     when (variant) {
@@ -87,12 +104,14 @@ fun ArgonTopBar(
             modifier = modifier,
             navigationIcon = navigation,
             actions = actions,
+            colors = barColors,
         )
         ArgonTopBarVariant.LargeTitle -> LargeTopAppBar(
             title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
             modifier = modifier,
             navigationIcon = navigation,
             actions = actions,
+            colors = barColors,
         )
         ArgonTopBarVariant.CenteredLogo -> CenterAlignedTopAppBar(
             title = {
@@ -105,9 +124,10 @@ fun ArgonTopBar(
             modifier = modifier,
             navigationIcon = navigation,
             actions = actions,
+            colors = barColors,
         )
         ArgonTopBarVariant.Overlay -> {
-            val colors = overlayBarColors(solid, ArgonTheme.colors)
+            val colors = overlayBarColors(solid, ArgonTheme.colors, bar, lightContent)
             // The shade is behind the whole bar, status bar included, and thins out into the picture half a bar further
             // down: at the height of the icons it is still dark enough for them to read on a bright picture.
             val shade = Modifier.drawBehind {
@@ -162,15 +182,16 @@ internal const val SHADE = 0.65f
 internal data class OverlayBarColors(val container: Color, val content: Color, val shade: Color)
 
 /**
- * The Overlay bar at [solid] (0 over the picture ... 1 the normal bar; clamped) in a theme of [colors]. Over the picture
- * it uses the dark palette whatever the theme, as everything that sits on a photo does: light content, a dark shade.
+ * The Overlay bar at [solid] (0 over the picture ... 1 the normal bar, in [bar]'s colours where set; clamped) in a theme
+ * of [colors]. Over the picture it uses the dark palette whatever the theme, as everything that sits on a photo does:
+ * light content, a dark shade; the light palette instead when not [lightContent] (dark content over a light picture).
  */
-internal fun overlayBarColors(solid: Float, colors: ArgonColors): OverlayBarColors {
+internal fun overlayBarColors(solid: Float, colors: ArgonColors, bar: ArgonBarColors = ArgonBarColors(), lightContent: Boolean = true): OverlayBarColors {
     val t = solid.coerceIn(0f, 1f)
-    val onPhoto = argonColors(null, dark = true)
+    val onPhoto = argonColors(null, dark = lightContent)
     return OverlayBarColors(
-        container = colors.paper.copy(alpha = t),
-        content = lerp(onPhoto.ink, colors.ink, t),
+        container = bar.container.takeOrElse { colors.paper }.copy(alpha = t),
+        content = lerp(onPhoto.ink, bar.content.takeOrElse { colors.ink }, t),
         shade = onPhoto.paper.copy(alpha = SHADE * (1 - t)),
     )
 }

@@ -1,5 +1,6 @@
 package app.storefront.ui.sections
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -65,11 +66,15 @@ import kotlinx.coroutines.delay
 // The section types, each drawn from the component library and the shared blocks. A section takes the full width and
 // brings its own side margin (spacing.l), like the home templates' blocks.
 
-/** One section, by its type; a type this app doesn't know, or one with nothing to show, draws nothing. */
+/**
+ * One section, by its type; a type this app doesn't know, or one with nothing to show, draws nothing. Its `background`
+ * is behind the whole of it, edge to edge, its `padding` room above and below inside that.
+ */
 @Composable
 fun SectionView(section: ScreenSection, env: SectionEnv, modifier: Modifier = Modifier) {
     LaunchedEffect(section.id) { env.viewed(section) }
-    Box(modifier.fillMaxWidth()) {
+    val background = section.background?.let(::color)
+    Box(modifier.fillMaxWidth().then(if (background != null) Modifier.background(background) else Modifier).padding(vertical = section.padding.dp)) {
         when (val content = section.content) {
             is SectionContent.Banner -> BannerSection(section, content, env)
             is SectionContent.Slideshow -> SlideshowSection(section, content, env)
@@ -81,12 +86,16 @@ fun SectionView(section: ScreenSection, env: SectionEnv, modifier: Modifier = Mo
             is SectionContent.Countdown -> CountdownSection(section, content, env)
             is SectionContent.Spacer -> SpacerSection(content)
             is SectionContent.Custom -> CustomSection(section, content, env)
+            is SectionContent.Marquee -> MarqueeSection(section, content, env)
+            is SectionContent.Faq -> FaqSection(section, content, env)
+            is SectionContent.Features -> FeaturesSection(section, content, env)
+            is SectionContent.ImageGrid -> ImageGridSection(section, content, env)
             null -> Unit
         }
     }
 }
 
-private val gutter @Composable get() = Modifier.padding(horizontal = ArgonTheme.spacing.l)
+internal val gutter @Composable get() = Modifier.padding(horizontal = ArgonTheme.spacing.l)
 
 /** Width over height of a banner or slide by its `height` choice. */
 internal fun bannerRatio(height: String): Float = when (height) {

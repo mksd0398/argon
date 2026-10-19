@@ -40,14 +40,20 @@ public struct ArgonTopBar: ViewModifier {
     let searchText: Binding<String>?
     let isSearching: Binding<Bool>?
     let solid: Double
+    let darkOverPicture: Bool
     @Environment(\.argonTheme) var theme
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.argonBarColors) var barColors
+
+    private var foreground: Color? { ArgonTheme.color(hex: barColors.foreground) }
 
     public func body(content: Content) -> some View {
         // with a logo, the logo sits at the start in place of the title (a home screen with its logo at the start)
         let logoAtStart = variant == .standard && logoUrl != nil
-        // the overlay bar is drawn in colours of its own; every other bar in the system's
-        let overlay = variant == .overlay ? overlayBarColors(solid: solid, dark: colorScheme == .dark) : nil
+        // the overlay bar is drawn in colours of its own; every other bar in the system's (or the app's `barColors`)
+        let overlay = variant == .overlay
+            ? overlayBarColors(solid: solid, dark: colorScheme == .dark, darkContent: darkOverPicture, bar: barColors)
+            : nil
         let tint = overlay?.content.color
         content
             .navigationTitle(logoAtStart ? "" : title)
@@ -58,22 +64,22 @@ public struct ArgonTopBar: ViewModifier {
                 }
                 if !leading.isEmpty || logoAtStart {
                     ToolbarItemGroup(placement: .topBarLeading) {
-                        buttons(leading, tint: tint)
+                        buttons(leading, tint: tint ?? foreground)
                         if logoAtStart { logo(.leading) }
                     }
                 }
                 if !trailing.isEmpty {
-                    ToolbarItemGroup(placement: .topBarTrailing) { buttons(trailing, tint: tint) }
+                    ToolbarItemGroup(placement: .topBarTrailing) { buttons(trailing, tint: tint ?? foreground) }
                 }
             }
             .modifier(ArgonSearchable(text: variant == .search ? searchText : nil, isSearching: isSearching, prompt: title))
-            .modifier(ArgonOverlayBar(colors: overlay, onPicture: solid < 0.5))
+            .modifier(ArgonOverlayBar(colors: overlay, onPicture: solid < 0.5, darkContent: darkOverPicture))
     }
 
     /// The logo, fitted into 160 x 28 points and held to `alignment` of that box; the title while it loads or without one.
     /// `tint` is the overlay bar's colour for its content.
     private func logo(_ alignment: Alignment, tint: Color? = nil) -> some View {
-        let name = Text(title).font(theme.type.headline).foregroundStyle(tint ?? theme.colors.ink).lineLimit(1)
+        let name = Text(title).font(theme.type.headline).foregroundStyle(tint ?? foreground ?? theme.colors.ink).lineLimit(1)
         return Group {
             if let tint = tint, let url = logoUrl {
                 OverlayLogo(url: url, tint: solid < 0.5 ? tint : nil) { name }
@@ -144,30 +150,55 @@ public struct OverlayBarColors: Equatable, Sendable {
     public let container, content, shade: ArgonRGBA
 }
 
+/// The colours the app gives its solid bars (`#RRGGBB`; nil: the theme's): the top bar's background and its title and
+/// icons. Set it in the environment over the screens (`\.argonBarColors`); the overlay bar turns into these once solid.
+public struct ArgonBarColors: Equatable, Sendable {
+    public var background: String?
+    public var foreground: String?
+
+    public init(background: String? = nil, foreground: String? = nil) {
+        self.background = background
+        self.foreground = foreground
+    }
+}
+
+private struct ArgonBarColorsKey: EnvironmentKey {
+    static let defaultValue = ArgonBarColors()
+}
+
+extension EnvironmentValues {
+    public var argonBarColors: ArgonBarColors {
+        get { self[ArgonBarColorsKey.self] }
+        set { self[ArgonBarColorsKey.self] = newValue }
+    }
+}
+
 /// The overlay bar at `solid` (0 over the picture ... 1 the normal bar; clamped) in the light or the `dark` appearance.
 /// Over the picture it uses the dark palette whatever the appearance, as everything that sits on a photo does: light
-/// content, a dark shade.
-public func overlayBarColors(solid: Double, dark: Bool) -> OverlayBarColors {
+/// content, a dark shade; with `darkContent` (a light picture) the light palette: dark content, a light shade. Solid, it
+/// is the theme's bar, or `bar`'s colours where they are given.
+public func overlayBarColors(solid: Double, dark: Bool, darkContent: Bool = false, bar: ArgonBarColors = ArgonBarColors()) -> OverlayBarColors {
     let t = min(max(solid, 0), 1)
-    let onPhoto = ArgonPalette.dark, theme = dark ? ArgonPalette.dark : ArgonPalette.light
+    let onPhoto = darkContent ? ArgonPalette.light : ArgonPalette.dark, theme = dark ? ArgonPalette.dark : ArgonPalette.light
     func parts(_ hex: String, opacity: Double = 1) -> ArgonRGBA {
         let c = ArgonTheme.rgb(hex: hex) ?? (red: 0, green: 0, blue: 0)
         return ArgonRGBA(red: c.red, green: c.green, blue: c.blue, opacity: opacity)
     }
     func mix(_ from: Double, _ to: Double) -> Double { from * (1 - t) + to * t }
-    let light = parts(onPhoto.ink), ink = parts(theme.ink)
+    let light = parts(onPhoto.ink), ink = parts(bar.foreground ?? theme.ink)
     return OverlayBarColors(
-        container: parts(theme.paper, opacity: t),
+        container: parts(bar.background ?? theme.paper, opacity: t),
         content: ArgonRGBA(red: mix(light.red, ink.red), green: mix(light.green, ink.green), blue: mix(light.blue, ink.blue), opacity: 1),
         shade: parts(onPhoto.paper, opacity: overlayBarShade * (1 - t))
     )
 }
 
 /// The overlay variant's bar: its background (none over the picture), light status bar content while the picture is
-/// under it, and the shade its content reads on. Nil `colors`: any other variant, left as it is.
+/// under it (dark with `darkContent`), and the shade its content reads on. Nil `colors`: any other variant, left as it is.
 private struct ArgonOverlayBar: ViewModifier {
     let colors: OverlayBarColors?
     let onPicture: Bool
+    let darkContent: Bool
 
     @ViewBuilder
     func body(content: Content) -> some View {
@@ -185,8 +216,8 @@ private struct ArgonOverlayBar: ViewModifier {
                 }
                 .toolbarBackground(colors.container.color, for: .navigationBar)
                 .toolbarBackground(.visible, for: .navigationBar)
-                // a dark bar has light status bar content
-                .toolbarColorScheme(onPicture ? .dark : nil, for: .navigationBar)
+                // a dark bar has light status bar content, a light one dark
+                .toolbarColorScheme(onPicture ? (darkContent ? .light : .dark) : nil, for: .navigationBar)
         } else {
             content
         }
@@ -245,7 +276,8 @@ extension View {
     /// `searchText`. `isSearching` is whether that field is being typed in: set it to give the field the keyboard.
     /// With `.overlay`, let the screen's content start at the top edge of the screen (ignoring the top safe area): at
     /// `solid` 0 the bar has no background and its logo, title and actions are light over a short dark shade; towards 1
-    /// (as the picture under it scrolls away) the normal bar fades in. Only `.overlay` reads `solid`.
+    /// (as the picture under it scrolls away) the normal bar fades in. Only `.overlay` reads `solid` and
+    /// `darkOverPicture` (a light picture: dark content over a light shade, and dark status bar content).
     public func argonTopBar(
         variant: ArgonTopBarVariant = .standard,
         title: String,
@@ -254,11 +286,12 @@ extension View {
         trailing: [ArgonTopBarAction] = [],
         searchText: Binding<String>? = nil,
         isSearching: Binding<Bool>? = nil,
-        solid: Double = 0
+        solid: Double = 0,
+        darkOverPicture: Bool = false
     ) -> some View {
         modifier(ArgonTopBar(
             variant: variant, title: title, logoUrl: logoUrl, leading: leading, trailing: trailing,
-            searchText: searchText, isSearching: isSearching, solid: solid
+            searchText: searchText, isSearching: isSearching, solid: solid, darkOverPicture: darkOverPicture
         ))
     }
 }

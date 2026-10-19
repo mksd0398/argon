@@ -21,8 +21,9 @@ data class AppScreen(val id: String, val handle: String, val title: String, val 
 /**
  * A screen's sections, as this app shows them: hidden ones, the other platform's and types it doesn't know are already
  * left out. [metafields]: what the template's Liquid reads, as `owner.namespace.key` (owner product, collection or shop).
+ * [screen]: the screen's own look (its `screen`).
  */
-data class ScreenTemplate(val sections: List<ScreenSection>, val metafields: List<String> = emptyList()) {
+data class ScreenTemplate(val sections: List<ScreenSection>, val metafields: List<String> = emptyList(), val screen: ScreenLook = ScreenLook()) {
     /** The metafields of [owner] (`product`, `collection` or `shop`) the Liquid reads. */
     fun metafields(owner: String): List<MetafieldIdentifier> = metafields.mapNotNull { ref ->
         val parts = ref.split('.')
@@ -48,7 +49,7 @@ data class ScreenTemplate(val sections: List<ScreenSection>, val metafields: Lis
         val SYSTEM_SCREENS = setOf("product", "collection", "search", "cart", "account", "orders", "wishlist")
 
         /** The section types this app draws; a template's others are skipped (a newer app may know them). */
-        val TYPES = setOf("banner", "slideshow", "products", "collections", "rich_text", "image_with_text", "video", "countdown", "spacer", "custom")
+        val TYPES = setOf("banner", "slideshow", "products", "collections", "rich_text", "image_with_text", "video", "countdown", "spacer", "custom", "marquee", "faq", "features", "image_grid")
 
         /**
          * [json] (the metaobject's `template`) decoded leniently: not JSON, or without a list of sections, is no template
@@ -62,6 +63,7 @@ data class ScreenTemplate(val sections: List<ScreenSection>, val metafields: Lis
             return ScreenTemplate(
                 sections = sections.mapNotNull { (it as? JsonObject)?.let(::section) }.filter { ids.add(it.id) },
                 metafields = (root["metafields"] as? JsonArray).orEmpty().mapNotNull { it.string },
+                screen = ScreenLook.decode(root["screen"] as? JsonObject),
             )
         }
 
@@ -82,6 +84,24 @@ data class ScreenTemplate(val sections: List<ScreenSection>, val metafields: Lis
     }
 }
 
+/**
+ * A template's `screen`, the screen's own look. [topBar]: `solid` or `transparent` (the bar over the first section, solid
+ * once it scrolls under), null when unset (home then goes by `navigation.topBar.transparentOnHome`); home and custom
+ * pages only. [darkTint]: the clear bar's title, icons and status bar are dark (`top_bar_tint` dark, over light
+ * pictures). [background]: `#RRGGBB` behind the sections, null for the theme's.
+ */
+data class ScreenLook(val topBar: String? = null, val darkTint: Boolean = false, val background: String? = null) {
+    companion object {
+        fun decode(json: JsonObject?): ScreenLook = with(SectionSettings(json)) {
+            ScreenLook(
+                choice("top_bar", listOf("solid", "transparent"), "").ifEmpty { null },
+                choice("top_bar_tint", listOf("light", "dark"), "light") == "dark",
+                color("background", "").ifEmpty { null },
+            )
+        }
+    }
+}
+
 /** A screen's sections around its own content: [above] it, [below] it, and [main] (its settings), when the template has one. */
 data class Placement(val above: List<ScreenSection>, val main: ScreenSection?, val below: List<ScreenSection>)
 
@@ -96,6 +116,17 @@ data class ScreenSection(
     val track: String? = null,
 ) {
     val trackName: String get() = track ?: type
+
+    /** The `background` every section type takes: `#RRGGBB` behind the whole section, edge to edge; null: none. */
+    val background: String? get() = settings.color("background", "").ifEmpty { null }
+
+    /** The `padding` every section type takes, room above and below inside its [background]: none 0, small 12, medium 24, large 40 (dp). */
+    val padding: Int get() = when (settings.choice("padding", listOf("small", "medium", "large"), "none")) {
+        "small" -> 12
+        "medium" -> 24
+        "large" -> 40
+        else -> 0
+    }
 }
 
 data class SectionBlock(val id: String, val type: String, val settings: SectionSettings)
@@ -183,7 +214,33 @@ sealed interface SectionContent {
     data class Custom(val html: String?, val render: String, val nodes: List<CustomNode>, val height: Int) : SectionContent {
         val isNative: Boolean get() = render == "native" && nodes.isNotEmpty()
     }
+
+    /** One line of [text] scrolling without end at [speed] dp a second (slow 30, medium 60, fast 90); the strip opens [link]. */
+    data class Marquee(val text: String?, val link: String?, val speed: Int, val textColor: String) : SectionContent
+
+    /** An accordion of [questions], all closed; a block without its question is skipped. */
+    data class Faq(val heading: String?, val questions: List<Question>) : SectionContent
+    data class Question(val block: SectionBlock, val question: String, val answer: String?)
+
+    /** [features] (up to 8) in a sideways `row` or a two-column `grid` ([layout]). */
+    data class Features(val heading: String?, val layout: String, val features: List<Feature>) : SectionContent
+
+    /** [icon]: one of [FEATURE_ICONS]. */
+    data class Feature(val block: SectionBlock, val icon: String, val heading: String?, val text: String?)
+
+    /** [tiles] (up to 12; one without an image is skipped) in [columns] columns, each [ratio] wide over high by its [aspect]. */
+    data class ImageGrid(val heading: String?, val columns: Int, val aspect: String, val tiles: List<Tile>) : SectionContent {
+        val ratio: Float get() = when (aspect) {
+            "portrait" -> 4f / 5f
+            "landscape" -> 4f / 3f
+            else -> 1f
+        }
+    }
+    data class Tile(val block: SectionBlock, val image: Img, val heading: String?, val link: String?)
 }
+
+/** The icons a feature block can show (contract/screens.js FEATURE_ICONS): Argon's icon set, snake_case. */
+val FEATURE_ICONS = listOf("truck", "returns", "lock", "leaf", "gift", "clock", "star", "heart", "globe", "check", "tag", "phone", "mail", "location", "info")
 
 private val HEIGHTS = listOf("small", "medium", "large")
 
@@ -218,9 +275,28 @@ val ScreenSection.content: SectionContent?
             "custom" -> SectionContent.Custom(
                 text("html"), choice("render", listOf("native", "web"), "web"), CustomNode.decode(json?.get("nodes")), number("height", 0.0, 0.0, 2000.0).toInt(),
             )
+            "marquee" -> SectionContent.Marquee(
+                text("text"), link("link"), when (choice("speed", listOf("slow", "medium", "fast"), "medium")) { "slow" -> 30; "fast" -> 90; else -> 60 },
+                color("text_color", "#FFFFFF"),
+            )
+            "faq" -> SectionContent.Faq(
+                text("heading"),
+                blocksOf("question", 20).mapNotNull { b -> b.settings.text("question")?.let { SectionContent.Question(b, it, b.settings.text("answer")) } },
+            )
+            "features" -> SectionContent.Features(
+                text("heading"), choice("layout", listOf("row", "grid"), "row"),
+                blocksOf("feature", 8).map { SectionContent.Feature(it, it.settings.choice("icon", FEATURE_ICONS, "check"), it.settings.text("heading"), it.settings.text("text")) },
+            )
+            "image_grid" -> SectionContent.ImageGrid(
+                text("heading"), choice("columns", listOf("2", "3"), "2").toInt(), choice("aspect", listOf("square", "portrait", "landscape"), "square"),
+                blocksOf("tile", 12).mapNotNull { b -> b.settings.image("image")?.let { SectionContent.Tile(b, it, b.settings.text("heading"), b.settings.link("link")) } },
+            )
             else -> null
         }
     }
+
+/** The section's blocks of [type], the first [max]. */
+private fun ScreenSection.blocksOf(type: String, max: Int) = blocks.filter { it.type == type }.take(max)
 
 /** The PDP blocks of the product screen's `main.blocks` (contract/screens.js PRODUCT_BLOCKS), in their default order. */
 val PRODUCT_BLOCKS = listOf("gallery", "title", "price", "options", "purchase", "bundle", "details", "reviews", "rails")

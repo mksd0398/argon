@@ -277,6 +277,9 @@ private fun AppNav(startTab: AppTab? = null) {
                     selectedId = currentTab.orEmpty(),
                     onSelect = { nav.openTab(tabRoute(it)) },
                     showLabels = navigation.labels,
+                    containerColor = navigation.tabBarBackground.toColor(),
+                    activeColor = navigation.tabBarActive.toColor(),
+                    inactiveColor = navigation.tabBarInactive.toColor(),
                 )
             }
         },

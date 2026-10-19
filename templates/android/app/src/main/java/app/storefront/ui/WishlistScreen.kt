@@ -28,6 +28,7 @@ import app.storefront.AppGraph
 import app.storefront.data.ProductCard
 import app.storefront.data.Route
 import app.storefront.ui.sections.rememberScreenSections
+import app.storefront.ui.sections.screenBackground
 import app.storefront.ui.sections.rememberSectionEnv
 import app.storefront.ui.sections.sectionItems
 import kotlinx.coroutines.CancellationException
@@ -80,7 +81,7 @@ fun WishlistScreen(nav: NavController) {
     val env = rememberSectionEnv(sections, { nav.open(it) })
     val placement = sections?.placement
 
-    Scaffold(topBar = { ArgonTopBar("Wishlist", leading = nav.tabLeading("wishlist")) }) { padding ->
+    Scaffold(topBar = { ArgonTopBar("Wishlist", leading = nav.tabLeading("wishlist")) }, containerColor = screenBackground(sections)) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             val cards = model.cards(ids)
             val error = model.error

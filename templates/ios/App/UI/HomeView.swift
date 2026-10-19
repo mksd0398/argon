@@ -85,14 +85,17 @@ struct HomeView: View {
         let buyer = AppGraph.buyer.company?.locationId
         let onOpen: (Route) -> Void = { router.open($0) }
         let navigation = AppGraph.navigation
-        let sectionsShown: Bool = {
-            if case .sections? = loaded?.page { return true }
-            return false
+        // the store's own home's look (its template's `screen`); nil while it isn't shown
+        let look: ScreenLook? = {
+            if case let .sections(screen)? = loaded?.page { return screen.template.screen }
+            return nil
         }()
+        // the bar over the first section: the template's `screen.top_bar`, else the settings' transparentOnHome
+        let underBar = look?.transparent(navigation.transparentOnHome) ?? false
         let inCart = AppGraph.cart.cart?.totalQuantity ?? 0
         VStack(spacing: 0) {
             if case let .sections(screen)? = loaded?.page {
-                if navigation.transparentOnHome {
+                if underBar {
                     SectionsUnderBar(screen: screen, solid: $barSolid)
                 } else {
                     ScrollView {
@@ -115,13 +118,14 @@ struct HomeView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(theme.colors.paper)
-        // the store's own home lies under the bar with transparentOnHome; the fashion page always does
+        .background(ArgonTheme.color(hex: look?.background) ?? theme.colors.paper)
+        // the store's own home lies under the bar when its look or the settings say so; the fashion page always does
         .modifier(HomeTopBar(
             template: template,
             brand: AppGraph.brand.value,
-            overlay: sectionsShown ? navigation.transparentOnHome : template == .fashion,
+            overlay: look == nil ? template == .fashion : underBar,
             solid: $barSolid,
+            darkOverPicture: look?.tint == "dark",
             onSearch: { router.open(.search("")) },
             onMenu: navigation.drawerMenu == nil ? nil : { AppGraph.tabs.drawerOpen = true },
             // a bar without the cart tab has the cart behind a bag button here
@@ -158,6 +162,8 @@ private struct HomeTopBar: ViewModifier {
     let brand: Brand?
     let overlay: Bool
     @Binding var solid: Double
+    /// The template's `screen.top_bar_tint` dark: the clear bar's content is dark (over a light picture).
+    var darkOverPicture = false
     let onSearch: () -> Void
     var onMenu: (() -> Void)? = nil
     var onCart: (() -> Void)? = nil
@@ -171,7 +177,8 @@ private struct HomeTopBar: ViewModifier {
         let cart = onCart.map { [ArgonTopBarAction(icon: .bag, accessibilityLabel: "Cart", badge: cartCount > 0 ? cartCount : nil, action: $0)] } ?? []
         let trailing = [ArgonTopBarAction(icon: .search, accessibilityLabel: "Search", action: onSearch)] + cart
         switch overlay ? "overlay" : AppGraph.navigation.topBarStyle ?? Self.style(template) {
-        case "overlay": content.argonTopBar(variant: .overlay, title: name, logoUrl: logo, leading: leading, trailing: trailing, solid: solid)
+        case "overlay":
+            content.argonTopBar(variant: .overlay, title: name, logoUrl: logo, leading: leading, trailing: trailing, solid: solid, darkOverPicture: darkOverPicture)
         case "centered_logo": content.argonTopBar(variant: .centeredLogo, title: name, logoUrl: logo, leading: leading, trailing: trailing)
         case "search": searchBar(content, template == .b2b ? "Search by name or SKU" : "Search products", leading, cart)
         default: content.argonTopBar(title: name, logoUrl: logo, leading: leading, trailing: trailing)
@@ -243,36 +250,5 @@ private struct SearchField: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(action.accessibilityLabel)
-    }
-}
-
-/// The store's own home with the settings' `transparentOnHome`: from the top edge of the screen, its bar lying over the
-/// first section, clear while that section is in view and solid once it has scrolled under the bar (`heroSolid`, as the
-/// fashion page's hero).
-@MainActor
-private struct SectionsUnderBar: View {
-    let screen: LoadedScreen
-    @Binding var solid: Double
-    @Environment(\.argonTheme) private var theme
-
-    var body: some View {
-        let sections = screen.template.content
-        let context = screen.context()
-        GeometryReader { proxy in
-            // the bar with the status bar: what the page keeps clear of at its top
-            let barHeight = proxy.safeAreaInsets.top
-            ScrollView {
-                VStack(spacing: theme.spacing.xl) {
-                    SectionList(sections: Array(sections.prefix(1)), screen: screen, context: context)
-                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame in
-                            let now = heroSolid(scrolled: -frame.minY, heroHeight: frame.height, barHeight: barHeight)
-                            if now != solid { solid = now }
-                        }
-                    SectionList(sections: Array(sections.dropFirst()), screen: screen, context: context)
-                }
-                .padding(.bottom, theme.spacing.xl)
-            }
-            .ignoresSafeArea(edges: .top)
-        }
     }
 }
