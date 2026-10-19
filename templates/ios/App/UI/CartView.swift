@@ -231,7 +231,7 @@ struct CartView: View {
             if let cart = cart, !cart.lines.isEmpty {
                 content(cart)
             } else if loading && cart == nil {
-                ArgonSpinner()
+                ScreenSkeleton(.list)
             } else if let failure = failure, cart == nil {
                 ErrorView(message: failure) { attempt += 1 }
             } else {

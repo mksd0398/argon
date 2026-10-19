@@ -77,6 +77,9 @@ import app.argon.ui.components.ArgonRating
 import app.argon.ui.components.ArgonSheetDetent
 import app.argon.ui.components.ArgonSideMenu
 import app.argon.ui.components.ArgonSideMenuItem
+import app.argon.ui.components.ArgonSkeletonCircle
+import app.argon.ui.components.ArgonSkeletonGroup
+import app.argon.ui.components.ArgonSkeletonLine
 import app.argon.ui.components.ArgonSpinner
 import app.argon.ui.components.ArgonSwatch
 import app.argon.ui.components.ArgonSwitch
@@ -355,6 +358,16 @@ private fun Progress() = Section("Progress") {
     Row(horizontalArrangement = Arrangement.spacedBy(ArgonTheme.spacing.xl), verticalAlignment = Alignment.CenterVertically) {
         ArgonSize.entries.forEach { ArgonSpinner(it) }
     }
+    Caption("Skeleton: one \"Loading\" for the group, still when animations are off")
+    ArgonSkeletonGroup {
+        Row(horizontalArrangement = Arrangement.spacedBy(ArgonTheme.spacing.m), verticalAlignment = Alignment.CenterVertically) {
+            ArgonSkeletonCircle(48.dp)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ArgonTheme.spacing.xs)) {
+                ArgonSkeletonLine(widthFraction = 0.7f)
+                ArgonSkeletonLine(widthFraction = 0.4f, style = ArgonTheme.type.label)
+            }
+        }
+    }
 }
 
 @Composable
@@ -431,6 +444,11 @@ private fun Bars() = Section("Top and bottom bars") {
     Box(Modifier.fillMaxWidth().height(160.dp).clip(ArgonTheme.radius.m)) {
         AsyncImage(photos[0], null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         ArgonTopBar("Maison", variant = ArgonTopBarVariant.Overlay, trailing = listOf(search, bag), solid = solidity)
+    }
+    Caption("Overlay search: a pill over the picture, the search field when solid")
+    Box(Modifier.fillMaxWidth().height(120.dp).clip(ArgonTheme.radius.m)) {
+        AsyncImage(photos[0], null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        ArgonTopBar("Search products", variant = ArgonTopBarVariant.Overlay, trailing = listOf(bag), solid = solidity, solidVariant = ArgonTopBarVariant.Search)
     }
     ArgonSwitch(solid, { solid = it }, label = "Solid")
     var selected by remember { mutableStateOf("home") }

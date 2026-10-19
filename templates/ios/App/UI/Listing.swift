@@ -328,7 +328,7 @@ struct ListingView: View {
             ErrorView(message: error) { listing.reload() }
         } else if listing.loading || listing.pagesLoaded == 0 {
             // loading, or about to: the screen starts the list as it appears
-            ArgonSpinner()
+            ScreenSkeleton(.grid)
         } else {
             Text(listing.applied.isEmpty ? emptyText : "No products match these filters.")
                 .font(theme.type.body)

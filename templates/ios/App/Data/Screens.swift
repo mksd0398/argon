@@ -214,6 +214,16 @@ struct ScreenSection: Equatable, Sendable {
     /// Analytics' `promotion_name`: `track`, else the type.
     var promotionName: String { track ?? type }
 
+    /// Whether it runs edge to edge: a hero banner (the default style), a slideshow, a marquee, a video, or any section
+    /// with a `background`. Nothing parts it from its neighbours (`gapBefore`).
+    var fullBleed: Bool {
+        switch type {
+        case "slideshow", "marquee", "video": return true
+        case "banner" where settings.choice("style", ["hero", "card"], "hero") == "hero": return true
+        default: return background != nil
+        }
+    }
+
     /// Every type's style: its `background` (`#RRGGBB`; nil: none, but a marquee's strip is #111111 without one) and
     /// its `padding`, the points of room above and below inside that colour (`none` 0, `small` 12, `medium` 24,
     /// `large` 40).
@@ -305,6 +315,18 @@ struct ScreenTemplate: Equatable, Sendable {
 
     /// The sections there are to draw (all but `main`).
     var content: [ScreenSection] { sections.filter { $0.type != "main" } }
+
+    /// The screen opens with a picture that runs edge to edge: its first section is a hero banner, a slideshow or a
+    /// video. Only then may the top bar lie clear over it; over anything else (a row of collections, text) it would hide
+    /// the content, so the bar stays solid whatever the settings ask.
+    var opensWithPicture: Bool {
+        guard let first = content.first else { return false }
+        switch first.type {
+        case "slideshow", "video": return true
+        case "banner": return first.settings.choice("style", ["hero", "card"], "hero") == "hero"
+        default: return false
+        }
+    }
 
     /// The sections above and below `screen`'s own content: before `main` above, after it below; without `main`, all
     /// above. Collection and search draw nothing below their endless grid, so all of theirs go above.

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Shows `content` with the result of `load`: a spinner meanwhile, the error message with Retry on failure.
+/// Shows `content` with the result of `load`: the `skeleton` of what is coming meanwhile, the error message with Retry on failure.
 /// The result lives in the view's state, so coming back from a pushed screen doesn't reload.
 /// A failed load runs again by itself when the app returns to the foreground (offline at launch, say).
 /// ponytail: no refresh until the app restarts; add pull-to-refresh if merchants need live edits.
@@ -8,13 +8,15 @@ import SwiftUI
 struct Loader<Value, Content: View>: View {
     private let load: () async throws -> Value
     private let content: (Value) -> Content
+    private let skeleton: ScreenSkeleton.Kind
     @State private var value: Value? = nil
     @State private var error: String? = nil
     @State private var attempt = 0
     @Environment(\.scenePhase) private var scenePhase
 
-    init(load: @escaping () async throws -> Value, @ViewBuilder content: @escaping (Value) -> Content) {
+    init(load: @escaping () async throws -> Value, skeleton: ScreenSkeleton.Kind = .list, @ViewBuilder content: @escaping (Value) -> Content) {
         self.load = load
+        self.skeleton = skeleton
         self.content = content
     }
 
@@ -25,7 +27,7 @@ struct Loader<Value, Content: View>: View {
             } else if let error = error {
                 ErrorView(message: error) { attempt += 1 }
             } else {
-                ProgressView()
+                ScreenSkeleton(skeleton)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

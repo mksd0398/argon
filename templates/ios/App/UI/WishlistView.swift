@@ -74,7 +74,7 @@ struct WishlistView: View {
             } else if let error = model.error {
                 ErrorView(message: error) { retry() }
             } else if model.pending(ids) {
-                ArgonSpinner()
+                ScreenSkeleton(.grid)
             } else {
                 Text("Tap ♡ on a product to save it")
                     .font(theme.type.body)

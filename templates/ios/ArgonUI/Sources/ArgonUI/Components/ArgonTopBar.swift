@@ -12,6 +12,8 @@ public enum ArgonTopBarVariant: Sendable {
     case search
     /// The centred logo bar with no background, over a picture that runs to the top edge of the screen (see `solid`).
     case overlay
+    /// The standard bar (the title or the logo at the start) with no background, over a picture, as `overlay`.
+    case overlayStandard
 }
 
 /// An icon button in the top bar, with an optional count badge.
@@ -49,9 +51,9 @@ public struct ArgonTopBar: ViewModifier {
 
     public func body(content: Content) -> some View {
         // with a logo, the logo sits at the start in place of the title (a home screen with its logo at the start)
-        let logoAtStart = variant == .standard && logoUrl != nil
-        // the overlay bar is drawn in colours of its own; every other bar in the system's (or the app's `barColors`)
-        let overlay = variant == .overlay
+        let logoAtStart = variant == .standard && logoUrl != nil || variant == .overlayStandard
+        // the overlay bars are drawn in colours of their own; every other bar in the system's (or the app's `barColors`)
+        let overlay = variant == .overlay || variant == .overlayStandard
             ? overlayBarColors(solid: solid, dark: colorScheme == .dark, darkContent: darkOverPicture, bar: barColors)
             : nil
         let tint = overlay?.content.color
@@ -65,7 +67,7 @@ public struct ArgonTopBar: ViewModifier {
                 if !leading.isEmpty || logoAtStart {
                     ToolbarItemGroup(placement: .topBarLeading) {
                         buttons(leading, tint: tint ?? foreground)
-                        if logoAtStart { logo(.leading) }
+                        if logoAtStart { logo(.leading, tint: tint) }
                     }
                 }
                 if !trailing.isEmpty {
@@ -142,7 +144,7 @@ public let overlayBarShade = 0.65
 public struct ArgonRGBA: Equatable, Sendable {
     public let red, green, blue, opacity: Double
 
-    var color: Color { Color(red: red, green: green, blue: blue, opacity: opacity) }
+    public var color: Color { Color(red: red, green: green, blue: blue, opacity: opacity) }
 }
 
 /// What the overlay bar is drawn with: its background, its title and icons, and the top of the shade behind it.
@@ -274,9 +276,9 @@ extension View {
     /// Sets up the enclosing `NavigationStack`'s bar for this screen: title, or the logo (centred, or at the start in
     /// place of a `.standard` title), icon actions on either side, and with `.search` the native search field bound to
     /// `searchText`. `isSearching` is whether that field is being typed in: set it to give the field the keyboard.
-    /// With `.overlay`, let the screen's content start at the top edge of the screen (ignoring the top safe area): at
+    /// With `.overlay` (or `.overlayStandard`, its title or logo at the start), let the screen's content start at the top edge of the screen (ignoring the top safe area): at
     /// `solid` 0 the bar has no background and its logo, title and actions are light over a short dark shade; towards 1
-    /// (as the picture under it scrolls away) the normal bar fades in. Only `.overlay` reads `solid` and
+    /// (as the picture under it scrolls away) the normal bar fades in. Only the overlay variants read `solid` and
     /// `darkOverPicture` (a light picture: dark content over a light shade, and dark status bar content).
     public func argonTopBar(
         variant: ArgonTopBarVariant = .standard,

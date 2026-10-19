@@ -90,8 +90,13 @@ struct HomeView: View {
             if case let .sections(screen)? = loaded?.page { return screen.template.screen }
             return nil
         }()
-        // the bar over the first section: the template's `screen.top_bar`, else the settings' transparentOnHome
-        let underBar = look?.transparent(navigation.transparentOnHome) ?? false
+        // the bar over the first section: the template's `screen.top_bar`, else the settings' transparentOnHome, and
+        // only when that section is a picture
+        let opensWithPicture: Bool = {
+            if case let .sections(screen)? = loaded?.page { return screen.template.opensWithPicture }
+            return false
+        }()
+        let underBar = (look?.transparent(navigation.transparentOnHome) ?? false) && opensWithPicture
         let inCart = AppGraph.cart.cart?.totalQuantity ?? 0
         VStack(spacing: 0) {
             if case let .sections(screen)? = loaded?.page {
@@ -114,7 +119,7 @@ struct HomeView: View {
             } else if let error = error {
                 ErrorView(message: error) { attempt += 1 }
             } else {
-                ArgonSpinner()
+                ScreenSkeleton(.home)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -152,10 +157,21 @@ struct HomeView: View {
     }
 }
 
-/// The home's top bar. Each template has its own: fashion centres the logo over its hero (`overlay`: clear at `solid` 0,
-/// the normal bar at 1), beauty has it at the start, both with a search button; grocery and B2B show a search field. The
-/// settings' `topBar.style` replaces it (`standard`, `centered_logo`, `search`) where the page isn't laid under it. The
-/// shop's name stands in for a missing logo. `onMenu` (the settings' drawer) adds a menu button, `onCart` (a bar without
+/// How the home's bar is laid out: `standard` (the title or logo at the start), `centered_logo` or `search` (a search
+/// field). The settings' `topBar.style` when set, whether the bar is solid or lies clear over the first section
+/// (`overlay`); without one, a clear bar centres the logo (the fashion page's) and a solid one is the `template`'s own.
+func homeBarStyle(_ template: HomeTemplate, style: String?, overlay: Bool) -> String {
+    if let style = style { return style }
+    if overlay { return "centered_logo" }
+    switch template {
+    case .fashion: return "centered_logo"
+    case .beauty: return "standard"
+    case .grocery, .b2b: return "search"
+    }
+}
+
+/// The home's top bar, laid out by `homeBarStyle`; with `overlay` it is clear over the page's first section at `solid` 0
+/// and the normal bar at 1. The shop's name stands in for a missing logo. `onMenu` (the settings' drawer) adds a menu button, `onCart` (a bar without
 /// the cart tab) a bag button.
 private struct HomeTopBar: ViewModifier {
     let template: HomeTemplate
@@ -176,73 +192,100 @@ private struct HomeTopBar: ViewModifier {
         let leading = onMenu.map { [ArgonTopBarAction(icon: .menu, accessibilityLabel: "Menu", action: $0)] } ?? []
         let cart = onCart.map { [ArgonTopBarAction(icon: .bag, accessibilityLabel: "Cart", badge: cartCount > 0 ? cartCount : nil, action: $0)] } ?? []
         let trailing = [ArgonTopBarAction(icon: .search, accessibilityLabel: "Search", action: onSearch)] + cart
-        switch overlay ? "overlay" : AppGraph.navigation.topBarStyle ?? Self.style(template) {
-        case "overlay":
-            content.argonTopBar(variant: .overlay, title: name, logoUrl: logo, leading: leading, trailing: trailing, solid: solid, darkOverPicture: darkOverPicture)
-        case "centered_logo": content.argonTopBar(variant: .centeredLogo, title: name, logoUrl: logo, leading: leading, trailing: trailing)
+        switch homeBarStyle(template, style: AppGraph.navigation.topBarStyle, overlay: overlay) {
+        case "centered_logo":
+            content.argonTopBar(
+                variant: overlay ? .overlay : .centeredLogo, title: name, logoUrl: logo, leading: leading, trailing: trailing,
+                solid: solid, darkOverPicture: darkOverPicture
+            )
         case "search": searchBar(content, template == .b2b ? "Search by name or SKU" : "Search products", leading, cart)
-        default: content.argonTopBar(title: name, logoUrl: logo, leading: leading, trailing: trailing)
+        default:
+            content.argonTopBar(
+                variant: overlay ? .overlayStandard : .standard, title: name, logoUrl: logo, leading: leading, trailing: trailing,
+                solid: solid, darkOverPicture: darkOverPicture
+            )
         }
     }
 
-    /// The template's own bar.
-    private static func style(_ template: HomeTemplate) -> String {
-        switch template {
-        case .fashion: return "overlay"
-        case .beauty: return "standard"
-        case .grocery, .b2b: return "search"
-        }
-    }
-
-    /// The search field in place of the navigation bar, over the page.
+    /// The search field in place of the navigation bar, over the page (clear over its first section with `overlay`).
+    /// ponytail: with the navigation bar hidden, the clear field can't set the status bar's colour (it follows the app's
+    /// appearance); move the field into the bar's principal item if that reads badly over pictures.
     private func searchBar(_ content: Content, _ placeholder: String, _ leading: [ArgonTopBarAction], _ trailing: [ArgonTopBarAction]) -> some View {
         content
             .toolbar(.hidden, for: .navigationBar)
             .safeAreaInset(edge: .top, spacing: 0) {
-                SearchField(placeholder: placeholder, onSearch: onSearch, leading: leading, trailing: trailing)
+                SearchField(
+                    placeholder: placeholder, onSearch: onSearch, leading: leading, trailing: trailing,
+                    clear: overlay ? (solid: solid, darkContent: darkOverPicture) : nil
+                )
             }
     }
 }
 
 /// A search field that isn't typed in: a tap anywhere on it opens the search screen (`onSearch`), which has the real one.
 /// The field is looks only: it is one button, named by the `placeholder`. (The navigation bar's own search field can't be
-/// covered by a button, so this one is drawn.) `leading` and `trailing` are icon buttons beside it.
+/// covered by a button, so this one is drawn.) `leading` and `trailing` are icon buttons beside it. The row is in the
+/// app's bar colours (`argonBarColors`). With `clear` it lies over a picture as the overlay bar does: at `solid` 0 no
+/// background and a translucent pill (white over a dark picture, a faint black with `darkContent`) in the clear bar's
+/// content colour, turning into the normal field towards 1.
 @MainActor
 private struct SearchField: View {
     let placeholder: String
     let onSearch: () -> Void
     var leading: [ArgonTopBarAction] = []
     var trailing: [ArgonTopBarAction] = []
+    var clear: (solid: Double, darkContent: Bool)? = nil
     @Environment(\.argonTheme) private var theme
+    @Environment(\.argonBarColors) private var barColors
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
+        let t = clear.map { min(max($0.solid, 0), 1) } ?? 1
+        let darkContent = clear?.darkContent ?? false
+        let colors = overlayBarColors(solid: t, dark: colorScheme == .dark, darkContent: darkContent, bar: barColors)
+        let ink = colors.content.color
+        // over the picture the field's text and icon are the bar's content colour; once solid, the field's own muted
+        let fieldInk = t < 0.5 ? ink : theme.colors.muted
         HStack(spacing: theme.spacing.xs) {
-            ForEach(Array(leading.enumerated()), id: \.offset) { _, action in button(action) }
+            ForEach(Array(leading.enumerated()), id: \.offset) { _, action in button(action, tint: ink) }
             Button(action: onSearch) {
                 HStack(spacing: theme.spacing.s) {
-                    ArgonIcon(name: .search, size: 18, tint: theme.colors.muted)
-                    Text(placeholder).font(theme.type.body).foregroundStyle(theme.colors.muted).lineLimit(1)
+                    ArgonIcon(name: .search, size: 18, tint: fieldInk)
+                    Text(placeholder).font(theme.type.body).foregroundStyle(fieldInk).lineLimit(1)
                     Spacer(minLength: 0)
                 }
                 .padding(.horizontal, theme.spacing.l)
                 .frame(minHeight: 48)
-                .background(theme.colors.surface, in: Capsule())
-                .overlay { Capsule().strokeBorder(theme.colors.border, lineWidth: 1) }
+                .background {
+                    ZStack {
+                        Capsule().fill(darkContent ? Color.black.opacity(0.08) : Color.white.opacity(0.2)).opacity(1 - t)
+                        Capsule().fill(theme.colors.surface).opacity(t)
+                    }
+                }
+                .overlay { Capsule().strokeBorder(theme.colors.border, lineWidth: 1).opacity(t) }
                 .contentShape(Capsule())
             }
             .buttonStyle(.plain)
-            ForEach(Array(trailing.enumerated()), id: \.offset) { _, action in button(action) }
+            ForEach(Array(trailing.enumerated()), id: \.offset) { _, action in button(action, tint: ink) }
         }
         .padding(.horizontal, theme.spacing.l)
         .padding(.top, theme.spacing.xs)
         .padding(.bottom, theme.spacing.s)
-        // the page scrolls under the field, and under the status bar above it
-        .background { theme.colors.paper.ignoresSafeArea(edges: .top) }
+        // the page scrolls under the field, and under the status bar above it; clear, over a shade its content reads on
+        .background {
+            ZStack {
+                colors.container.color
+                if clear != nil {
+                    LinearGradient(colors: [colors.shade.color, colors.shade.color.opacity(0)], startPoint: .top, endPoint: .bottom)
+                }
+            }
+            .ignoresSafeArea(edges: .top)
+        }
     }
 
-    private func button(_ action: ArgonTopBarAction) -> some View {
+    private func button(_ action: ArgonTopBarAction, tint: Color) -> some View {
         Button(action: action.action) {
-            ArgonIcon(name: action.icon, tint: theme.colors.ink)
+            ArgonIcon(name: action.icon, tint: tint)
                 .frame(width: 44, height: 44)
                 .overlay(alignment: .topTrailing) {
                     if let badge = action.badge { ArgonBadge(count: badge) }

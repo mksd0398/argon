@@ -34,6 +34,7 @@ import app.storefront.data.ScreenLook
 import app.storefront.data.StorePage
 import app.storefront.ui.sections.ScreenSections
 import app.storefront.ui.sections.loadScreenSections
+import app.storefront.ui.sections.opensWithPicture
 import app.storefront.ui.sections.rememberSectionEnv
 import app.storefront.ui.sections.sectionItems
 
@@ -46,7 +47,7 @@ fun PageScreen(handle: String, nav: NavController) {
     var title by remember { mutableStateOf("") }
     Scaffold(topBar = { ArgonTopBar(title, leading = listOf(nav.backAction())) }) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
-            Loader({ AppGraph.storefront.page(handle) ?: error("This page isn't available") }) { page ->
+            Loader({ AppGraph.storefront.page(handle) ?: error("This page isn't available") }, placeholder = { TextSkeleton() }) { page ->
                 LaunchedEffect(page) {
                     title = page.title
                     // a page whose content isn't its body (an Online Store 2.0 page of sections, a contact form) is the web's
@@ -68,13 +69,15 @@ private class CustomPage(val sections: ScreenSections?)
  * A custom page of the store's own (`screen/{handle}`, the links `app://screens/<handle>`): the `app_screen` [handle],
  * its title in the top bar and its sections. A page the store doesn't have says so. [isTab]: the root of a
  * `screen:<handle>` tab of the settings, without a way back. The template's `screen` look: its background, and with
- * `top_bar` transparent the bar over the first section (clear, then solid once it scrolls under), as on the home.
+ * `top_bar` transparent the bar over the first section (clear, then solid once it scrolls under) when that is a picture,
+ * as on the home.
  */
 @Composable
 fun CustomScreen(handle: String, nav: NavController, isTab: Boolean = false) {
     var title by remember { mutableStateOf("") }
     var look by remember { mutableStateOf(ScreenLook()) }
-    val clear = look.topBar == "transparent"
+    var picture by remember { mutableStateOf(false) }
+    val clear = look.topBar == "transparent" && picture
     val leading = if (isTab) emptyList() else listOf(nav.backAction())
     Scaffold(
         topBar = { if (!clear) ArgonTopBar(title, leading = leading) },
@@ -83,11 +86,12 @@ fun CustomScreen(handle: String, nav: NavController, isTab: Boolean = false) {
         contentWindowInsets = if (clear) WindowInsets.navigationBars else ScaffoldDefaults.contentWindowInsets,
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
-            Loader({ CustomPage(loadScreenSections(handle, quiet = false)?.takeIf { it.hasContent }) }) { page ->
+            Loader({ CustomPage(loadScreenSections(handle, quiet = false)?.takeIf { it.hasContent }) }, placeholder = { HomeSkeleton() }) { page ->
                 val sections = page.sections
                 LaunchedEffect(sections) {
                     title = sections?.title.orEmpty()
                     look = sections?.template?.screen ?: ScreenLook()
+                    picture = sections?.template?.opensWithPicture == true
                 }
                 val env = rememberSectionEnv(sections, { nav.open(it) })
                 if (sections == null) {
@@ -108,14 +112,14 @@ fun CustomScreen(handle: String, nav: NavController, isTab: Boolean = false) {
                             list,
                             contentPadding = PaddingValues(bottom = ArgonTheme.spacing.l),
                             verticalArrangement = Arrangement.spacedBy(ArgonTheme.spacing.xl),
-                        ) { sectionItems(sections.placement.above, env) }
+                        ) { sectionItems(sections.placement.above, env, spacing = ArgonTheme.spacing.xl) }
                     }
                 } else {
                     LazyColumn(
                         Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(vertical = ArgonTheme.spacing.l),
                         verticalArrangement = Arrangement.spacedBy(ArgonTheme.spacing.xl),
-                    ) { sectionItems(sections.placement.above, env) }
+                    ) { sectionItems(sections.placement.above, env, spacing = ArgonTheme.spacing.xl) }
                 }
             }
         }

@@ -131,4 +131,23 @@ final class HomeContentTests: XCTestCase {
         XCTAssertEqual(heroSolid(scrolled: hero - 1, heroHeight: hero, barHeight: 0), 0)
         XCTAssertEqual(heroSolid(scrolled: hero, heroHeight: hero, barHeight: 0), 1)
     }
+
+    func testTheMerchantsBarStyleHoldsOverTheFirstSectionToo() {
+        for template in HomeTemplate.allCases {
+            for style in ["standard", "centered_logo", "search"] {
+                XCTAssertEqual(homeBarStyle(template, style: style, overlay: true), style)
+                XCTAssertEqual(homeBarStyle(template, style: style, overlay: false), style)
+            }
+        }
+    }
+
+    func testWithoutAStyleAClearBarCentresTheLogoAndASolidOneIsTheTemplates() {
+        for template in HomeTemplate.allCases {
+            XCTAssertEqual(homeBarStyle(template, style: nil, overlay: true), "centered_logo")
+        }
+        XCTAssertEqual(homeBarStyle(.fashion, style: nil, overlay: false), "centered_logo")
+        XCTAssertEqual(homeBarStyle(.beauty, style: nil, overlay: false), "standard")
+        XCTAssertEqual(homeBarStyle(.grocery, style: nil, overlay: false), "search")
+        XCTAssertEqual(homeBarStyle(.b2b, style: nil, overlay: false), "search")
+    }
 }

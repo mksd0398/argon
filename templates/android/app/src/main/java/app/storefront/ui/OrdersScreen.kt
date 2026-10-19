@@ -110,7 +110,7 @@ private fun Orders(list: OrderList, onOpen: (OrderSummary) -> Unit, sections: Pl
     val screen = rememberCoroutineScope()
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(spacing.l), verticalArrangement = Arrangement.spacedBy(spacing.m)) {
         // the sections reach over the list's margins: they bring their own
-        sectionItems(sections?.above.orEmpty(), env, Modifier.bleed(spacing.l))
+        sectionItems(sections?.above.orEmpty(), env, Modifier.bleed(spacing.l), spacing.m)
         items(list.items, key = { it.id }) { order -> OrderCard(order, onOpen = { onOpen(order) }) }
         if (list.hasNext) {
             item {
@@ -122,7 +122,7 @@ private fun Orders(list: OrderList, onOpen: (OrderSummary) -> Unit, sections: Pl
                 }
             }
         }
-        sectionItems(sections?.below.orEmpty(), env, Modifier.bleed(spacing.l))
+        sectionItems(sections?.below.orEmpty(), env, Modifier.bleed(spacing.l), spacing.m)
     }
 }
 

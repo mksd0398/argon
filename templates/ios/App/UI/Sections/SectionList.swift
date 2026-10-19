@@ -186,22 +186,32 @@ struct SectionScope {
     func collection(_ id: String) -> CollectionCard? { nodes[id]?.collectionCard }
 }
 
+/// The room above `current` when `previous` is right above it: none when both run edge to edge (`fullBleed`, so a
+/// hero and the marquee under it sit flush) or nothing is above it, else `gap` (a heading never sits on a strip).
+func gapBefore(_ previous: ScreenSection?, _ current: ScreenSection, gap: CGFloat) -> CGFloat {
+    guard let previous = previous, !(previous.fullBleed && current.fullBleed) else { return 0 }
+    return gap
+}
+
 /// `sections` of `screen` one under the other, in a lazy stack (so each reports `view_promotion` as it first comes into
-/// view, once per visit), each with the full width: a section brings its own side margins. `context` is the screen's
-/// Liquid objects (`LoadedScreen.context`).
+/// view, once per visit), each with the full width: a section brings its own side margins, and the room between two
+/// is `gapBefore`'s. `after` is the section drawn right above the first (by another list), for the room above it.
+/// `context` is the screen's Liquid objects (`LoadedScreen.context`).
 @MainActor
 struct SectionList: View {
     let sections: [ScreenSection]
     let screen: LoadedScreen
     let context: [String: JSONValue]
+    var after: ScreenSection? = nil
     @State private var seen: Set<String> = []
     @Environment(Router.self) private var router
     @Environment(\.argonTheme) private var theme
 
     var body: some View {
-        LazyVStack(spacing: theme.spacing.xl) {
-            ForEach(sections, id: \.id) { section in
+        LazyVStack(spacing: 0) {
+            ForEach(Array(sections.enumerated()), id: \.element.id) { index, section in
                 SectionView(section: section, scope: scope(section))
+                    .padding(.top, gapBefore(index == 0 ? after : sections[index - 1], section, gap: theme.spacing.xl))
                     .onAppear {
                         if seen.insert(section.id).inserted { AppGraph.analytics.track(.viewPromotion(promotion(section))) }
                     }
@@ -309,13 +319,13 @@ struct SectionsUnderBar: View {
             // the bar with the status bar: what the page keeps clear of at its top
             let barHeight = proxy.safeAreaInsets.top
             ScrollView {
-                VStack(spacing: theme.spacing.xl) {
+                VStack(spacing: 0) {
                     SectionList(sections: Array(sections.prefix(1)), screen: screen, context: context)
                         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame in
                             let now = heroSolid(scrolled: -frame.minY, heroHeight: frame.height, barHeight: barHeight)
                             if now != solid { solid = now }
                         }
-                    SectionList(sections: Array(sections.dropFirst()), screen: screen, context: context)
+                    SectionList(sections: Array(sections.dropFirst()), screen: screen, context: context, after: sections.first)
                 }
                 .padding(.bottom, theme.spacing.xl)
             }

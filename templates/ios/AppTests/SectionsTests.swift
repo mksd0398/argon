@@ -144,4 +144,38 @@ final class SectionsContentTests: XCTestCase {
         XCTAssertEqual(HomeTemplate.fashion.bannerCopy.map { $0.heading }, ["The new season", "Everyday essentials", "Made to last"])
         XCTAssertEqual(HomeTemplate.fashion.bannerCopy.map { $0.button }, ["Shop now", "Explore", "Discover"])
     }
+
+    func testFullBleedSectionsSitFlushAndOrdinaryOnesKeepTheirGap() {
+        func section(_ type: String, _ settings: [String: JSONValue] = [:]) -> ScreenSection {
+            ScreenSection(id: type, type: type, settings: SectionSettings(settings))
+        }
+        let hero = section("banner"), card = section("banner", ["style": .string("card")])
+        let text = section("rich_text"), products = section("products")
+        let tinted = section("rich_text", ["background": .string("#FFEEDD")])
+        for bleed in [hero, section("banner", ["style": .string("hero")]), section("slideshow"), section("marquee"), section("video"), tinted] {
+            XCTAssertTrue(bleed.fullBleed, bleed.type)
+            XCTAssertEqual(gapBefore(bleed, text, gap: 24), 24)
+            XCTAssertEqual(gapBefore(text, bleed, gap: 24), 24)
+            XCTAssertEqual(gapBefore(hero, bleed, gap: 24), 0)
+        }
+        XCTAssertFalse(card.fullBleed)
+        XCTAssertEqual(gapBefore(hero, section("marquee"), gap: 24), 0)
+        XCTAssertEqual(gapBefore(text, products, gap: 24), 24)
+        XCTAssertEqual(gapBefore(card, products, gap: 24), 24)
+        // the first section has nothing above it
+        XCTAssertEqual(gapBefore(nil, products, gap: 24), 0)
+    }
+
+    func testTheBarIsClearOnlyOverAPictureFirst() {
+        func section(_ type: String, _ settings: [String: JSONValue] = [:]) -> ScreenSection {
+            ScreenSection(id: type, type: type, settings: SectionSettings(settings))
+        }
+        for first in ["banner", "slideshow", "video"] {
+            XCTAssertTrue(ScreenTemplate(sections: [section(first), section("rich_text")]).opensWithPicture, first)
+        }
+        for first in [section("collections"), section("rich_text"), section("banner", ["style": .string("card")]), section("marquee")] {
+            XCTAssertFalse(ScreenTemplate(sections: [first, section("banner")]).opensWithPicture, first.type)
+        }
+        XCTAssertFalse(ScreenTemplate().opensWithPicture)
+    }
 }

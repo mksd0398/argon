@@ -28,7 +28,7 @@ fun PolicyScreen(handle: String, nav: NavController) {
     var title by remember { mutableStateOf("") }
     Scaffold(topBar = { ArgonTopBar(title, leading = listOf(nav.backAction())) }) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
-            Loader({ AppGraph.storefront.policies().policy(handle) ?: error("This policy isn't available") }) { policy ->
+            Loader({ AppGraph.storefront.policies().policy(handle) ?: error("This policy isn't available") }, placeholder = { TextSkeleton() }) { policy ->
                 LaunchedEffect(policy) { title = policy.title }
                 HtmlText(policy.body, Modifier.verticalScroll(rememberScrollState()).padding(ArgonTheme.spacing.l))
             }

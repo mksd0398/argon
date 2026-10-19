@@ -1,6 +1,7 @@
 package app.argon.ui.components
 
 import android.graphics.Bitmap
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -12,6 +13,7 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
@@ -55,7 +57,7 @@ data class ArgonTopBarAction(val icon: ArgonIconName, val contentDescription: St
 /** The solid bar's own colours, an app's (a merchant's settings): its [container] and its title and icons ([content]). Unspecified: the theme's. */
 data class ArgonBarColors(val container: Color = Color.Unspecified, val content: Color = Color.Unspecified)
 
-/** The [ArgonBarColors] every [ArgonTopBar] under it is drawn with (the Search field aside). */
+/** The [ArgonBarColors] every [ArgonTopBar] under it is drawn with (the Search field aside; behind the Overlay one). */
 val LocalArgonBarColors = staticCompositionLocalOf { ArgonBarColors() }
 
 /**
@@ -64,7 +66,9 @@ val LocalArgonBarColors = staticCompositionLocalOf { ArgonBarColors() }
  * For Overlay, put the bar on top of the content (not in a scaffold's top bar slot) and let the content start at the
  * top edge of the screen, under the status bar: at [solid] 0 the bar has no background and its logo, title and actions
  * are light over a short dark shade ([lightContent] false: dark over a light one, for a light picture); towards 1 (as
- * the picture under it scrolls away) the normal bar fades in. Only Overlay reads [solid] and [lightContent].
+ * the picture under it scrolls away) the normal bar fades in. [solidVariant] is the bar it fades into: CenteredLogo
+ * (the default), Standard (the title or logo at the start) or Search (a field, clear a translucent pill: white at 20%
+ * with white text, black at 8% when not [lightContent]). Only Overlay reads [solid], [lightContent] and [solidVariant].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,6 +84,7 @@ fun ArgonTopBar(
     onSearch: (String) -> Unit = {},
     solid: Float = 0f,
     lightContent: Boolean = true,
+    solidVariant: ArgonTopBarVariant = ArgonTopBarVariant.CenteredLogo,
 ) {
     val bar = LocalArgonBarColors.current
     val barColors = TopAppBarDefaults.topAppBarColors(
@@ -134,46 +139,112 @@ fun ArgonTopBar(
                 val height = size.height * 1.5f
                 drawRect(Brush.verticalGradient(listOf(colors.shade, Color.Transparent), endY = height), size = Size(size.width, height))
             }
+            if (solidVariant == ArgonTopBarVariant.Search) {
+                // the field fades from the pill into the normal one; behind it the bar's background fades in, as the others'
+                val field = overlayFieldColors(solid, lightContent, SearchBarDefaults.colors().containerColor, MaterialTheme.colorScheme.onSurfaceVariant)
+                Box(modifier.then(shade).background(colors.container)) {
+                    SearchField(title, Modifier.padding(bottom = ArgonTheme.spacing.s), leading, trailing, searchText, onSearchTextChange, onSearch, field)
+                }
+                return
+            }
+            val overlayColors = TopAppBarDefaults.topAppBarColors(
+                containerColor = colors.container,
+                scrolledContainerColor = colors.container,
+                navigationIconContentColor = colors.content,
+                titleContentColor = colors.content,
+                actionIconContentColor = colors.content,
+            )
+            val tint = colors.content.takeIf { solid < 0.5f }
             Box(modifier.then(shade)) {
-                CenterAlignedTopAppBar(
-                    title = {
-                        if (logoUrl != null) {
-                            OverlayLogo(logoUrl, title, colors.content.takeIf { solid < 0.5f })
-                        } else {
-                            Text(title, style = ArgonTheme.type.headline, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-                    },
-                    navigationIcon = navigation,
-                    actions = actions,
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = colors.container,
-                        scrolledContainerColor = colors.container,
-                        navigationIconContentColor = colors.content,
-                        titleContentColor = colors.content,
-                        actionIconContentColor = colors.content,
-                    ),
-                )
+                if (solidVariant == ArgonTopBarVariant.Standard) {
+                    TopAppBar(
+                        title = { if (logoUrl != null) OverlayLogo(logoUrl, title, tint) else Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        navigationIcon = navigation,
+                        actions = actions,
+                        colors = overlayColors,
+                    )
+                } else {
+                    CenterAlignedTopAppBar(
+                        title = {
+                            if (logoUrl != null) {
+                                OverlayLogo(logoUrl, title, tint)
+                            } else {
+                                Text(title, style = ArgonTheme.type.headline, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                        },
+                        navigationIcon = navigation,
+                        actions = actions,
+                        colors = overlayColors,
+                    )
+                }
             }
         }
-        ArgonTopBarVariant.Search -> SearchBar(
-            inputField = {
-                SearchBarDefaults.InputField(
-                    query = searchText.orEmpty(),
-                    onQueryChange = onSearchTextChange,
-                    onSearch = onSearch,
-                    expanded = false,
-                    onExpandedChange = {},
-                    placeholder = { Text(title) },
-                    leadingIcon = { if (leading.isEmpty()) ArgonIcon(ArgonIconName.Search) else navigation() },
-                    trailingIcon = if (trailing.isEmpty()) null else ({ Row(content = actions) }),
-                )
-            },
-            expanded = false,
-            onExpandedChange = {},
-            modifier = modifier.fillMaxWidth().padding(horizontal = ArgonTheme.spacing.l),
-        ) {}
+        // the merchant's bar colour behind the field (and the status bar), as the other variants have it
+        ArgonTopBarVariant.Search -> Box(if (bar.container == Color.Unspecified) Modifier else Modifier.background(bar.container)) {
+            SearchField(title, modifier, leading, trailing, searchText, onSearchTextChange, onSearch, null)
+        }
     }
 }
+
+/** The Overlay search field's own [container] and its text and icons ([content]). */
+internal data class OverlayFieldColors(val container: Color, val content: Color)
+
+/**
+ * The Overlay search field at [solid] (0 over the picture ... 1 the [normal] field with [normalContent]; clamped). Over
+ * the picture it is a translucent pill: white at 20% with white text and icons ([lightContent], over a dark picture), or
+ * black at 8% with dark ones (over a light picture).
+ */
+internal fun overlayFieldColors(solid: Float, lightContent: Boolean, normal: Color, normalContent: Color): OverlayFieldColors {
+    val t = solid.coerceIn(0f, 1f)
+    val pill = if (lightContent) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.08f)
+    val onPill = if (lightContent) Color.White else argonColors(null, dark = false).ink
+    return OverlayFieldColors(lerp(pill, normal, t), lerp(onPill, normalContent, t))
+}
+
+/** The Search variant's field, its leading and trailing actions inside it; in [colors] (null: the native ones) for the Overlay's. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SearchField(
+    placeholder: String,
+    modifier: Modifier,
+    leading: List<ArgonTopBarAction>,
+    trailing: List<ArgonTopBarAction>,
+    searchText: String?,
+    onSearchTextChange: (String) -> Unit,
+    onSearch: (String) -> Unit,
+    colors: OverlayFieldColors?,
+) = SearchBar(
+    inputField = {
+        SearchBarDefaults.InputField(
+            query = searchText.orEmpty(),
+            onQueryChange = onSearchTextChange,
+            onSearch = onSearch,
+            expanded = false,
+            onExpandedChange = {},
+            placeholder = { Text(placeholder) },
+            leadingIcon = { if (leading.isEmpty()) ArgonIcon(ArgonIconName.Search) else Row { leading.forEach { ActionButton(it) } } },
+            trailingIcon = if (trailing.isEmpty()) null else ({ Row { trailing.forEach { ActionButton(it) } } }),
+            colors = if (colors == null) SearchBarDefaults.inputFieldColors() else SearchBarDefaults.inputFieldColors(
+                // the field draws its own container over the bar's: without these it is an opaque light pill, and the
+                // white text and icons over a picture vanish into it
+                focusedContainerColor = colors.container,
+                unfocusedContainerColor = colors.container,
+                focusedTextColor = colors.content,
+                unfocusedTextColor = colors.content,
+                focusedLeadingIconColor = colors.content,
+                unfocusedLeadingIconColor = colors.content,
+                focusedTrailingIconColor = colors.content,
+                unfocusedTrailingIconColor = colors.content,
+                focusedPlaceholderColor = colors.content,
+                unfocusedPlaceholderColor = colors.content,
+            ),
+        )
+    },
+    expanded = false,
+    onExpandedChange = {},
+    modifier = modifier.fillMaxWidth().padding(horizontal = ArgonTheme.spacing.l),
+    colors = if (colors == null) SearchBarDefaults.colors() else SearchBarDefaults.colors(containerColor = colors.container),
+) {}
 
 /** How dark the Overlay bar's shade is at the top edge of the screen. */
 internal const val SHADE = 0.65f

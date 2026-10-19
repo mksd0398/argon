@@ -1,12 +1,10 @@
 package app.storefront.ui
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -33,7 +31,8 @@ internal class Loaded : ViewModel() {
 }
 
 /**
- * Shows [content] with the result of [load]: a spinner meanwhile, the error message with Retry on failure.
+ * Shows [content] with the result of [load]: [placeholder] meanwhile (a skeleton of the screen), the error message
+ * with Retry on failure.
  * A failed load also runs again by itself when the screen comes back to the foreground (see [RetryOnResume]).
  * One per screen: the result is kept for the back stack entry, so coming back from a product doesn't reload.
  * With [keep] false nothing is kept: the screen loads again each time it is shown (the customer's own data).
@@ -41,7 +40,12 @@ internal class Loaded : ViewModel() {
  */
 @Suppress("UNCHECKED_CAST")
 @Composable
-fun <T : Any> Loader(load: suspend () -> T, keep: Boolean = true, content: @Composable (T) -> Unit) {
+fun <T : Any> Loader(
+    load: suspend () -> T,
+    keep: Boolean = true,
+    placeholder: @Composable () -> Unit = { ListSkeleton() },
+    content: @Composable (T) -> Unit,
+) {
     val cache = viewModel<Loaded>()
     var attempt by remember { mutableIntStateOf(0) }
     var value by remember(attempt) { mutableStateOf(if (keep) cache.value as T? else null) }
@@ -65,7 +69,7 @@ fun <T : Any> Loader(load: suspend () -> T, keep: Boolean = true, content: @Comp
             RetryOnResume { attempt++ }
             ErrorView(failure) { attempt++ }
         }
-        else -> Spinner()
+        else -> placeholder()
     }
 }
 
@@ -89,8 +93,6 @@ private fun RetryOnResume(retry: () -> Unit) {
     }
 }
 
-@Composable
-fun Spinner() = Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
 
 @Composable
 fun ErrorView(message: String, onRetry: () -> Unit) {
