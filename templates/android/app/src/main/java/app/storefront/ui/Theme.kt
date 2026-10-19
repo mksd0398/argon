@@ -4,6 +4,8 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.isSpecified
+import androidx.compose.ui.graphics.luminance
 import app.argon.ui.ArgonTheme
 import app.argon.ui.components.ArgonBarColors
 import app.argon.ui.components.LocalArgonBarColors
@@ -19,6 +21,13 @@ fun isAppDark(): Boolean = when (AppGraph.appearance) {
     Appearance.System -> isSystemInDarkTheme()
 }
 
+/** Whether the status bar lies on a dark colour: the settings' `navigation.topBar.background` when set, else the theme. */
+@Composable
+fun isBarDark(): Boolean {
+    val bar = AppGraph.navigation.topBarBackground.toColor()
+    return if (bar.isSpecified) bar.luminance() < 0.5f else isAppDark()
+}
+
 /**
  * The Argon theme with [accent] (`#RRGGBB` from the shop's brand) as the accent, ink when it's absent or unreadable; light
  * or dark by [isAppDark]. The top bars take the settings' `navigation.topBar` colours.
@@ -27,6 +36,8 @@ fun isAppDark(): Boolean = when (AppGraph.appearance) {
 fun AppTheme(accent: String?, content: @Composable () -> Unit) = ArgonTheme(accentHex = accent, darkTheme = isAppDark()) {
     val navigation = AppGraph.navigation
     val bar = ArgonBarColors(navigation.topBarBackground.toColor(), navigation.topBarForeground.toColor())
+    // the status bar icons over a merchant's own bar colour (the theme's are set by MainActivity)
+    if (bar.container.isSpecified) StatusBarIcons(light = false)
     CompositionLocalProvider(LocalArgonBarColors provides bar, content = content)
 }
 

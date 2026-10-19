@@ -85,13 +85,13 @@ fun StoreImage(
 
 /**
  * Light status bar icons while [light], dark ones while [darkIcons]: for a screen whose picture runs up under the status
- * bar (dark icons over a light one). Otherwise, and once that screen is gone, the icons follow the theme again (dark on
- * the light theme).
+ * bar (dark icons over a light one). Otherwise, and once that screen is gone, the icons follow the top bar under them
+ * again ([isBarDark]: light icons on a dark bar).
  */
 @Composable
 fun StatusBarIcons(light: Boolean, darkIcons: Boolean = false) {
     val view = LocalView.current
-    val dark = isAppDark()
+    val dark = isBarDark()
     DisposableEffect(view, light, darkIcons, dark) {
         val bars = view.context.componentActivity()?.window?.let { WindowCompat.getInsetsController(it, view) }
         // "light status bars" is the system's name for a light background: dark icons
