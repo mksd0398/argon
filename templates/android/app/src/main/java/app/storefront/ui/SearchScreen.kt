@@ -37,6 +37,7 @@ import app.storefront.data.ProductCard
 import app.storefront.data.Route
 import app.storefront.data.analyticsItem
 import app.storefront.ui.sections.rememberScreenSections
+import app.storefront.ui.sections.screenBackground
 import app.storefront.ui.sections.rememberSectionEnv
 import app.storefront.ui.sections.sectionItems
 import kotlinx.coroutines.CancellationException
@@ -127,6 +128,7 @@ fun SearchScreen(initial: String, nav: NavController, isTab: Boolean = false) {
     }
 
     Scaffold(
+        containerColor = screenBackground(sections),
         topBar = {
             ArgonTopBar(
                 "Search products",

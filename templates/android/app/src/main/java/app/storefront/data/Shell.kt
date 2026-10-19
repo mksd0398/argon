@@ -22,7 +22,9 @@ data class ShellTab(val id: String, val title: String, val icon: String) {
 /**
  * The tab bar and the top bar. [labels]: tab titles shown; [topBarStyle]: `standard`, `centered_logo` or `search` (null:
  * the home template's own bar); [transparentOnHome]: the home's bar lies over its first section, solid on scroll;
- * [drawerMenu]: the handle of the Shopify menu the home's menu button opens (null: no drawer).
+ * [drawerMenu]: the handle of the Shopify menu the home's menu button opens (null: no drawer). The colours (`#RRGGBB`,
+ * null for the theme's): [topBarBackground] and [topBarForeground], the solid top bar and its title and icons on every
+ * screen; [tabBarBackground], [tabBarActive] and [tabBarInactive], the tab bar and its selected and other tabs.
  */
 data class Navigation(
     val tabs: List<ShellTab> = BUILT_IN_TABS,
@@ -30,6 +32,11 @@ data class Navigation(
     val topBarStyle: String? = null,
     val transparentOnHome: Boolean = false,
     val drawerMenu: String? = null,
+    val topBarBackground: String? = null,
+    val topBarForeground: String? = null,
+    val tabBarBackground: String? = null,
+    val tabBarActive: String? = null,
+    val tabBarInactive: String? = null,
 ) {
     fun hasTab(id: String): Boolean = tabs.any { it.id == id }
 
@@ -48,12 +55,18 @@ data class Navigation(
             json ?: return null
             val topBar = json.obj("topBar")
             val drawer = json.obj("drawer")
+            val tabBar = json.obj("tabBar")
             return Navigation(
                 tabs = tabs(json["tabs"]) ?: BUILT_IN_TABS,
                 labels = json.bool("labels") ?: true,
                 topBarStyle = topBar?.str("style")?.takeIf { it in STYLES },
                 transparentOnHome = topBar?.bool("transparentOnHome") ?: false,
                 drawerMenu = if (drawer?.bool("enabled") == true) drawer.str("menu")?.trim()?.ifEmpty { null } ?: "main-menu" else null,
+                topBarBackground = topBar?.hex("background"),
+                topBarForeground = topBar?.hex("foreground"),
+                tabBarBackground = tabBar?.hex("background"),
+                tabBarActive = tabBar?.hex("active"),
+                tabBarInactive = tabBar?.hex("inactive"),
             )
         }
 
@@ -89,8 +102,6 @@ data class Announcement(
     val dismissible: Boolean = true,
 ) {
     companion object {
-        private val HEX = Regex("^#[0-9A-Fa-f]{6}$")
-
         /** [json] (the settings' `announcement`); null when it is off, or has no message to show. */
         fun decode(json: JsonObject?): Announcement? {
             json ?: return null
@@ -121,6 +132,10 @@ enum class Appearance(val value: String) {
     }
 }
 
+private val HEX = Regex("^#[0-9A-Fa-f]{6}$")
+
+/** A `#RRGGBB` colour (upper case); null when missing or not one. */
+private fun JsonObject.hex(key: String) = str(key)?.takeIf { HEX.matches(it) }?.uppercase()
 private fun JsonObject.obj(key: String) = this[key] as? JsonObject
 private fun JsonObject.str(key: String) = (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
 private fun JsonObject.bool(key: String) = (this[key] as? JsonPrimitive)?.takeIf { !it.isString }?.booleanOrNull

@@ -28,6 +28,7 @@ import app.storefront.data.analyticsItem
 import app.storefront.data.collectionFilters
 import app.storefront.data.gidTail
 import app.storefront.ui.sections.rememberScreenSections
+import app.storefront.ui.sections.screenBackground
 import app.storefront.ui.sections.rememberSectionEnv
 import app.storefront.ui.sections.sectionItems
 
@@ -84,6 +85,7 @@ fun CollectionScreen(handle: String, nav: NavController) {
     }
     val env = rememberSectionEnv(sections, { nav.open(it) }, collection = liquid)
     Scaffold(
+        containerColor = screenBackground(sections),
         topBar = {
             ArgonTopBar(
                 model.title,

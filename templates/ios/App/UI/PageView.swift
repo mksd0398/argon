@@ -45,19 +45,35 @@ func webPage(_ page: StorePage, domain: String) -> Route? {
 
 /// A custom page of the store's own (route `screen/<handle>`, from an `app://screens/<handle>` link): the `app_screen`
 /// with that handle, its title in the top bar and its sections. One the store doesn't have shows "Nothing to show yet."
+/// Its template's `screen` sets its background, and with `top_bar` transparent lays the bar over the first section as
+/// the home does (`SectionsUnderBar`): the title and the back button clear over it, in `top_bar_tint`.
 @MainActor
 struct CustomScreenView: View {
     let handle: String
     @State private var screen: LoadedScreen? = nil
     @State private var loaded = false
+    // how solid the bar over the first section is: solid until that section is under it
+    @State private var barSolid = 1.0
     @Environment(\.argonTheme) private var theme
+    @Environment(\.isPresented) private var pushed
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
+        let look = screen?.template.screen ?? ScreenLook()
+        let underBar = look.transparent() && !(screen?.template.content.isEmpty ?? true)
+        // The system's back button takes the stack's tint, not the clear bar's colours: the bar draws its own.
+        // ponytail: hiding the system button also drops the swipe back on these pages; bring it back with a
+        // UIGestureRecognizerDelegate on the navigation controller if shoppers miss it.
+        let back = underBar && pushed ? [ArgonTopBarAction(icon: .back, accessibilityLabel: "Back") { dismiss() }] : []
         Group {
             if let screen = screen, !screen.template.content.isEmpty {
-                ScrollView {
-                    SectionList(sections: screen.template.content, screen: screen, context: screen.context())
-                        .padding(.vertical, theme.spacing.l)
+                if underBar {
+                    SectionsUnderBar(screen: screen, solid: $barSolid)
+                } else {
+                    ScrollView {
+                        SectionList(sections: screen.template.content, screen: screen, context: screen.context())
+                            .padding(.vertical, theme.spacing.l)
+                    }
                 }
             } else if loaded {
                 EmptyNote()
@@ -66,8 +82,12 @@ struct CustomScreenView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(theme.colors.paper)
-        .argonTopBar(title: screen?.title ?? "")
+        .background(ArgonTheme.color(hex: look.background) ?? theme.colors.paper)
+        .argonTopBar(
+            variant: underBar ? .overlay : .standard, title: screen?.title ?? "", leading: back,
+            solid: barSolid, darkOverPicture: look.tint == "dark"
+        )
+        .navigationBarBackButtonHidden(!back.isEmpty)
         .task {
             if loaded { return }
             let found = await loadScreen(handle)

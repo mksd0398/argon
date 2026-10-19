@@ -1,5 +1,6 @@
 package app.storefront.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -57,6 +58,7 @@ import app.storefront.ui.home.heroSolid
 import app.storefront.ui.sections.ScreenSections
 import app.storefront.ui.sections.loadScreenSections
 import app.storefront.ui.sections.rememberSectionEnv
+import app.storefront.ui.sections.screenBackground
 import app.storefront.ui.sections.sectionItems
 import java.util.logging.Logger
 import kotlinx.coroutines.CancellationException
@@ -169,21 +171,24 @@ private fun HomePage(nav: NavController, openMenu: (() -> Unit)?) {
         onCart = if (AppGraph.navigation.hasTab("cart")) null else ({ AppGraph.tabs.select(AppTab.Cart) }),
         cartCount = cartCount,
     )
-    // screens v2: the store's own home, its sections under the top bar; over the first one with transparentOnHome
+    // screens v2: the store's own home, its sections under the top bar; over the first one when the template's
+    // `screen.top_bar` is transparent (unset: by transparentOnHome), on the template's background
     val sections = model.sections.takeIf { model.loaded != null }
     val env = rememberSectionEnv(sections, onOpen)
     if (sections != null) {
-        if (AppGraph.navigation.transparentOnHome) {
-            OverBar({ solid -> HomeTopBar(template, brand, solid, overlay = true, actions) }) { list ->
+        val look = sections.template.screen
+        val background = screenBackground(sections)
+        if (look.topBar?.let { it == "transparent" } ?: AppGraph.navigation.transparentOnHome) {
+            OverBar({ solid -> HomeTopBar(template, brand, solid, overlay = true, actions, lightContent = !look.darkTint) }, light = !look.darkTint) { list ->
                 LazyColumn(
-                    Modifier.fillMaxSize(),
+                    Modifier.fillMaxSize().background(background),
                     list,
                     contentPadding = PaddingValues(bottom = ArgonTheme.spacing.xl),
                     verticalArrangement = Arrangement.spacedBy(ArgonTheme.spacing.xl),
                 ) { sectionItems(sections.placement.above, env) }
             }
         } else {
-            Scaffold(topBar = { HomeTopBar(template, brand, 1f, overlay = false, actions) }) { padding ->
+            Scaffold(topBar = { HomeTopBar(template, brand, 1f, overlay = false, actions) }, containerColor = background) { padding ->
                 LazyColumn(
                     Modifier.padding(padding).fillMaxSize(),
                     contentPadding = PaddingValues(top = ArgonTheme.spacing.s, bottom = ArgonTheme.spacing.xl),
@@ -219,10 +224,11 @@ private fun HomePage(nav: NavController, openMenu: (() -> Unit)?) {
 
 /**
  * [content] (a list with the given state, from the top edge of the screen) with [bar] lying over it: clear while its
- * first item is in view, solid once it has scrolled under the bar, as the fashion page's hero does ([heroSolid]).
+ * first item is in view, solid once it has scrolled under the bar, as the fashion page's hero does ([heroSolid]). While
+ * clear the status bar icons are [light] (else dark, over a light picture). The home's and custom pages'.
  */
 @Composable
-private fun OverBar(bar: @Composable (solid: Float) -> Unit, content: @Composable (LazyListState) -> Unit) {
+internal fun OverBar(bar: @Composable (solid: Float) -> Unit, light: Boolean = true, content: @Composable (LazyListState) -> Unit) {
     val list = rememberLazyListState()
     val density = LocalDensity.current
     val barHeight = WindowInsets.statusBars.getTop(density) + with(density) { BAR_HEIGHT.toPx() }
@@ -232,7 +238,7 @@ private fun OverBar(bar: @Composable (solid: Float) -> Unit, content: @Composabl
             if (first == null) (if (list.firstVisibleItemIndex == 0) 0f else 1f) else heroSolid(-first.offset.toFloat(), first.size.toFloat(), barHeight)
         }
     }
-    StatusBarIcons(light = solid < 0.5f)
+    StatusBarIcons(light = light && solid < 0.5f, darkIcons = !light && solid < 0.5f)
     Box(Modifier.fillMaxSize()) {
         content(list)
         bar(solid)
@@ -246,10 +252,10 @@ private class BarActions(val onSearch: () -> Unit, val onMenu: (() -> Unit)?, va
  * The home's top bar. Each template has its own: fashion centres the logo over its hero ([overlay]: clear at [solid] 0,
  * the normal bar at 1), beauty has it at the start, both with a search button; grocery and B2B show a search field. The
  * settings' `topBar.style` replaces it (`standard`, `centered_logo`, `search`) where the page isn't laid under it. The
- * shop's name stands in for a missing logo.
+ * shop's name stands in for a missing logo. [lightContent]: the overlay's title and icons over the picture (false: dark).
  */
 @Composable
-private fun HomeTopBar(template: HomeTemplate, brand: Brand?, solid: Float, overlay: Boolean, actions: BarActions) {
+private fun HomeTopBar(template: HomeTemplate, brand: Brand?, solid: Float, overlay: Boolean, actions: BarActions, lightContent: Boolean = true) {
     val name = brand?.name.orEmpty()
     val logo = brand?.logo?.url
     val leading = listOfNotNull(actions.onMenu?.let { ArgonTopBarAction(ArgonIconName.Menu, "Menu", action = it) })
@@ -265,7 +271,7 @@ private fun HomeTopBar(template: HomeTemplate, brand: Brand?, solid: Float, over
         }
     }
     when (style) {
-        "overlay" -> ArgonTopBar(name, variant = ArgonTopBarVariant.Overlay, logoUrl = logo, leading = leading, trailing = trailing, solid = solid)
+        "overlay" -> ArgonTopBar(name, variant = ArgonTopBarVariant.Overlay, logoUrl = logo, leading = leading, trailing = trailing, solid = solid, lightContent = lightContent)
         "centered_logo" -> ArgonTopBar(name, variant = ArgonTopBarVariant.CenteredLogo, logoUrl = logo, leading = leading, trailing = trailing)
         "search" -> SearchField(placeholder, actions.onSearch, leading, cart)
         else -> ArgonTopBar(name, logoUrl = logo, leading = leading, trailing = trailing)

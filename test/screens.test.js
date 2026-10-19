@@ -17,7 +17,7 @@ test("the app_screen definition: a title and a JSON template, readable by the ap
 
 test("the catalogue matches the spec", () => {
   assert.deepEqual(Object.keys(SECTION_TYPES),
-    ["banner", "slideshow", "products", "collections", "rich_text", "image_with_text", "video", "countdown", "spacer", "custom"]);
+    ["banner", "slideshow", "products", "collections", "rich_text", "image_with_text", "video", "countdown", "spacer", "custom", "marquee", "faq", "features", "image_grid"]);
   assert.deepEqual(Object.keys(SYSTEM_SCREENS), ["home", "product", "collection", "search", "cart", "account", "orders", "wishlist"]);
   for (const type of Object.values(SECTION_TYPES)) {
     for (const setting of type.settings) if (setting.type === "choice") assert.ok(setting.choices.length >= 2);
@@ -103,4 +103,28 @@ test("new sections start from their defaults", () => {
 test("AppScreen's fixture carries the sample home template", () => {
   const data = JSON.parse(readFileSync(new URL("../contract/fixtures/AppScreen.json", import.meta.url), "utf8"));
   assert.deepEqual(JSON.parse(data.metaobject.template.value), fixture("home"));
+});
+
+test("detailing: every section takes a background and padding; the four new types; the screen's own look", () => {
+  for (const type of Object.values(SECTION_TYPES)) assert.deepEqual(type.settings.slice(-2).map((x) => x.key), ["background", "padding"]);
+  assert.deepEqual(one({ id: "a", type: "spacer", settings: { background: "#f5f0e8", padding: "large" } }).settings, { background: "#F5F0E8", padding: "large" });
+  fails({ sections: [{ id: "a", type: "banner", settings: { padding: "huge" } }] }, "home", /one of none/);
+
+  const faq = one({ id: "f", type: "faq", settings: { heading: "Questions" }, blocks: [{ id: "q1", type: "question", settings: { question: "Returns?", answer: "<p>30 days</p>" } }] });
+  assert.equal(faq.blocks[0].settings.answer, "<p>30 days</p>");
+  assert.equal(one({ id: "g", type: "features", blocks: [{ id: "b", type: "feature", settings: { icon: "truck" } }] }).blocks[0].settings.icon, "truck");
+  fails({ sections: [{ id: "g", type: "features", blocks: [{ id: "b", type: "feature", settings: { icon: "rocket" } }] }] }, "home", /one of truck/);
+  fails({ sections: [{ id: "g", type: "features", blocks: Array.from({ length: 9 }, (_, i) => ({ id: `b${i}`, type: "feature" })) }] }, "home", /too many/);
+  assert.equal(one({ id: "i", type: "image_grid", settings: { columns: "3" }, blocks: [{ id: "t", type: "tile", settings: { link: "/collections/sale" } }] }).settings.columns, "3");
+  assert.equal(one({ id: "m", type: "marquee", settings: { text: "Free shipping {{ shop.name }}", speed: "fast" } }).settings.speed, "fast");
+  assert.deepEqual(newSection("marquee", "m").settings, { speed: "medium", text_color: "#FFFFFF" });
+
+  assert.deepEqual(checkTemplate({ screen: { top_bar: "transparent", top_bar_tint: "dark", background: "#fafafa" }, sections: [] }, "home").screen,
+    { top_bar: "transparent", top_bar_tint: "dark", background: "#FAFAFA" });
+  assert.deepEqual(checkTemplate({ screen: { top_bar: "transparent" }, sections: [] }, "lookbook").screen, { top_bar: "transparent" });
+  assert.deepEqual(checkTemplate({ screen: { background: "#FFFFFF" }, sections: [] }, "cart").screen, { background: "#FFFFFF" });
+  assert.equal(checkTemplate({ screen: {}, sections: [] }, "home").screen, undefined);
+  fails({ screen: { top_bar: "transparent" }, sections: [] }, "product", /own top bar/);
+  fails({ screen: { top_bar: "glass" }, sections: [] }, "home", /one of solid, transparent/);
+  fails({ screen: { blur: true }, sections: [] }, "home", /unknown setting/);
 });

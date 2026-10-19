@@ -3,12 +3,16 @@ package app.storefront.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -18,12 +22,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.text.style.TextAlign
 import androidx.navigation.NavController
 import app.argon.ui.ArgonTheme
 import app.argon.ui.components.ArgonTopBar
+import app.argon.ui.components.ArgonTopBarVariant
 import app.storefront.AppGraph
 import app.storefront.data.Route
+import app.storefront.data.ScreenLook
 import app.storefront.data.StorePage
 import app.storefront.ui.sections.ScreenSections
 import app.storefront.ui.sections.loadScreenSections
@@ -60,16 +67,28 @@ private class CustomPage(val sections: ScreenSections?)
 /**
  * A custom page of the store's own (`screen/{handle}`, the links `app://screens/<handle>`): the `app_screen` [handle],
  * its title in the top bar and its sections. A page the store doesn't have says so. [isTab]: the root of a
- * `screen:<handle>` tab of the settings, without a way back.
+ * `screen:<handle>` tab of the settings, without a way back. The template's `screen` look: its background, and with
+ * `top_bar` transparent the bar over the first section (clear, then solid once it scrolls under), as on the home.
  */
 @Composable
 fun CustomScreen(handle: String, nav: NavController, isTab: Boolean = false) {
     var title by remember { mutableStateOf("") }
-    Scaffold(topBar = { ArgonTopBar(title, leading = if (isTab) emptyList() else listOf(nav.backAction())) }) { padding ->
+    var look by remember { mutableStateOf(ScreenLook()) }
+    val clear = look.topBar == "transparent"
+    val leading = if (isTab) emptyList() else listOf(nav.backAction())
+    Scaffold(
+        topBar = { if (!clear) ArgonTopBar(title, leading = leading) },
+        containerColor = look.background.toColor().takeOrElse { MaterialTheme.colorScheme.background },
+        // the clear bar's page runs up under the status bar
+        contentWindowInsets = if (clear) WindowInsets.navigationBars else ScaffoldDefaults.contentWindowInsets,
+    ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             Loader({ CustomPage(loadScreenSections(handle, quiet = false)?.takeIf { it.hasContent }) }) { page ->
                 val sections = page.sections
-                LaunchedEffect(sections) { title = sections?.title.orEmpty() }
+                LaunchedEffect(sections) {
+                    title = sections?.title.orEmpty()
+                    look = sections?.template?.screen ?: ScreenLook()
+                }
                 val env = rememberSectionEnv(sections, { nav.open(it) })
                 if (sections == null) {
                     Text(
@@ -79,6 +98,18 @@ fun CustomScreen(handle: String, nav: NavController, isTab: Boolean = false) {
                         color = ArgonTheme.colors.muted,
                         textAlign = TextAlign.Center,
                     )
+                } else if (clear) {
+                    OverBar(
+                        { solid -> ArgonTopBar(title, variant = ArgonTopBarVariant.Overlay, leading = leading, solid = solid, lightContent = !look.darkTint) },
+                        light = !look.darkTint,
+                    ) { list ->
+                        LazyColumn(
+                            Modifier.fillMaxSize(),
+                            list,
+                            contentPadding = PaddingValues(bottom = ArgonTheme.spacing.l),
+                            verticalArrangement = Arrangement.spacedBy(ArgonTheme.spacing.xl),
+                        ) { sectionItems(sections.placement.above, env) }
+                    }
                 } else {
                     LazyColumn(
                         Modifier.fillMaxSize(),

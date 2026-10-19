@@ -17,13 +17,21 @@ struct ShellTab: Equatable, Sendable {
 
 /// The tab bar and the top bar. `labels`: tab titles shown; `topBarStyle`: `standard`, `centered_logo` or `search` (nil:
 /// the home template's own bar); `transparentOnHome`: the home's bar lies over its first section, solid on scroll;
-/// `drawerMenu`: the handle of the Shopify menu the home's menu button opens (nil: no drawer).
+/// `drawerMenu`: the handle of the Shopify menu the home's menu button opens (nil: no drawer). The colours, each
+/// `#RRGGBB` and nil for the theme's: `topBarBackground` and `topBarForeground`, the solid top bar and its title and
+/// icons on every screen; `tabBarBackground`, `tabBarActive` (nil: the accent) and `tabBarInactive`, the tab bar and its
+/// selected and other tabs.
 struct Navigation: Equatable, Sendable {
     var tabs = Navigation.builtInTabs
     var labels = true
     var topBarStyle: String? = nil
     var transparentOnHome = false
     var drawerMenu: String? = nil
+    var topBarBackground: String? = nil
+    var topBarForeground: String? = nil
+    var tabBarBackground: String? = nil
+    var tabBarActive: String? = nil
+    var tabBarInactive: String? = nil
 
     func hasTab(_ id: String) -> Bool { tabs.contains { $0.id == id } }
 
@@ -41,6 +49,7 @@ struct Navigation: Equatable, Sendable {
     static func decode(_ json: JSONValue?) -> Navigation? {
         guard let map = json?.object else { return nil }
         let topBar = map["topBar"]?.object
+        let bar = SectionSettings(topBar ?? [:]), tabBar = SectionSettings(map["tabBar"]?.object ?? [:])
         let drawer = map["drawer"]?.object
         var drawerMenu: String? = nil
         if drawer?["enabled"]?.bool == true {
@@ -52,7 +61,12 @@ struct Navigation: Equatable, Sendable {
             labels: map["labels"]?.bool ?? true,
             topBarStyle: topBar?["style"]?.string.flatMap { styles.contains($0) ? $0 : nil },
             transparentOnHome: topBar?["transparentOnHome"]?.bool ?? false,
-            drawerMenu: drawerMenu
+            drawerMenu: drawerMenu,
+            topBarBackground: bar.hex("background"),
+            topBarForeground: bar.hex("foreground"),
+            tabBarBackground: tabBar.hex("background"),
+            tabBarActive: tabBar.hex("active"),
+            tabBarInactive: tabBar.hex("inactive")
         )
     }
 

@@ -96,4 +96,17 @@ class ShellTest {
         assertNull(RemoteSettings.decode("""{"appearance":{"mode":"sepia"}}""")!!.appearance)
         assertEquals(Appearance.Light, RemoteSettings.decode("""{"appearance":{"mode":"Light"}}""")!!.appearance)
     }
+
+    @Test
+    fun navigationColours() {
+        val nav = navigation(
+            """{"topBar":{"style":"standard","background":"#ffffff","foreground":"#111111"},"tabBar":{"background":"#FAFAFA","active":"#111111","inactive":"#8A8A8A"}}""",
+        )
+        assertEquals("#FFFFFF" to "#111111", nav.topBarBackground to nav.topBarForeground)
+        assertEquals(Triple("#FAFAFA", "#111111", "#8A8A8A"), Triple(nav.tabBarBackground, nav.tabBarActive, nav.tabBarInactive))
+
+        val bad = navigation("""{"topBar":{"background":"white","foreground":"#12345"},"tabBar":{"background":17,"active":"#GGGGGG"}}""")
+        assertEquals(listOf<String?>(null, null, null, null, null), listOf(bad.topBarBackground, bad.topBarForeground, bad.tabBarBackground, bad.tabBarActive, bad.tabBarInactive))
+        assertNull("unset: the theme's", Navigation().topBarBackground)
+    }
 }

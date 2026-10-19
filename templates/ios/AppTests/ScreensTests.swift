@@ -1,3 +1,4 @@
+import ArgonUI
 import XCTest
 @testable import ArgonStorefront
 
@@ -120,6 +121,62 @@ final class ScreensTests: XCTestCase {
         XCTAssertNil(image.image("image")?.height)
         XCTAssertNil(boundedInt(.nan, 1...3))
         XCTAssertNil(boundedInt(.infinity, 1...3))
+    }
+
+    // MARK: Detailing (the screen's look, section style, the newer types)
+
+    func testTheScreensLookIsReadLeniently() {
+        let look = ScreenTemplate.decode(##"{"screen": {"top_bar": "transparent", "top_bar_tint": "dark", "background": "#f7f3ee"}, "sections": []}"##)?.screen
+        XCTAssertEqual(look, ScreenLook(topBar: "transparent", tint: "dark", background: "#F7F3EE"))
+        XCTAssertEqual(look?.transparent(false), true)
+        // missing: the settings decide (home's transparentOnHome), light, the theme's background
+        let none = ScreenTemplate.decode(#"{"sections": []}"#)?.screen
+        XCTAssertEqual(none, ScreenLook())
+        XCTAssertEqual(none?.transparent(true), true)
+        XCTAssertEqual(none?.transparent(false), false)
+        XCTAssertEqual(ScreenLook(topBar: "solid").transparent(true), false, "solid wins over transparentOnHome")
+        // each bad value is its default
+        let bad = ScreenTemplate.decode(##"{"screen": {"top_bar": "glass", "top_bar_tint": 3, "background": "#12345"}, "sections": []}"##)?.screen
+        XCTAssertEqual(bad, ScreenLook())
+        XCTAssertEqual(ScreenTemplate.decode(#"{"screen": "loud", "sections": []}"#)?.screen, ScreenLook())
+    }
+
+    func testTheNewerTypesAreKeptWithTheirBlocks() throws {
+        let decoded = try XCTUnwrap(ScreenTemplate.decode("""
+        {"sections": [
+          {"id": "m", "type": "marquee", "settings": {"text": "Free shipping", "speed": "fast"}},
+          {"id": "f", "type": "faq", "blocks": [{"id": "q1", "type": "question", "settings": {"question": "Returns?", "answer": "<p>30 days</p>"}}]},
+          {"id": "x", "type": "features", "settings": {"layout": "grid"}, "blocks": [{"id": "f1", "type": "feature", "settings": {"icon": "truck"}}, {"id": "f2", "type": "feature", "settings": {"icon": "rocket"}}]},
+          {"id": "g", "type": "image_grid", "settings": {"columns": "3", "aspect": "portrait"}, "blocks": [{"id": "t1", "type": "tile", "settings": {"heading": "Men"}}]}
+        ]}
+        """))
+        XCTAssertEqual(decoded.sections.map { $0.type }, ["marquee", "faq", "features", "image_grid"])
+        XCTAssertEqual(decoded.sections[1].blocks.map { $0.id }, ["q1"])
+        XCTAssertEqual(featureIcon(decoded.sections[2].blocks[0].settings), .truck)
+        XCTAssertEqual(featureIcon(decoded.sections[2].blocks[1].settings), .check, "an icon outside the set is check")
+        // every feature icon is one of Argon's
+        XCTAssertEqual(featureIcons.compactMap { ArgonIconName(rawValue: $0) }.count, featureIcons.count)
+        XCTAssertEqual(marqueeSpeed("slow"), 30)
+        XCTAssertEqual(marqueeSpeed("medium"), 60)
+        XCTAssertEqual(marqueeSpeed("fast"), 90)
+        XCTAssertEqual(tileRatio("square"), 1)
+        XCTAssertEqual(tileRatio("portrait"), 0.8)
+        XCTAssertEqual(tileRatio("landscape"), 4.0 / 3.0)
+    }
+
+    func testEverySectionsStyle() throws {
+        let decoded = try XCTUnwrap(ScreenTemplate.decode("""
+        {"sections": [
+          {"id": "a", "type": "rich_text", "settings": {"background": "#ffeedd", "padding": "small"}},
+          {"id": "b", "type": "banner", "settings": {"padding": "medium"}},
+          {"id": "c", "type": "spacer", "settings": {"padding": "large", "background": "red"}},
+          {"id": "d", "type": "products", "settings": {"padding": "huge"}},
+          {"id": "e", "type": "marquee"},
+          {"id": "f", "type": "marquee", "settings": {"background": "#336699"}}
+        ]}
+        """))
+        XCTAssertEqual(decoded.sections.map { $0.padding }, [12, 24, 40, 0, 0, 0])
+        XCTAssertEqual(decoded.sections.map { $0.background }, ["#FFEEDD", nil, nil, nil, "#111111", "#336699"])
     }
 
     func testAPageWithoutABodyOpensOnTheWeb() {

@@ -15,6 +15,8 @@ struct ArgonApp: SwiftUI.App {
             $0.colorScheme = .web
             $0.preloading.enabled = true
         }
+        // the merchant's bar colours, before the first bar is drawn
+        applyBarColors(AppGraph.navigation)
     }
 
     var body: some Scene {

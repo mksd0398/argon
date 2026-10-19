@@ -315,13 +315,17 @@ struct Tabs: View {
             items: items,
             selectedId: AppGraph.tabs.selectedId,
             onSelect: { AppGraph.tabs.select($0) },
-            showLabels: navigation.labels
+            showLabels: navigation.labels,
+            // the settings' colour for the selected tab, else the accent (the bar's own colours: `applyBarColors`)
+            activeColor: ArgonTheme.color(hex: navigation.tabBarActive)
         ) { item in
             // each root reports itself from inside its stack: a screen pushed over it hides it, and closing that shows it again
             TabStack(id: item.id, root: TabRoot(id: item.id))
                 // The bar tints itself with the theme's accent; the screens that still draw native controls keep the tint
                 // they had (the brand colour, else the system's).
                 .tint(brandColor(AppGraph.brand.value?.accent) ?? .accentColor)
+                // the settings' top bar colours, for the bars' buttons and the overlay bar once solid
+                .environment(\.argonBarColors, ArgonBarColors(background: navigation.topBarBackground, foreground: navigation.topBarForeground))
         }
         .overlay(alignment: .bottom) { ToastView() }
         // the settings' drawer, over the whole screen; the home's menu button opens it

@@ -1,5 +1,6 @@
 import ArgonUI
 import SwiftUI
+import UIKit
 
 // The parts of the app shell the merchant's settings add (screens v2, "App shell"): the announcement strip and the
 // home's drawer. The tab bar is in Router.swift, the home's top bar in HomeView.swift. The same on Android (ShellBars.kt).
@@ -105,5 +106,72 @@ extension Appearance {
         case .light: return .light
         case .dark: return .dark
         }
+    }
+}
+
+/// The settings' bar colours (`navigation.topBar.background` / `foreground`, `navigation.tabBar`) on UIKit's bars, so
+/// every screen's top bar has them, the ones that don't use `argonTopBar` too: the background, the title, the back
+/// button; the tab bar's background and its tabs' icons and titles. Called once, before the first bar is drawn. Without
+/// colours the bars are left as the system draws them; with some, clear at the scroll edge where no background is given.
+@MainActor
+func applyBarColors(_ navigation: Navigation) {
+    func color(_ hex: String?) -> UIColor? {
+        ArgonTheme.rgb(hex: hex).map { UIColor(red: $0.red, green: $0.green, blue: $0.blue, alpha: 1) }
+    }
+    let background = color(navigation.topBarBackground), foreground = color(navigation.topBarForeground)
+    if background != nil || foreground != nil {
+        func bar(edge: Bool) -> UINavigationBarAppearance {
+            let bar = UINavigationBarAppearance()
+            if let background = background {
+                bar.configureWithOpaqueBackground()
+                bar.backgroundColor = background
+            } else if edge {
+                bar.configureWithTransparentBackground()
+            } else {
+                bar.configureWithDefaultBackground()
+            }
+            if let foreground = foreground {
+                bar.titleTextAttributes = [.foregroundColor: foreground]
+                bar.largeTitleTextAttributes = [.foregroundColor: foreground]
+                bar.backButtonAppearance.normal.titleTextAttributes = [.foregroundColor: foreground]
+                // drawn in its own colour: the stacks' tint (the accent) would colour a template image
+                let back = UIImage(systemName: "chevron.backward")?.withTintColor(foreground, renderingMode: .alwaysOriginal)
+                bar.setBackIndicatorImage(back, transitionMaskImage: back)
+            }
+            return bar
+        }
+        let proxy = UINavigationBar.appearance()
+        proxy.standardAppearance = bar(edge: false)
+        proxy.compactAppearance = bar(edge: false)
+        proxy.scrollEdgeAppearance = bar(edge: true)
+    }
+    let tabBackground = color(navigation.tabBarBackground), active = color(navigation.tabBarActive), inactive = color(navigation.tabBarInactive)
+    if tabBackground != nil || active != nil || inactive != nil {
+        func bar(edge: Bool) -> UITabBarAppearance {
+            let bar = UITabBarAppearance()
+            if let background = tabBackground {
+                bar.configureWithOpaqueBackground()
+                bar.backgroundColor = background
+            } else if edge {
+                bar.configureWithTransparentBackground()
+            } else {
+                bar.configureWithDefaultBackground()
+            }
+            for item in [bar.stackedLayoutAppearance, bar.inlineLayoutAppearance, bar.compactInlineLayoutAppearance] {
+                if let inactive = inactive {
+                    item.normal.iconColor = inactive
+                    item.normal.titleTextAttributes = [.foregroundColor: inactive]
+                }
+                if let active = active {
+                    item.selected.iconColor = active
+                    item.selected.titleTextAttributes = [.foregroundColor: active]
+                }
+            }
+            return bar
+        }
+        let proxy = UITabBar.appearance()
+        proxy.standardAppearance = bar(edge: false)
+        proxy.scrollEdgeAppearance = bar(edge: true)
+        if let inactive = inactive { proxy.unselectedItemTintColor = inactive }
     }
 }

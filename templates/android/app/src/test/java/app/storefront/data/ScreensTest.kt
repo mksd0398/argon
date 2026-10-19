@@ -214,4 +214,73 @@ class ScreensTest {
         assertEquals(MetaEvent("select_promotion", null, select.params), metaEvent(select))
         assertEquals("select_promotion" to select.params, moEngageEvent(select))
     }
+
+    @Test
+    fun theScreensOwnLook() {
+        val look = ScreenTemplate.decode("""{"screen":{"top_bar":"transparent","top_bar_tint":"dark","background":"#f7f3ee"},"sections":[]}""")!!.screen
+        assertEquals(ScreenLook("transparent", darkTint = true, background = "#F7F3EE"), look)
+        assertEquals("missing: home goes by transparentOnHome", ScreenLook(), ScreenTemplate.decode("""{"sections":[]}""")!!.screen)
+        val bad = ScreenTemplate.decode("""{"screen":{"top_bar":"glass","top_bar_tint":7,"background":"beige"},"sections":[]}""")!!.screen
+        assertEquals(ScreenLook(), bad)
+        assertEquals(ScreenLook(), ScreenTemplate.decode("""{"screen":"transparent","sections":[]}""")!!.screen)
+        assertEquals("solid", ScreenTemplate.decode("""{"screen":{"top_bar":"solid"},"sections":[]}""")!!.screen.topBar)
+    }
+
+    @Test
+    fun everySectionsBackgroundAndPadding() {
+        val json = """{"sections":[
+            {"id":"a","type":"spacer","settings":{"background":"#1f6feb","padding":"large"}},
+            {"id":"b","type":"spacer","settings":{"padding":"small"}},
+            {"id":"c","type":"spacer","settings":{"padding":"medium","background":"blue"}},
+            {"id":"d","type":"spacer","settings":{"padding":"huge"}}
+        ]}"""
+        val sections = ScreenTemplate.decode(json)!!.sections
+        assertEquals(listOf("#1F6FEB", null, null, null), sections.map { it.background })
+        assertEquals(listOf(40, 12, 24, 0), sections.map { it.padding })
+    }
+
+    @Test
+    fun theDetailingSectionTypes() {
+        val json = """{"sections":[
+            {"id":"m","type":"marquee","settings":{"text":"Free shipping {{ shop.name }}","link":"/collections/all","speed":"fast"}},
+            {"id":"m2","type":"marquee","settings":{"speed":"warp","text_color":"red"}},
+            {"id":"f","type":"faq","settings":{"heading":"FAQ"},"blocks":[
+                {"id":"q1","type":"question","settings":{"question":"Returns?","answer":"<p>30 days</p>"}},
+                {"id":"q2","type":"question","settings":{"answer":"no question"}},
+                {"id":"x","type":"slide","settings":{"question":"wrong block"}}]},
+            {"id":"ft","type":"features","settings":{"layout":"grid"},"blocks":[
+                {"id":"a","type":"feature","settings":{"icon":"truck","heading":"Fast"}},
+                {"id":"b","type":"feature","settings":{"icon":"rocket","text":"Unknown icon"}}]},
+            {"id":"g","type":"image_grid","settings":{"columns":"3","aspect":"portrait"},"blocks":[
+                {"id":"t1","type":"tile","settings":{"image":{"url":"https://cdn.shopify.com/a.jpg"},"heading":"Men","link":"/collections/men"}},
+                {"id":"t2","type":"tile","settings":{"heading":"No image"}}]},
+            {"id":"g2","type":"image_grid","settings":{"columns":"4","aspect":"wide"}}
+        ]}"""
+        val t = ScreenTemplate.decode(json)!!
+        assertEquals("the new types are kept", listOf("m", "m2", "f", "ft", "g", "g2"), t.sections.map { it.id })
+
+        val marquee = t.section("m").content as SectionContent.Marquee
+        assertEquals(SectionContent.Marquee("Free shipping {{ shop.name }}", "/collections/all", 90, "#FFFFFF"), marquee)
+        val plain = t.section("m2").content as SectionContent.Marquee
+        assertEquals(60 to "#FFFFFF", plain.speed to plain.textColor)
+
+        val faq = t.section("f").content as SectionContent.Faq
+        assertEquals("FAQ", faq.heading)
+        assertEquals("a question without its question is skipped", listOf("q1" to "Returns?"), faq.questions.map { it.block.id to it.question })
+        assertEquals("<p>30 days</p>", faq.questions.single().answer)
+
+        val features = t.section("ft").content as SectionContent.Features
+        assertEquals("grid", features.layout)
+        assertEquals(listOf("truck", "check"), features.features.map { it.icon })
+        assertEquals("Fast", features.features[0].heading)
+
+        val grid = t.section("g").content as SectionContent.ImageGrid
+        assertEquals(3, grid.columns)
+        assertEquals(4f / 5f, grid.ratio, 0.001f)
+        assertEquals("a tile without an image is skipped", listOf("t1"), grid.tiles.map { it.block.id })
+        assertEquals("/collections/men", grid.tiles.single().link)
+        val defaults = t.section("g2").content as SectionContent.ImageGrid
+        assertEquals(2 to 1f, defaults.columns to defaults.ratio)
+        assertTrue(defaults.tiles.isEmpty())
+    }
 }

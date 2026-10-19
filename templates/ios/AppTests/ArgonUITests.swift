@@ -174,6 +174,15 @@ final class ArgonUITests: XCTestCase {
         XCTAssertTrue(bar.content.red < light.red && bar.content.red > ink.red)
     }
 
+    func testADarkTintIsDarkContentOnALightShadeAndSolidTakesTheAppsBarColours() throws {
+        let clear = overlayBarColors(solid: 0, dark: true, darkContent: true)
+        try assertColour(clear.content, is: ArgonPalette.light.ink, "dark content over a light picture")
+        try assertColour(clear.shade, is: ArgonPalette.light.paper)
+        let solid = overlayBarColors(solid: 1, dark: false, darkContent: true, bar: ArgonBarColors(background: "#1F6FEB", foreground: "#FFFFFF"))
+        try assertColour(solid.container, is: "#1F6FEB")
+        try assertColour(solid.content, is: "#FFFFFF")
+    }
+
     func testOverlayBarSolidIsClampedToItsRange() {
         XCTAssertEqual(overlayBarColors(solid: -2, dark: false), overlayBarColors(solid: 0, dark: false))
         XCTAssertEqual(overlayBarColors(solid: 7, dark: false), overlayBarColors(solid: 1, dark: false))

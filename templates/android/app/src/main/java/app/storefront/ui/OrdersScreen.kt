@@ -35,6 +35,7 @@ import app.storefront.ui.orders.OrderCard
 import app.storefront.ui.sections.SectionEnv
 import app.storefront.ui.sections.bleed
 import app.storefront.ui.sections.rememberScreenSections
+import app.storefront.ui.sections.screenBackground
 import app.storefront.ui.sections.rememberSectionEnv
 import app.storefront.ui.sections.sectionItems
 import kotlinx.coroutines.CancellationException
@@ -84,7 +85,7 @@ fun OrdersScreen(nav: NavController) {
     // screens v2: the store's sections above and below the orders
     val sections = rememberScreenSections("orders")
     val env = rememberSectionEnv(sections, { nav.open(it) })
-    Scaffold(topBar = { ArgonTopBar("Orders", leading = listOf(nav.backAction())) }) { padding ->
+    Scaffold(topBar = { ArgonTopBar("Orders", leading = listOf(nav.backAction())) }, containerColor = screenBackground(sections)) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             Loader({ OrderList(AppGraph.customerAccount.orders()) }) { list ->
                 if (list.items.isEmpty()) {

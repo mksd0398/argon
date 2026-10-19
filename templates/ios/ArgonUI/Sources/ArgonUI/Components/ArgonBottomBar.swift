@@ -16,13 +16,15 @@ public struct ArgonBottomBarItem: Identifiable {
 }
 
 /// The app's tabs: the native tab view and tab bar, showing `content` for the selected item. The caller owns the
-/// selection. Without `showLabels` the bar shows the icons alone (each still named for VoiceOver).
+/// selection. Without `showLabels` the bar shows the icons alone (each still named for VoiceOver). `activeColor` is the
+/// selected tab's icon and title (nil: the accent).
 @MainActor
 public struct ArgonBottomBar<Content: View>: View {
     let items: [ArgonBottomBarItem]
     let selectedId: String
     let onSelect: (String) -> Void
     let showLabels: Bool
+    let activeColor: Color?
     let content: (ArgonBottomBarItem) -> Content
     @Environment(\.argonTheme) private var theme
 
@@ -31,12 +33,14 @@ public struct ArgonBottomBar<Content: View>: View {
         selectedId: String,
         onSelect: @escaping (String) -> Void,
         showLabels: Bool = true,
+        activeColor: Color? = nil,
         @ViewBuilder content: @escaping (ArgonBottomBarItem) -> Content
     ) {
         self.items = items
         self.selectedId = selectedId
         self.onSelect = onSelect
         self.showLabels = showLabels
+        self.activeColor = activeColor
         self.content = content
     }
 
@@ -55,7 +59,7 @@ public struct ArgonBottomBar<Content: View>: View {
                     .badge(badgeText(item.badge))
             }
         }
-        .tint(theme.colors.accent)
+        .tint(activeColor ?? theme.colors.accent)
     }
 
     private func badgeText(_ count: Int?) -> Text? {

@@ -143,9 +143,12 @@ struct SectionSettings: Equatable, Sendable {
     func boolean(_ key: String, _ fallback: Bool) -> Bool { values[key]?.bool ?? fallback }
 
     /// `color`: `#RRGGBB`, upper-cased.
-    func color(_ key: String, _ fallback: String) -> String {
+    func color(_ key: String, _ fallback: String) -> String { hex(key) ?? fallback }
+
+    /// `color` without a default: `#RRGGBB`, upper-cased; nil when missing or not a colour.
+    func hex(_ key: String) -> String? {
         guard let hex = values[key]?.string, hex.count == 7, hex.first == "#",
-              hex.dropFirst().allSatisfy({ $0.isHexDigit }) else { return fallback }
+              hex.dropFirst().allSatisfy({ $0.isHexDigit }) else { return nil }
         return hex.uppercased()
     }
 
@@ -184,7 +187,7 @@ func parseISODate(_ text: String) -> Date? {
     return formatter.date(from: value)
 }
 
-/// A slideshow's slide.
+/// A block of a section: a slideshow's slide, a FAQ's question, a feature, an image grid's tile.
 struct SectionBlock: Equatable, Sendable {
     let id: String
     let type: String
@@ -205,11 +208,45 @@ struct ScreenSection: Equatable, Sendable {
     /// The section types this app draws, and `main` (a system screen's own content).
     static let types: Set<String> = [
         "main", "banner", "slideshow", "products", "collections", "rich_text", "image_with_text", "video", "countdown",
-        "spacer", "custom",
+        "spacer", "custom", "marquee", "faq", "features", "image_grid",
     ]
 
     /// Analytics' `promotion_name`: `track`, else the type.
     var promotionName: String { track ?? type }
+
+    /// Every type's style: its `background` (`#RRGGBB`; nil: none, but a marquee's strip is #111111 without one) and
+    /// its `padding`, the points of room above and below inside that colour (`none` 0, `small` 12, `medium` 24,
+    /// `large` 40).
+    var background: String? { settings.hex("background") ?? (type == "marquee" ? "#111111" : nil) }
+
+    var padding: Double {
+        switch settings.choice("padding", ["none", "small", "medium", "large"], "none") {
+        case "small": return 12
+        case "medium": return 24
+        case "large": return 40
+        default: return 0
+        }
+    }
+}
+
+/// A template's `screen`: how the screen itself looks. `topBar`: `solid` or `transparent` (the bar over the first
+/// section, solid once that has scrolled under it), nil when the template doesn't say (on home the settings'
+/// `transparentOnHome` then decides); home and custom pages only. `tint`: the clear bar's title, icons and status bar,
+/// `light` (over dark pictures) or `dark`. `background`: `#RRGGBB` behind the sections; nil: the theme's.
+struct ScreenLook: Equatable, Sendable {
+    var topBar: String? = nil
+    var tint = "light"
+    var background: String? = nil
+
+    /// `value` (the template's `screen`) read value by value: anything missing or invalid is the default.
+    static func decode(_ value: JSONValue?) -> ScreenLook {
+        let s = SectionSettings(value?.object ?? [:])
+        let bar = s.choice("top_bar", ["solid", "transparent"], "")
+        return ScreenLook(topBar: bar.isEmpty ? nil : bar, tint: s.choice("top_bar_tint", ["light", "dark"], "light"), background: s.hex("background"))
+    }
+
+    /// Whether the bar lies over the first section: `topBar` when set, else `fallback`.
+    func transparent(_ fallback: Bool = false) -> Bool { topBar.map { $0 == "transparent" } ?? fallback }
 }
 
 /// The blocks of the product page, in their default order: `main.blocks` of the product template reorders and hides them.
@@ -229,6 +266,7 @@ struct SectionPlacement: Equatable, Sendable {
 struct ScreenTemplate: Equatable, Sendable {
     var sections: [ScreenSection] = []
     var metafields: [String] = []
+    var screen = ScreenLook()
 
     /// The template in `text` for this platform: nil when it isn't a JSON object. Sections without a string `id` and
     /// `type`, of a type this app doesn't know, `hidden`, for the other platform only, or with the id of one before
@@ -240,7 +278,7 @@ struct ScreenTemplate: Equatable, Sendable {
         let sections = (root["sections"]?.array ?? []).compactMap { section(from: $0, platform: platform) }
             .filter { ids.insert($0.id).inserted }
         let metafields = (root["metafields"]?.array ?? []).compactMap { $0.string }.filter { metafieldRef($0) != nil }
-        return ScreenTemplate(sections: sections, metafields: metafields)
+        return ScreenTemplate(sections: sections, metafields: metafields, screen: ScreenLook.decode(root["screen"]))
     }
 
     private static func section(from value: JSONValue, platform: String) -> ScreenSection? {

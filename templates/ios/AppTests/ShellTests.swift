@@ -98,6 +98,29 @@ final class ShellTests: XCTestCase {
         XCTAssertNil(navigation("[]"))
     }
 
+    func testBarColoursAreReadAndABadOneIsTheThemes() throws {
+        let colours = try XCTUnwrap(navigation("""
+        {"topBar": {"background": "#ffffff", "foreground": "#111111"}, "tabBar": {"background": "#FAFAFA", "active": "#1f6feb", "inactive": "#8A8A8A"}}
+        """))
+        XCTAssertEqual(colours.topBarBackground, "#FFFFFF")
+        XCTAssertEqual(colours.topBarForeground, "#111111")
+        XCTAssertEqual(colours.tabBarBackground, "#FAFAFA")
+        XCTAssertEqual(colours.tabBarActive, "#1F6FEB")
+        XCTAssertEqual(colours.tabBarInactive, "#8A8A8A")
+        let bad = try XCTUnwrap(navigation("""
+        {"topBar": {"background": "white", "foreground": 17}, "tabBar": {"background": "#FFF", "active": "#GGGGGG", "inactive": null}}
+        """))
+        XCTAssertNil(bad.topBarBackground)
+        XCTAssertNil(bad.topBarForeground)
+        XCTAssertNil(bad.tabBarBackground)
+        XCTAssertNil(bad.tabBarActive)
+        XCTAssertNil(bad.tabBarInactive)
+        XCTAssertNil(navigation(#"{"tabBar": "dark"}"#)?.tabBarBackground)
+        // unset: the theme's (the built-in navigation has none)
+        XCTAssertNil(Navigation().topBarBackground)
+        XCTAssertNil(Navigation().tabBarActive)
+    }
+
     func testAnnouncementFallbacks() {
         func announcement(_ json: String) -> Announcement? { Announcement.decode(JSONValue(json: json)) }
         XCTAssertNil(announcement(#"{"enabled": false, "messages": [{"text": "Hi"}]}"#))

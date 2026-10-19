@@ -65,6 +65,7 @@ import app.storefront.ui.orders.OrderCard
 import app.storefront.ui.sections.SectionColumn
 import app.storefront.ui.sections.SectionEnv
 import app.storefront.ui.sections.rememberScreenSections
+import app.storefront.ui.sections.screenBackground
 import app.storefront.ui.sections.rememberSectionEnv
 import java.io.IOException
 import java.time.Instant
@@ -106,7 +107,7 @@ fun AccountScreen(nav: NavController) {
     val sections = rememberScreenSections("account")
     val env = rememberSectionEnv(sections, { nav.open(it) })
     val placement = sections?.placement
-    Scaffold(topBar = { ArgonTopBar("Account", leading = nav.tabLeading("account")) }) { padding ->
+    Scaffold(topBar = { ArgonTopBar("Account", leading = nav.tabLeading("account")) }, containerColor = screenBackground(sections)) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             val hasAccount by AppGraph.hasAccount.collectAsState()
             // not kept: a new order shows on the next visit, and nothing of this customer outlives a sign-out
