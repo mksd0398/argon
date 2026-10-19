@@ -381,7 +381,7 @@ fun ProductScreen(handle: String, nav: NavController) {
         },
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
-            Loader({ ProductState(loadProduct(handle)) }) { state ->
+            Loader({ ProductState(loadProduct(handle)) }, placeholder = { ProductSkeleton() }) { state ->
                 LaunchedEffect(state) { loaded = state }
                 ProductContent(state, nav)
             }
@@ -468,7 +468,7 @@ private fun ProductContent(state: ProductState, nav: NavController) {
 
     // the sticky bar sits under this list (the scaffold's padding); the bottom padding is only breathing room
     LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(bottom = spacing.xxl)) {
-        sectionItems(above, env, Modifier.padding(top = spacing.l))
+        sectionItems(above, env, Modifier.padding(top = spacing.l), spacing.l)
         items(blocks, key = { it }, contentType = { it }) { block ->
             when (block) {
                 ProductBlock.Gallery -> ProductGallery(product.images, product.title, gallery, galleryTags(variant)) { viewerPage = it }
@@ -505,7 +505,7 @@ private fun ProductContent(state: ProductState, nav: NavController) {
                 ProductBlock.RecentlyViewed -> ProductRail("Recently viewed", state.recent.orEmpty(), ProductCardStyle.Standard, onOpen = open)
             }
         }
-        sectionItems(placement?.below.orEmpty(), env, Modifier.padding(top = spacing.xl))
+        sectionItems(placement?.below.orEmpty(), env, Modifier.padding(top = spacing.xl), spacing.xl)
     }
 
     // outside the list: an overlay must not go away with the block that opened it

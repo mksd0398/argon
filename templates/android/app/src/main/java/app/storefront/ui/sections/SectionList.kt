@@ -1,11 +1,10 @@
 package app.storefront.ui.sections
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -19,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.argon.ui.ArgonTheme
@@ -35,6 +35,7 @@ import app.storefront.data.ScreenContext
 import app.storefront.data.ScreenSection
 import app.storefront.data.ScreenTemplate
 import app.storefront.data.SectionBlock
+import app.storefront.data.SectionContent
 import app.storefront.data.SectionNodes
 import app.storefront.data.Shop
 import app.storefront.data.content
@@ -202,23 +203,70 @@ fun rememberSectionEnv(
 @Composable
 fun screenBackground(sections: ScreenSections?): Color = sections?.template?.screen?.background?.let(::color) ?: MaterialTheme.colorScheme.background
 
-/** [sections] as items of a lazy list, one item each (its `view_promotion` when it is first composed). */
-fun LazyListScope.sectionItems(sections: List<ScreenSection>, env: SectionEnv?, modifier: Modifier = Modifier) {
-    if (env == null) return
-    items(sections, key = { "section:${it.id}" }, contentType = { "section:${it.type}" }) { SectionView(it, env, modifier) }
+/**
+ * The section runs edge to edge: a hero banner (the default style), a slideshow, a marquee, a video, or any section with
+ * a `background` colour. Two such sections side by side sit flush.
+ */
+internal val ScreenSection.fullBleed: Boolean
+    get() = background != null || when (val c = content) {
+        is SectionContent.Banner -> c.style != "card"
+        is SectionContent.Slideshow, is SectionContent.Marquee, is SectionContent.Video -> true
+        else -> false
+    }
+
+/**
+ * The space between [previous] and [current] (null: [current] comes first, no space): none when both are [fullBleed]
+ * (a hero and the marquee under it), else [gap], so a heading never sits on an edge-to-edge strip.
+ */
+internal fun gapBefore(previous: ScreenSection?, current: ScreenSection, gap: Dp): Dp =
+    if (previous == null || (previous.fullBleed && current.fullBleed)) 0.dp else gap
+
+/**
+ * Takes back [spacing] above the item: placed that much higher and reported that much shorter, so the gap the list's
+ * arrangement puts above it closes while everything under it keeps its own gap.
+ */
+private fun Modifier.pullUp(spacing: Dp): Modifier = if (spacing == 0.dp) this else layout { measurable, constraints ->
+    val by = spacing.roundToPx()
+    val placeable = measurable.measure(constraints)
+    layout(placeable.width, (placeable.height - by).coerceAtLeast(0)) { placeable.place(0, -by) }
 }
 
-/** [sections] as full-width items of a lazy grid; [gutter] is the grid's side padding, which they reach over. */
-fun LazyGridScope.sectionItems(sections: List<ScreenSection>, env: SectionEnv?, gutter: Dp) {
+/** The modifier of item [index] of [sections]: [modifier], pulled up by [spacing] where it sits flush with the section above. */
+private fun flushed(sections: List<ScreenSection>, index: Int, modifier: Modifier, spacing: Dp): Modifier =
+    if (index > 0 && spacing > 0.dp && gapBefore(sections[index - 1], sections[index], spacing) == 0.dp) modifier.pullUp(spacing) else modifier
+
+/**
+ * [sections] as items of a lazy list, one item each (its `view_promotion` when it is first composed). [spacing]: the
+ * space the list puts above each section after the first (its `spacedBy`, or [modifier]'s top padding), taken back
+ * between two sections that sit flush ([gapBefore]).
+ */
+fun LazyListScope.sectionItems(sections: List<ScreenSection>, env: SectionEnv?, modifier: Modifier = Modifier, spacing: Dp = 0.dp) {
     if (env == null) return
-    items(sections.size, key = { "section:${sections[it].id}" }, span = { GridItemSpan(maxLineSpan) }) { SectionView(sections[it], env, Modifier.bleed(gutter)) }
+    items(sections.size, key = { "section:${sections[it].id}" }, contentType = { "section:${sections[it].type}" }) {
+        SectionView(sections[it], env, flushed(sections, it, modifier, spacing))
+    }
 }
 
-/** [sections] one under the other, for a screen that isn't a lazy list. */
+/**
+ * [sections] as full-width items of a lazy grid; [gutter] is the grid's side padding, which they reach over. [spacing]:
+ * the grid's vertical spacing (the product grid's), taken back between two sections that sit flush.
+ */
+fun LazyGridScope.sectionItems(sections: List<ScreenSection>, env: SectionEnv?, gutter: Dp, spacing: Dp = ArgonTheme.spacing.l) {
+    if (env == null) return
+    items(sections.size, key = { "section:${sections[it].id}" }, span = { GridItemSpan(maxLineSpan) }) {
+        SectionView(sections[it], env, flushed(sections, it, Modifier.bleed(gutter), spacing))
+    }
+}
+
+/** [sections] one under the other, for a screen that isn't a lazy list: spacing l apart, flush where [gapBefore] says. */
 @Composable
 fun SectionColumn(sections: List<ScreenSection>, env: SectionEnv?, modifier: Modifier = Modifier) {
     if (env == null || sections.isEmpty()) return
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(ArgonTheme.spacing.l)) { for (section in sections) key(section.id) { SectionView(section, env) } }
+    Column(modifier) {
+        sections.forEachIndexed { i, section ->
+            key(section.id) { SectionView(section, env, Modifier.padding(top = gapBefore(sections.getOrNull(i - 1), section, ArgonTheme.spacing.l))) }
+        }
+    }
 }
 
 /** Full width inside a parent padded by [horizontal] on each side: sections bring their own margins. */

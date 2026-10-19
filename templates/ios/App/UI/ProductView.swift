@@ -303,7 +303,7 @@ struct ProductView: View {
     @Environment(\.argonTheme) private var theme
 
     var body: some View {
-        Loader(load: { ProductState(product: try await loadProduct(handle)) }) { state in
+        Loader(load: { ProductState(product: try await loadProduct(handle)) }, skeleton: .product) { state in
             ProductContent(state: state).onAppear { loaded = state }
         }
         .background(theme.colors.paper)

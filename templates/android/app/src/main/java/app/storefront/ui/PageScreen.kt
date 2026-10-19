@@ -46,7 +46,7 @@ fun PageScreen(handle: String, nav: NavController) {
     var title by remember { mutableStateOf("") }
     Scaffold(topBar = { ArgonTopBar(title, leading = listOf(nav.backAction())) }) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
-            Loader({ AppGraph.storefront.page(handle) ?: error("This page isn't available") }) { page ->
+            Loader({ AppGraph.storefront.page(handle) ?: error("This page isn't available") }, placeholder = { TextSkeleton() }) { page ->
                 LaunchedEffect(page) {
                     title = page.title
                     // a page whose content isn't its body (an Online Store 2.0 page of sections, a contact form) is the web's
@@ -83,7 +83,7 @@ fun CustomScreen(handle: String, nav: NavController, isTab: Boolean = false) {
         contentWindowInsets = if (clear) WindowInsets.navigationBars else ScaffoldDefaults.contentWindowInsets,
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
-            Loader({ CustomPage(loadScreenSections(handle, quiet = false)?.takeIf { it.hasContent }) }) { page ->
+            Loader({ CustomPage(loadScreenSections(handle, quiet = false)?.takeIf { it.hasContent }) }, placeholder = { HomeSkeleton() }) { page ->
                 val sections = page.sections
                 LaunchedEffect(sections) {
                     title = sections?.title.orEmpty()
@@ -108,14 +108,14 @@ fun CustomScreen(handle: String, nav: NavController, isTab: Boolean = false) {
                             list,
                             contentPadding = PaddingValues(bottom = ArgonTheme.spacing.l),
                             verticalArrangement = Arrangement.spacedBy(ArgonTheme.spacing.xl),
-                        ) { sectionItems(sections.placement.above, env) }
+                        ) { sectionItems(sections.placement.above, env, spacing = ArgonTheme.spacing.xl) }
                     }
                 } else {
                     LazyColumn(
                         Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(vertical = ArgonTheme.spacing.l),
                         verticalArrangement = Arrangement.spacedBy(ArgonTheme.spacing.xl),
-                    ) { sectionItems(sections.placement.above, env) }
+                    ) { sectionItems(sections.placement.above, env, spacing = ArgonTheme.spacing.xl) }
                 }
             }
         }

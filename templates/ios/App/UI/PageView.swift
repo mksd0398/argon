@@ -17,7 +17,7 @@ struct PageView: View {
     @Environment(\.argonTheme) private var theme
 
     var body: some View {
-        Loader(load: { try await loadPage(handle) }) { page in
+        Loader(load: { try await loadPage(handle) }, skeleton: .text) { page in
             ScrollView {
                 HtmlText(html: page.body ?? "")
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -78,7 +78,7 @@ struct CustomScreenView: View {
             } else if loaded {
                 EmptyNote()
             } else {
-                ArgonSpinner()
+                ScreenSkeleton(.home)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

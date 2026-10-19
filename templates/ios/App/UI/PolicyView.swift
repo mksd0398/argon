@@ -15,7 +15,7 @@ struct PolicyView: View {
     @Environment(\.argonTheme) private var theme
 
     var body: some View {
-        Loader(load: { try await loadPolicy(handle) }) { policy in
+        Loader(load: { try await loadPolicy(handle) }, skeleton: .text) { policy in
             ScrollView {
                 HtmlText(html: policy.body)
                     .frame(maxWidth: .infinity, alignment: .leading)

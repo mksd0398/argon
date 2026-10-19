@@ -185,7 +185,7 @@ private fun HomePage(nav: NavController, openMenu: (() -> Unit)?) {
                     list,
                     contentPadding = PaddingValues(bottom = ArgonTheme.spacing.xl),
                     verticalArrangement = Arrangement.spacedBy(ArgonTheme.spacing.xl),
-                ) { sectionItems(sections.placement.above, env) }
+                ) { sectionItems(sections.placement.above, env, spacing = ArgonTheme.spacing.xl) }
             }
         } else {
             Scaffold(topBar = { HomeTopBar(template, brand, 1f, overlay = false, actions) }, containerColor = background) { padding ->
@@ -193,7 +193,7 @@ private fun HomePage(nav: NavController, openMenu: (() -> Unit)?) {
                     Modifier.padding(padding).fillMaxSize(),
                     contentPadding = PaddingValues(top = ArgonTheme.spacing.s, bottom = ArgonTheme.spacing.xl),
                     verticalArrangement = Arrangement.spacedBy(ArgonTheme.spacing.xl),
-                ) { sectionItems(sections.placement.above, env) }
+                ) { sectionItems(sections.placement.above, env, spacing = ArgonTheme.spacing.xl) }
             }
         }
         return
@@ -216,7 +216,7 @@ private fun HomePage(nav: NavController, openMenu: (() -> Unit)?) {
                     HomeTemplate.B2B -> HomeB2B(content, onOpen)
                 }
                 failure != null -> ErrorView(failure) { attempt++ }
-                else -> Spinner()
+                else -> HomeSkeleton()
             }
         }
     }
@@ -249,10 +249,28 @@ internal fun OverBar(bar: @Composable (solid: Float) -> Unit, light: Boolean = t
 private class BarActions(val onSearch: () -> Unit, val onMenu: (() -> Unit)?, val onCart: (() -> Unit)?, val cartCount: Int)
 
 /**
- * The home's top bar. Each template has its own: fashion centres the logo over its hero ([overlay]: clear at [solid] 0,
- * the normal bar at 1), beauty has it at the start, both with a search button; grocery and B2B show a search field. The
- * settings' `topBar.style` replaces it (`standard`, `centered_logo`, `search`) where the page isn't laid under it. The
- * shop's name stands in for a missing logo. [lightContent]: the overlay's title and icons over the picture (false: dark).
+ * The bar the home shows for the settings' `topBar.style` [setting] (`standard`, `centered_logo`, `search`; null: the
+ * [template]'s own): CenteredLogo, Standard or Search. Laid over the page ([overlay]) the bar is clear over the first
+ * section and becomes this one as it scrolls away; without a setting it is then the centred logo, as fashion's.
+ */
+internal fun homeBarVariant(template: HomeTemplate, setting: String?, overlay: Boolean): ArgonTopBarVariant {
+    val style = setting ?: if (overlay) "overlay" else when (template) {
+        HomeTemplate.Fashion -> "overlay"
+        HomeTemplate.Beauty -> "standard"
+        HomeTemplate.Grocery, HomeTemplate.B2B -> "search"
+    }
+    return when (style) {
+        "overlay", "centered_logo" -> ArgonTopBarVariant.CenteredLogo
+        "search" -> ArgonTopBarVariant.Search
+        else -> ArgonTopBarVariant.Standard
+    }
+}
+
+/**
+ * The home's top bar ([homeBarVariant]). Each template has its own: fashion centres the logo, beauty has it at the
+ * start, both with a search button; grocery and B2B show a search field. The settings' `topBar.style` replaces it, laid
+ * over the page too ([overlay]: clear at [solid] 0, the normal bar at 1). The shop's name stands in for a missing logo.
+ * [lightContent]: the overlay's title, icons and search pill over the picture (false: dark).
  */
 @Composable
 private fun HomeTopBar(template: HomeTemplate, brand: Brand?, solid: Float, overlay: Boolean, actions: BarActions, lightContent: Boolean = true) {
@@ -262,26 +280,22 @@ private fun HomeTopBar(template: HomeTemplate, brand: Brand?, solid: Float, over
     val cart = listOfNotNull(actions.onCart?.let { ArgonTopBarAction(ArgonIconName.Bag, "Cart", badge = actions.cartCount.takeIf { n -> n > 0 }, action = it) })
     val trailing = listOf(ArgonTopBarAction(ArgonIconName.Search, "Search", action = actions.onSearch)) + cart
     val placeholder = if (template == HomeTemplate.B2B) "Search by name or SKU" else "Search products"
-    val style = when {
-        overlay -> "overlay"
-        else -> AppGraph.navigation.topBarStyle ?: when (template) {
-            HomeTemplate.Fashion -> "overlay"
-            HomeTemplate.Beauty -> "standard"
-            HomeTemplate.Grocery, HomeTemplate.B2B -> "search"
-        }
-    }
-    when (style) {
-        "overlay" -> ArgonTopBar(name, variant = ArgonTopBarVariant.Overlay, logoUrl = logo, leading = leading, trailing = trailing, solid = solid, lightContent = lightContent)
-        "centered_logo" -> ArgonTopBar(name, variant = ArgonTopBarVariant.CenteredLogo, logoUrl = logo, leading = leading, trailing = trailing)
-        "search" -> SearchField(placeholder, actions.onSearch, leading, cart)
-        else -> ArgonTopBar(name, logoUrl = logo, leading = leading, trailing = trailing)
+    val variant = homeBarVariant(template, AppGraph.navigation.topBarStyle, overlay)
+    when {
+        variant == ArgonTopBarVariant.Search -> SearchField(placeholder, actions.onSearch, leading, cart, if (overlay) solid else null, lightContent)
+        overlay -> ArgonTopBar(
+            name, variant = ArgonTopBarVariant.Overlay, logoUrl = logo, leading = leading, trailing = trailing,
+            solid = solid, lightContent = lightContent, solidVariant = variant,
+        )
+        else -> ArgonTopBar(name, variant = variant, logoUrl = logo, leading = leading, trailing = trailing)
     }
 }
 
 /**
  * A search field that isn't typed in: a tap anywhere on it opens the search screen ([onSearch]), which has the real one.
  * The field is looks only; a screen reader gets the one button laid over it, named by the [placeholder]. [leading] and
- * [trailing] (the drawer's menu, the cart) stay buttons of their own beside it.
+ * [trailing] (the drawer's menu, the cart) stay buttons of their own beside it. With [solid] (not null) the field lies
+ * over the page: a translucent pill over the first section ([lightContent]: light), the normal field at 1.
  */
 @Composable
 private fun SearchField(
@@ -289,14 +303,30 @@ private fun SearchField(
     onSearch: () -> Unit,
     leading: List<ArgonTopBarAction> = emptyList(),
     trailing: List<ArgonTopBarAction> = emptyList(),
+    solid: Float? = null,
+    lightContent: Boolean = true,
 ) = Box {
-    ArgonTopBar(
-        placeholder,
-        Modifier.clearAndSetSemantics {}.padding(bottom = ArgonTheme.spacing.s),
-        variant = ArgonTopBarVariant.Search,
-        leading = leading,
-        trailing = trailing,
-    )
+    if (solid == null) {
+        ArgonTopBar(
+            placeholder,
+            Modifier.clearAndSetSemantics {}.padding(bottom = ArgonTheme.spacing.s),
+            variant = ArgonTopBarVariant.Search,
+            leading = leading,
+            trailing = trailing,
+        )
+    } else {
+        // the overlay bar keeps its room under the field inside its own background
+        ArgonTopBar(
+            placeholder,
+            Modifier.clearAndSetSemantics {},
+            variant = ArgonTopBarVariant.Overlay,
+            leading = leading,
+            trailing = trailing,
+            solid = solid,
+            lightContent = lightContent,
+            solidVariant = ArgonTopBarVariant.Search,
+        )
+    }
     // Material's SearchBar puts itself at zIndex 1, which is also the order taps are tried in: the button has to sit
     // above that, or a tap on the field lands in the field (a cursor, the keyboard) and never opens the search screen.
     // No ripple of its own: it would be a grey rectangle over the bar and the status bar. It leaves the bar's own

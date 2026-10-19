@@ -328,7 +328,7 @@ fun CartScreen(nav: NavController) {
                     sections = sections?.placement,
                     env = env,
                 )
-                loading && current == null -> Spinner()
+                loading && current == null -> ListSkeleton(thumbnail = 88.dp)
                 error != null && current == null -> ErrorView(error) { attempt++ }
                 else -> EmptyCart()
             }
@@ -363,7 +363,7 @@ private fun CartContent(
     val alsoLike = alsoLike(cart)
     Column(Modifier.fillMaxSize()) {
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.l), contentPadding = PaddingValues(vertical = spacing.l)) {
-            sectionItems(sections?.above.orEmpty(), env)
+            sectionItems(sections?.above.orEmpty(), env, spacing = spacing.l)
             if (shipping != null) item(key = "free-shipping") { FreeShippingBar(shipping, gutter) }
             items(cart.lines, key = { it.id }) { line -> CartLineRow(line, busy, gutter) { onQuantity(line, it) } }
             item(key = "discount-code") { DiscountCode(cart, gutter) }
@@ -375,7 +375,7 @@ private fun CartContent(
                     }
                 }
             }
-            sectionItems(sections?.below.orEmpty(), env)
+            sectionItems(sections?.below.orEmpty(), env, spacing = spacing.l)
         }
         // While the keyboard is up (the discount code) the list has the room; the summary is back when it is gone.
         if (!WindowInsets.isImeVisible) Summary(cartSummary(cart), busy, onCheckout)

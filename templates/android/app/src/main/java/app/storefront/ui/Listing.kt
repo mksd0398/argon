@@ -285,7 +285,7 @@ fun ListingView(
                     Box(Modifier.weight(1f).fillMaxWidth()) {
                         when {
                             error != null -> ErrorView(error) { l.reload() }
-                            l.loading -> Spinner()
+                            l.loading -> ProductGridSkeleton()
                             else -> Text(
                                 if (l.applied.isEmpty()) emptyText else "No products match these filters.",
                                 Modifier.align(Alignment.Center).padding(spacing.xl),

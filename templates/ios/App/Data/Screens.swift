@@ -214,6 +214,16 @@ struct ScreenSection: Equatable, Sendable {
     /// Analytics' `promotion_name`: `track`, else the type.
     var promotionName: String { track ?? type }
 
+    /// Whether it runs edge to edge: a hero banner (the default style), a slideshow, a marquee, a video, or any section
+    /// with a `background`. Nothing parts it from its neighbours (`gapBefore`).
+    var fullBleed: Bool {
+        switch type {
+        case "slideshow", "marquee", "video": return true
+        case "banner" where settings.choice("style", ["hero", "card"], "hero") == "hero": return true
+        default: return background != nil
+        }
+    }
+
     /// Every type's style: its `background` (`#RRGGBB`; nil: none, but a marquee's strip is #111111 without one) and
     /// its `padding`, the points of room above and below inside that colour (`none` 0, `small` 12, `medium` 24,
     /// `large` 40).

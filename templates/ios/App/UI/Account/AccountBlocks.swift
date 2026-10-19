@@ -14,16 +14,18 @@ func contactRoute() -> Route {
 struct FreshLoader<Value, Content: View>: View {
     private let load: () async throws -> Value
     private let content: (Value) -> Content
+    private let skeleton: ScreenSkeleton.Kind
     @State private var visit = 0
     @State private var away = false
 
-    init(load: @escaping () async throws -> Value, @ViewBuilder content: @escaping (Value) -> Content) {
+    init(load: @escaping () async throws -> Value, skeleton: ScreenSkeleton.Kind = .list, @ViewBuilder content: @escaping (Value) -> Content) {
         self.load = load
+        self.skeleton = skeleton
         self.content = content
     }
 
     var body: some View {
-        Loader(load: load, content: content)
+        Loader(load: load, skeleton: skeleton, content: content)
             .id(visit)
             // on the way back, not on the way out: a load started while the screen is covered would miss what the
             // screen over it goes on to change

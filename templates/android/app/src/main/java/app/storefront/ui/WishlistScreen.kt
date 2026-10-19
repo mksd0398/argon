@@ -98,7 +98,7 @@ fun WishlistScreen(nav: NavController) {
                         below = { sectionItems(placement?.below.orEmpty(), env, ArgonTheme.spacing.l) },
                     )
                 error != null -> ErrorView(error) { attempt++ }
-                model.pending(ids) -> Spinner()
+                model.pending(ids) -> ProductGridSkeleton()
                 else -> Text(
                     "Tap ♡ on a product to save it",
                     Modifier.align(Alignment.Center).padding(ArgonTheme.spacing.xl),
