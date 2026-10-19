@@ -2,10 +2,13 @@ package app.storefront.ui.sections
 
 import androidx.compose.ui.unit.dp
 import app.storefront.data.ScreenSection
+import app.storefront.data.ScreenTemplate
 import app.storefront.data.SectionSettings
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.JsonObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SectionGapTest {
@@ -35,5 +38,14 @@ class SectionGapTest {
     @Test
     fun theFirstSectionHasNoGapAbove() {
         assertEquals(0.dp, gapBefore(null, section("rich_text"), gap))
+    }
+
+    @Test
+    fun theBarIsClearOnlyOverAPictureFirst() {
+        for (first in listOf(section("banner"), section("slideshow"), section("video"))) assertTrue(first.type, ScreenTemplate(listOf(first, section("rich_text"))).opensWithPicture)
+        for (first in listOf(section("collections"), section("rich_text"), section("banner", "style" to "card"), section("marquee"), section("faq", "background" to "#112233"))) {
+            assertFalse("${first.type} first", ScreenTemplate(listOf(first, section("banner"))).opensWithPicture)
+        }
+        assertFalse("nothing", ScreenTemplate(emptyList()).opensWithPicture)
     }
 }

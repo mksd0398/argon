@@ -316,6 +316,18 @@ struct ScreenTemplate: Equatable, Sendable {
     /// The sections there are to draw (all but `main`).
     var content: [ScreenSection] { sections.filter { $0.type != "main" } }
 
+    /// The screen opens with a picture that runs edge to edge: its first section is a hero banner, a slideshow or a
+    /// video. Only then may the top bar lie clear over it; over anything else (a row of collections, text) it would hide
+    /// the content, so the bar stays solid whatever the settings ask.
+    var opensWithPicture: Bool {
+        guard let first = content.first else { return false }
+        switch first.type {
+        case "slideshow", "video": return true
+        case "banner": return first.settings.choice("style", ["hero", "card"], "hero") == "hero"
+        default: return false
+        }
+    }
+
     /// The sections above and below `screen`'s own content: before `main` above, after it below; without `main`, all
     /// above. Collection and search draw nothing below their endless grid, so all of theirs go above.
     func placement(_ screen: String) -> SectionPlacement {

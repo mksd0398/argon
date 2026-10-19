@@ -60,7 +60,7 @@ struct CustomScreenView: View {
 
     var body: some View {
         let look = screen?.template.screen ?? ScreenLook()
-        let underBar = look.transparent() && !(screen?.template.content.isEmpty ?? true)
+        let underBar = look.transparent() && (screen?.template.opensWithPicture ?? false)
         // The system's back button takes the stack's tint, not the clear bar's colours: the bar draws its own.
         // ponytail: hiding the system button also drops the swipe back on these pages; bring it back with a
         // UIGestureRecognizerDelegate on the navigation controller if shoppers miss it.

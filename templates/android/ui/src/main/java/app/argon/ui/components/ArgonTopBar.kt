@@ -179,7 +179,10 @@ fun ArgonTopBar(
                 }
             }
         }
-        ArgonTopBarVariant.Search -> SearchField(title, modifier, leading, trailing, searchText, onSearchTextChange, onSearch, null)
+        // the merchant's bar colour behind the field (and the status bar), as the other variants have it
+        ArgonTopBarVariant.Search -> Box(if (bar.container == Color.Unspecified) Modifier else Modifier.background(bar.container)) {
+            SearchField(title, modifier, leading, trailing, searchText, onSearchTextChange, onSearch, null)
+        }
     }
 }
 

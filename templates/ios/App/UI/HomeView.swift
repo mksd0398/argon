@@ -90,8 +90,13 @@ struct HomeView: View {
             if case let .sections(screen)? = loaded?.page { return screen.template.screen }
             return nil
         }()
-        // the bar over the first section: the template's `screen.top_bar`, else the settings' transparentOnHome
-        let underBar = look?.transparent(navigation.transparentOnHome) ?? false
+        // the bar over the first section: the template's `screen.top_bar`, else the settings' transparentOnHome, and
+        // only when that section is a picture
+        let opensWithPicture: Bool = {
+            if case let .sections(screen)? = loaded?.page { return screen.template.opensWithPicture }
+            return false
+        }()
+        let underBar = (look?.transparent(navigation.transparentOnHome) ?? false) && opensWithPicture
         let inCart = AppGraph.cart.cart?.totalQuantity ?? 0
         VStack(spacing: 0) {
             if case let .sections(screen)? = loaded?.page {

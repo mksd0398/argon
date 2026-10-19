@@ -57,6 +57,7 @@ import app.storefront.ui.home.HomeGrocery
 import app.storefront.ui.home.heroSolid
 import app.storefront.ui.sections.ScreenSections
 import app.storefront.ui.sections.loadScreenSections
+import app.storefront.ui.sections.opensWithPicture
 import app.storefront.ui.sections.rememberSectionEnv
 import app.storefront.ui.sections.screenBackground
 import app.storefront.ui.sections.sectionItems
@@ -172,13 +173,13 @@ private fun HomePage(nav: NavController, openMenu: (() -> Unit)?) {
         cartCount = cartCount,
     )
     // screens v2: the store's own home, its sections under the top bar; over the first one when the template's
-    // `screen.top_bar` is transparent (unset: by transparentOnHome), on the template's background
+    // `screen.top_bar` is transparent (unset: by transparentOnHome) and the first is a picture, on the template's background
     val sections = model.sections.takeIf { model.loaded != null }
     val env = rememberSectionEnv(sections, onOpen)
     if (sections != null) {
         val look = sections.template.screen
         val background = screenBackground(sections)
-        if (look.topBar?.let { it == "transparent" } ?: AppGraph.navigation.transparentOnHome) {
+        if ((look.topBar?.let { it == "transparent" } ?: AppGraph.navigation.transparentOnHome) && sections.template.opensWithPicture) {
             OverBar({ solid -> HomeTopBar(template, brand, solid, overlay = true, actions, lightContent = !look.darkTint) }, light = !look.darkTint) { list ->
                 LazyColumn(
                     Modifier.fillMaxSize().background(background),

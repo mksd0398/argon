@@ -165,4 +165,17 @@ final class SectionsContentTests: XCTestCase {
         // the first section has nothing above it
         XCTAssertEqual(gapBefore(nil, products, gap: 24), 0)
     }
+
+    func testTheBarIsClearOnlyOverAPictureFirst() {
+        func section(_ type: String, _ settings: [String: JSONValue] = [:]) -> ScreenSection {
+            ScreenSection(id: type, type: type, settings: SectionSettings(settings))
+        }
+        for first in ["banner", "slideshow", "video"] {
+            XCTAssertTrue(ScreenTemplate(sections: [section(first), section("rich_text")]).opensWithPicture, first)
+        }
+        for first in [section("collections"), section("rich_text"), section("banner", ["style": .string("card")]), section("marquee")] {
+            XCTAssertFalse(ScreenTemplate(sections: [first, section("banner")]).opensWithPicture, first.type)
+        }
+        XCTAssertFalse(ScreenTemplate().opensWithPicture)
+    }
 }

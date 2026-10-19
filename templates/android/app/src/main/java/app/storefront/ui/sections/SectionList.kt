@@ -215,6 +215,18 @@ internal val ScreenSection.fullBleed: Boolean
     }
 
 /**
+ * The screen opens with a picture that runs edge to edge: its first section is a hero banner, a slideshow or a video.
+ * Only then may the top bar lie clear over it; over anything else (a row of collections, text) it would hide the content,
+ * so the bar stays solid whatever the settings ask.
+ */
+internal val ScreenTemplate.opensWithPicture: Boolean
+    get() = when (val c = sections.firstOrNull { it.type != ScreenTemplate.MAIN }?.content) {
+        is SectionContent.Banner -> c.style != "card"
+        is SectionContent.Slideshow, is SectionContent.Video -> true
+        else -> false
+    }
+
+/**
  * The space between [previous] and [current] (null: [current] comes first, no space): none when both are [fullBleed]
  * (a hero and the marquee under it), else [gap], so a heading never sits on an edge-to-edge strip.
  */
