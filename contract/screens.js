@@ -32,6 +32,10 @@ export const PRODUCT_BLOCKS = ["gallery", "title", "price", "options", "purchase
 const s = (key, type, extra = {}) => ({ key, type, ...extra });
 const choice = (key, choices, value) => s(key, "choice", { choices, default: value });
 const HEIGHTS = ["small", "medium", "large"];
+/** The icons a feature block can show: Argon's icon set (ArgonIconName / ArgonIcon), snake_case. */
+export const FEATURE_ICONS = ["truck", "returns", "lock", "leaf", "gift", "clock", "star", "heart", "globe", "check", "tag", "phone", "mail", "location", "info"];
+/** Every section type also takes these: a colour drawn behind it, and room above and below inside that colour. */
+const STYLE_SETTINGS = [s("background", "color"), choice("padding", ["none", "small", "medium", "large"], undefined)];
 
 /** Section types: their settings (type, default, limits) and the blocks they take. */
 export const SECTION_TYPES = {
@@ -89,7 +93,39 @@ export const SECTION_TYPES = {
     name: "Custom HTML",
     settings: [s("html", "html"), choice("render", ["native", "web"], "web"), s("nodes", "nodes"), s("height", "number", { min: 0, max: 2000, default: 0 })],
   },
+  marquee: {
+    name: "Scrolling text",
+    settings: [s("text", "text"), s("link", "link"), choice("speed", ["slow", "medium", "fast"], "medium"), s("text_color", "color", { default: "#FFFFFF" })],
+  },
+  faq: {
+    name: "FAQ",
+    settings: [s("heading", "text")],
+    blocks: { question: { name: "Question", settings: [s("question", "text"), s("answer", "richtext")] } },
+    maxBlocks: 20,
+  },
+  features: {
+    name: "Features",
+    settings: [s("heading", "text"), choice("layout", ["row", "grid"], "row")],
+    blocks: { feature: { name: "Feature", settings: [choice("icon", FEATURE_ICONS, "check"), s("heading", "text"), s("text", "text")] } },
+    maxBlocks: 8,
+  },
+  image_grid: {
+    name: "Image grid",
+    settings: [s("heading", "text"), choice("columns", ["2", "3"], "2"), choice("aspect", ["square", "portrait", "landscape"], "square")],
+    blocks: { tile: { name: "Tile", settings: [s("image", "image"), s("heading", "text"), s("link", "link")] } },
+    maxBlocks: 12,
+  },
 };
+for (const type of Object.values(SECTION_TYPES)) type.settings.push(...STYLE_SETTINGS);
+
+/**
+ * A template's `screen`: how the screen itself looks. `top_bar` and `top_bar_tint` are for screens drawn wholly from
+ * sections (home and custom pages): `transparent` lays the bar over the first section, solid once that scrolls under
+ * it; `top_bar_tint` is the clear bar's title and icons (light over dark images). `background` is any screen's.
+ */
+export const SCREEN_SETTINGS = [
+  choice("top_bar", ["solid", "transparent"], undefined), choice("top_bar_tint", ["light", "dark"], "light"), s("background", "color"),
+];
 
 const MAIN_SETTINGS = {
   product: [s("blocks", "product_blocks")],
@@ -268,6 +304,13 @@ export function checkTemplate(template, screen) {
     if (!system.above && main !== 0) throw new TemplateError(`Nothing can go above the ${screen} screen's own content`);
   }
   const checked = { version: 2, sections };
+  if (template.screen !== undefined) {
+    const look = checkSettings(SCREEN_SETTINGS, template.screen, "screen");
+    if (system?.main && ("top_bar" in look || "top_bar_tint" in look)) {
+      throw new TemplateError(`screen: the ${screen} screen keeps its own top bar; top_bar is for home and your pages`);
+    }
+    if (Object.keys(look).length) checked.screen = look;
+  }
   const refs = metafieldRefs(checked);
   if (refs.length) checked.metafields = refs;
   return checked;

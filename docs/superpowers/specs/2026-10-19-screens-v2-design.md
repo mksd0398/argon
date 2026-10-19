@@ -261,3 +261,56 @@ iOS notifications (a notification service extension).
   case in `liquid-cases.json`, read from the fixtures), `Links.resolve` additions, nav settings decoding, custom
   nodes decoding, promotion events. Android runs them locally (`./gradlew testDebugUnitTest`); iOS in CI on macOS,
   and the app compiles locally with xtool in WSL.
+
+## Detailing (2026-10-19, second pass)
+
+Added on Mayank's ask for "more detailing ... transparency option on navigation and more". All optional and decoded
+leniently: an older app ignores every key below.
+
+### The screen's own look: `template.screen`
+
+```json
+{ "version": 2, "screen": { "top_bar": "transparent", "top_bar_tint": "light", "background": "#F7F3EE" }, "sections": [] }
+```
+
+| Key | Values | |
+|---|---|---|
+| `top_bar` | `solid` \| `transparent` | Home and custom pages only (the editor refuses it elsewhere). `transparent`: the bar lies over the first section, clear at the top and solid once that section scrolls under it (the fashion behaviour, `OverBar` / `HomeView`'s overlay). On home it wins over `navigation.topBar.transparentOnHome`; missing means that setting decides. |
+| `top_bar_tint` | `light` (default) \| `dark` | The clear bar's title, icons and status bar: light over dark images, dark over light ones. Once solid, the bar's normal colours. |
+| `background` | `#RRGGBB` | The screen's background behind its sections (any screen). |
+
+### Every section's style
+
+Every section type takes two more settings: `background` (`#RRGGBB`, drawn behind the whole section, edge to edge) and
+`padding` (`none` (default) \| `small` 12 \| `medium` 24 \| `large` 40, points of room above and below inside it).
+
+### New section types
+
+| Type | Settings (default) | Blocks |
+|---|---|---|
+| `marquee` | text (text), link, speed (choice slow\|medium\|fast, medium: 30/60/90 points a second), text_color (color, #FFFFFF) | |
+| `faq` | heading (text) | `question` (up to 20): question (text), answer (richtext). An accordion, all closed. |
+| `features` | heading, layout (choice row\|grid, row) | `feature` (up to 8): icon (choice, check), heading (text), text (text) |
+| `image_grid` | heading, columns (choice "2"\|"3", "2"), aspect (choice square\|portrait\|landscape, square: 1:1, 4:5, 4:3) | `tile` (up to 12): image, heading, link |
+
+- `marquee`: one line of text scrolling from end to start without end, repeated to fill; the whole strip opens `link`.
+  Its strip is the section's `background`, or #111111 when unset. Liquid in `text`.
+- `features` icons: `truck`, `returns`, `lock`, `leaf`, `gift`, `clock`, `star`, `heart`, `globe`, `check`, `tag`,
+  `phone`, `mail`, `location`, `info` (Argon's icon set). `row`: a horizontal row that scrolls when it doesn't fit,
+  icon above text; `grid`: two columns.
+- `image_grid`: tiles in `columns` columns at `aspect`, `heading` under the image; a tap opens `link`. A tile without an
+  image is skipped.
+- Promotions: a tap on a question, feature or tile reports its block as `creative_name`, as slides do.
+
+### Navigation colours (RemoteSettings)
+
+```json
+{ "navigation": {
+  "topBar": { "style": "standard", "transparentOnHome": false, "background": "#FFFFFF", "foreground": "#111111" },
+  "tabBar": { "background": "#FFFFFF", "active": "#111111", "inactive": "#8A8A8A" }
+} }
+```
+
+`topBar.background` / `foreground`: the solid top bar's colour and its title and icons, on every screen. `tabBar`:
+the bar's colour, and the selected and other tabs' icon and label colours (`active` defaults to the accent). Each
+`#RRGGBB`; a missing or bad one is the theme's.
