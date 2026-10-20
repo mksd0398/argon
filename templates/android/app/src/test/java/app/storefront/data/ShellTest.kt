@@ -78,6 +78,15 @@ class ShellTest {
     }
 
     @Test
+    fun uploadedIconsComeFromTheStoresFilesOnly() {
+        val icon = "https://cdn.shopify.com/s/files/1/0001/files/sizes.png?v=1"
+        val tabs = navigation("""{"tabs":[{"id":"home","icon":"$icon"},{"id":"cart","icon":"https://example.com/x.png"}]}""").tabs
+        assertEquals(icon, tabs[0].iconUrl)
+        assertEquals("another host is the id's own icon", ShellTab("cart", "Cart", "bag"), tabs[1])
+        assertNull(tabs[1].iconUrl)
+    }
+
+    @Test
     fun badValuesFallBackOneByOne() {
         val nav = navigation("""{"labels":"no","topBar":{"style":"floating","transparentOnHome":1},"drawer":{"enabled":true}}""")
         assertTrue(nav.labels)

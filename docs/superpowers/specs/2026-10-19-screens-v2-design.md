@@ -230,7 +230,8 @@ New RemoteSettings fields, decoded leniently like the rest; applied at the next 
 
 - `tabs`: 2 to 5, ids `home`, `shop`, `search`, `wishlist`, `cart`, `account`, or `screen:<handle>`; `home` is
   required and first. `icon` from Argon's icon set (`home`, `grid`, `search`, `heart`, `bag`, `person`, `star`,
-  `tag`, `menu`); `title` up to 16 characters. Invalid lists fall back to the built-in five. The cart opens as a
+  `tag`, `menu`), or an uploaded icon: an image in the store's Files (`https://cdn.shopify.com/...`, one colour on
+  transparency, tinted like the others; another host is ignored); `title` up to 16 characters. Invalid lists fall back to the built-in five. The cart opens as a
   tab when listed, otherwise from the bag button in the top bar.
 - `labels`: show tab titles.
 - `topBar.style`: `standard` | `centered_logo` | `search` (the template's own bar when absent).

@@ -1,16 +1,19 @@
 import SwiftUI
 
-/// A tab of the bottom bar. `badge` is a count (none when nil or 0).
+/// A tab of the bottom bar. `badge` is a count (none when nil or 0). `image`, when given, shows instead of `icon`: pass a
+/// template image at the bar's size (25 points) so it takes the tabs' colours.
 public struct ArgonBottomBarItem: Identifiable {
     public let id: String
     public let title: String
     public let icon: ArgonIconName
+    public let image: Image?
     public let badge: Int?
 
-    public init(id: String, title: String, icon: ArgonIconName, badge: Int? = nil) {
+    public init(id: String, title: String, icon: ArgonIconName, image: Image? = nil, badge: Int? = nil) {
         self.id = id
         self.title = title
         self.icon = icon
+        self.image = image
         self.badge = badge
     }
 }
@@ -49,10 +52,11 @@ public struct ArgonBottomBar<Content: View>: View {
             ForEach(items) { item in
                 content(item)
                     .tabItem {
+                        let icon = item.image ?? Image(systemName: item.icon.systemName)
                         if showLabels {
-                            Label(item.title, systemImage: item.icon.systemName)
+                            Label { Text(item.title) } icon: { icon }
                         } else {
-                            Image(systemName: item.icon.systemName).accessibilityLabel(item.title)
+                            icon.accessibilityLabel(item.title)
                         }
                     }
                     .tag(item.id)

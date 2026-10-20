@@ -273,7 +273,7 @@ private fun AppNav(startTab: AppTab? = null) {
             if (onTab) {
                 ArgonBottomBar(
                     // the Cart tab shows how many items are in the cart
-                    navigation.tabs.map { tab -> ArgonBottomBarItem(tab.id, tab.title, shellIcon(tab.icon), badge = if (tab.id == "cart") cartCount else null) },
+                    navigation.tabs.map { tab -> ArgonBottomBarItem(tab.id, tab.title, shellIcon(tab.icon), iconUrl = tab.iconUrl, badge = if (tab.id == "cart") cartCount else null) },
                     selectedId = currentTab.orEmpty(),
                     onSelect = { nav.openTab(tabRoute(it)) },
                     showLabels = navigation.labels,

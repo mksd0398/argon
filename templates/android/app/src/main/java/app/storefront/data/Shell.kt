@@ -12,9 +12,13 @@ import kotlinx.serialization.json.doubleOrNull
 
 /**
  * One tab of the bar. [id]: `home`, `shop`, `search`, `wishlist`, `cart`, `account`, or `screen:<handle>` (a custom
- * page); [icon]: a name of Argon's icon set (`home`, `grid`, `search`, `heart`, `bag`, `person`, `star`, `tag`, `menu`).
+ * page); [icon]: a name of Argon's icon set (`home`, `grid`, `search`, `heart`, `bag`, `person`, `star`, `tag`, `menu`), or
+ * the merchant's own icon: an image in the store's Files (`https://cdn.shopify.com/...`), drawn in the tab's colours.
  */
 data class ShellTab(val id: String, val title: String, val icon: String) {
+    /** The merchant's own icon's URL; null for one of Argon's icons. */
+    val iconUrl: String? get() = icon.takeIf { isIconUrl(it) }
+
     /** The custom page's handle of a `screen:<handle>` tab; null for the others. */
     val screen: String? get() = id.removePrefix("screen:").takeIf { id.startsWith("screen:") }
 }
@@ -79,13 +83,16 @@ data class Navigation(
                 if (id !in IDS && screen == null) return null
                 val title = tab.str("title")?.trim()?.take(16)?.ifEmpty { null }
                     ?: IDS[id] ?: screen!!.replace('-', ' ').replace('_', ' ').replaceFirstChar { it.uppercase() }
-                ShellTab(id, title, tab.str("icon")?.takeIf { it in ICONS } ?: DEFAULT_ICONS[id] ?: "star")
+                ShellTab(id, title, tab.str("icon")?.takeIf { it in ICONS || isIconUrl(it) } ?: DEFAULT_ICONS[id] ?: "star")
             }
             if (tabs.size !in 2..5 || tabs.first().id != "home" || tabs.map { it.id }.toSet().size != tabs.size) return null
             return tabs
         }
     }
 }
+
+/** An uploaded icon: only the store's Files, where Krypton puts it. */
+internal fun isIconUrl(icon: String) = icon.startsWith("https://cdn.shopify.com/")
 
 /** One message of the announcement strip; [link] goes through [Links.resolve]. */
 data class AnnouncementMessage(val text: String, val link: String? = null)
