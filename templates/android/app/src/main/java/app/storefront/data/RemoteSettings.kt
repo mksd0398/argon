@@ -43,6 +43,8 @@ data class RemoteSettings(
     val announcement: Announcement? = null,
     /** `appearance.mode`; null: the device's light or dark. */
     val appearance: Appearance? = null,
+    /** `appearance.fonts`; null: Argon's own. */
+    val fonts: RemoteFonts? = null,
 ) {
     /** The free-shipping threshold: the remote one when set (zero: none), else [builtIn]. */
     fun freeShippingThreshold(builtIn: Double?): Double? = when (val remote = freeShippingThreshold) {
@@ -84,6 +86,7 @@ data class RemoteSettings(
                 navigation = Navigation.decode(root.obj("navigation")),
                 announcement = Announcement.decode(root.obj("announcement")),
                 appearance = Appearance.decode(root.obj("appearance")),
+                fonts = RemoteFonts.decode(root.obj("appearance")?.obj("fonts")),
             )
         }
 
@@ -118,24 +121,26 @@ class RemoteSettingsStore(dir: File, private val url: String, http: OkHttpClient
 
     /**
      * Fetches [url] (nothing when it is empty) and, on HTTP 200 with a JSON object, replaces the cached copy in one step
-     * (a temp file renamed over it). Any failure keeps the copy there is.
+     * (a temp file renamed over it). Any failure keeps the copy there is. Returns what it cached; null when nothing.
      */
-    suspend fun refresh() {
-        if (url.isBlank()) return
-        try {
+    suspend fun refresh(): RemoteSettings? {
+        if (url.isBlank()) return null
+        return try {
             withContext(Dispatchers.IO) {
                 val body = http.newCall(Request.Builder().url(url).build()).execute().use { response ->
-                    if (response.code != 200) return@withContext log.warning("settings fetch: HTTP ${response.code}")
+                    if (response.code != 200) return@withContext null.also { log.warning("settings fetch: HTTP ${response.code}") }
                     response.body.string()
                 }
-                if (RemoteSettings.decode(body) == null) return@withContext log.warning("settings fetch: not a JSON object")
+                val settings = RemoteSettings.decode(body) ?: return@withContext null.also { log.warning("settings fetch: not a JSON object") }
                 temp.writeText(body)
                 Files.move(temp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+                settings
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             log.warning("settings fetch failed (${e.javaClass.name})")
+            null
         }
     }
 }

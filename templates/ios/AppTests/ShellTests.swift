@@ -158,4 +158,49 @@ final class ShellTests: XCTestCase {
         XCTAssertEqual(shellIcon("star"), .star)
         XCTAssertEqual(shellIcon("unknown"), .star)
     }
+
+    // MARK: Fonts
+
+    private func fonts(_ json: String) -> MerchantFonts? { RemoteSettings(json: Data(json.utf8))?.fonts }
+
+    func testBothFontRolesDecode() throws {
+        let fonts = try XCTUnwrap(fonts("""
+        {"appearance": {"mode": "system", "fonts": {
+          "heading": {"family": "Playfair Display", "files": {"400": "https://fonts.gstatic.com/s/a.ttf", "700": "https://fonts.gstatic.com/s/b.ttf"}},
+          "body": {"family": " Assistant ", "files": {"400": "https://fonts.gstatic.com/s/c.ttf", "600": "https://fonts.gstatic.com/s/d.ttf"}}
+        }}}
+        """))
+        XCTAssertEqual(fonts.heading, MerchantFont(family: "Playfair Display", files: [400: "https://fonts.gstatic.com/s/a.ttf", 700: "https://fonts.gstatic.com/s/b.ttf"]))
+        XCTAssertEqual(fonts.body, MerchantFont(family: "Assistant", files: [400: "https://fonts.gstatic.com/s/c.ttf", 600: "https://fonts.gstatic.com/s/d.ttf"]))
+    }
+
+    func testAFontOffGstaticDropsOnlyItsRole() throws {
+        let fonts = try XCTUnwrap(fonts("""
+        {"appearance": {"fonts": {
+          "heading": {"family": "Evil", "files": {"400": "https://fonts.gstatic.com/s/a.ttf", "700": "https://example.com/b.ttf"}},
+          "body": {"family": "Assistant", "files": {"400": "https://fonts.gstatic.com/s/c.ttf"}}
+        }}}
+        """))
+        XCTAssertNil(fonts.heading)
+        XCTAssertEqual(fonts.body?.family, "Assistant")
+    }
+
+    func testMissingOrEmptyFontsAreNil() {
+        XCTAssertNil(fonts("{}"))
+        XCTAssertNil(fonts(#"{"appearance": {"mode": "dark"}}"#))
+        XCTAssertNil(fonts(#"{"appearance": {"fonts": "x"}}"#))
+        XCTAssertNil(fonts(#"{"appearance": {"fonts": {"heading": {"family": "", "files": {"400": "https://fonts.gstatic.com/s/a.ttf"}}}}}"#))
+        XCTAssertNil(fonts(#"{"appearance": {"fonts": {"body": {"family": "Assistant", "files": {}}}}}"#))
+        XCTAssertEqual(RemoteSettings(json: Data(#"{"appearance": {"mode": "dark", "fonts": 1}}"#.utf8))?.appearance, .dark)
+    }
+
+    func testBadWeightKeysAreSkipped() throws {
+        let body = try XCTUnwrap(fonts("""
+        {"appearance": {"fonts": {"body": {"family": "Assistant", "files": {
+          "bold": "https://fonts.gstatic.com/s/x.ttf", "1000": "https://fonts.gstatic.com/s/y.ttf", "500": "https://fonts.gstatic.com/s/z.ttf"
+        }}}}}
+        """)?.body)
+        XCTAssertEqual(body.files, [500: "https://fonts.gstatic.com/s/z.ttf"])
+        XCTAssertNil(fonts(#"{"appearance": {"fonts": {"body": {"family": "Assistant", "files": {"bold": "https://fonts.gstatic.com/s/x.ttf"}}}}}"#))
+    }
 }

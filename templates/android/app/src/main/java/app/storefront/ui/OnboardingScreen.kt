@@ -77,7 +77,7 @@ fun OnboardingScreen(onDone: (signIn: Boolean) -> Unit) {
 
     StatusBarIcons(light = true)
     // What sits on a photo uses the dark palette in light and dark mode alike: a dark shade, light text, a light button.
-    ArgonTheme(darkTheme = true) {
+    ArgonTheme(darkTheme = true, headingFont = AppGraph.headingFont, bodyFont = AppGraph.bodyFont) {
         val colors = ArgonTheme.colors
         val spacing = ArgonTheme.spacing
         // dark behind the status bar and "Skip", clear over the picture, then dark again where the words are

@@ -26,6 +26,8 @@ enum AppGraph {
     static let announcement = remote?.announcement
     /// Light or dark: the merchant's, else the device's.
     static let appearance = remote?.appearance ?? .system
+    /// The merchant's font files (`appearance.fonts`): registered as the app launches, fetched after the settings.
+    static let fontStore = FontStore(directory: URL.cachesDirectory.appending(path: "fonts"))
     /// Push notifications (`PUSH`, true only for an app built with `--push`, which has Firebase Messaging): see `push`.
     static let pushEnabled = info("Push").trimmingCharacters(in: .whitespaces).lowercased() == "true"
     /// Where the app reports its push opt-in (`DEVICES_URL`, Krypton's); empty: nowhere.
@@ -192,7 +194,12 @@ enum AppGraph {
         // this launch's settings are read first: the fetch is only for the next one
         _ = remote
         guard !settingsUrl.isEmpty, let url = URL(string: settingsUrl) else { return }
-        Task.detached(priority: .utility) { await settingsStore.refresh(from: url) }
+        Task.detached(priority: .utility) {
+            await settingsStore.refresh(from: url)
+            // the newest settings' fonts (else this launch's), for the next launch
+            let fonts = settingsStore.load()?.fonts
+            for font in [fonts?.heading, fonts?.body].compactMap({ $0 }) { await fontStore.download(font) }
+        }
     }
 
     /// The GraphQL document `queries/<name>.graphql` (written by the CLI from contract/).

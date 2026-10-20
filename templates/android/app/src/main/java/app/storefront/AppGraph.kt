@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.AssetManager
 import android.util.Log
+import androidx.compose.ui.text.font.FontFamily
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.emptyPreferences
@@ -20,6 +21,7 @@ import app.storefront.data.BuyerStore
 import app.storefront.data.CartStore
 import app.storefront.data.CollectionTemplate
 import app.storefront.data.CustomerAccountApi
+import app.storefront.data.FontCache
 import app.storefront.data.HomeTemplate
 import app.storefront.data.JudgeMe
 import app.storefront.data.LogSink
@@ -47,6 +49,7 @@ import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import com.shopify.checkoutsheetkit.ColorScheme
 import com.shopify.checkoutsheetkit.Preloading
 import com.shopify.checkoutsheetkit.ShopifyCheckoutSheetKit
+import java.io.File
 import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -68,7 +71,11 @@ class StorefrontApp : Application(), SingletonImageLoader.Factory {
         super.onCreate()
         // First: the per-store values read the cached settings. The fetch only refreshes that cache, for the next launch.
         AppGraph.settingsStore = RemoteSettingsStore(filesDir, AppGraph.settingsUrl, AppGraph.http)
-        AppGraph.scope.launch { AppGraph.settingsStore.refresh() }
+        // The merchant's fonts when an earlier launch downloaded them; the files the newest settings name are fetched for the next.
+        val fonts = FontCache(File(filesDir, "fonts"), AppGraph.http)
+        AppGraph.headingFont = fonts.family(AppGraph.settings?.fonts?.heading)
+        AppGraph.bodyFont = fonts.family(AppGraph.settings?.fonts?.body)
+        AppGraph.scope.launch { fonts.download((AppGraph.settingsStore.refresh() ?: AppGraph.settings)?.fonts) }
         AppGraph.assets = assets
         AppGraph.analyticsConsent = AnalyticsConsentStore(prefs("analytics"), AppGraph.scope)
         // Every sink the app has. A provider's factory starts its SDK and returns its sink; in an app without the
@@ -225,6 +232,10 @@ object AppGraph {
 
     /** Light or dark (the settings', else the device's). */
     val appearance: Appearance by lazy { settings?.appearance ?: Appearance.System }
+
+    /** The settings' `appearance.fonts` heading and body, set at launch when their files are on disk; null: Argon's own. */
+    internal var headingFont: FontFamily? = null
+    internal var bodyFont: FontFamily? = null
 
     /** Whether the app was built with push notifications (`PUSH`, which takes Firebase). */
     val pushEnabled: Boolean = PushStore.enabled(BuildConfig.PUSH)
