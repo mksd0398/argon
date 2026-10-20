@@ -1,7 +1,10 @@
 name: CI
 
+# Once per change: a pull request, and main after a merge. A branch push without a pull request runs nothing (it ran
+# twice before: as the push and as the pull request).
 on:
   push:
+    branches: [main]
   pull_request:
 
 permissions:
@@ -12,6 +15,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Which platforms a change touches: their templates, the shared contract, the CLI that writes the projects, or CI
+  # itself. Each platform's job runs only then (macOS minutes cost ten times Linux's).
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      android: ${{ steps.diff.outputs.android }}
+      ios: ${{ steps.diff.outputs.ios }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          files=$(git diff --name-only "$BASE" HEAD 2>/dev/null || git ls-files)
+          shared='^(contract/|lib/|bin/|templates/shared/|package(-lock)?\.json$|\.github/workflows/)'
+          echo "android=$(echo "$files" | grep -qE "$shared|^templates/android/" && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "ios=$(echo "$files" | grep -qE "$shared|^templates/ios/" && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
   cli:
     runs-on: ubuntu-latest
     steps:
@@ -27,6 +50,8 @@ jobs:
       - run: npm run test:live
 
   android:
+    needs: changes
+    if: needs.changes.outputs.android == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -54,16 +79,17 @@ jobs:
 
   ios:
     name: ios (Xcode ${{ matrix.xcode }})
+    needs: changes
+    if: needs.changes.outputs.ios == 'true'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
     # The latest stable Xcode (26) is what App Store uploads need; it is watched without blocking until Xcode 16 is dropped
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
+      # the experimental latest Xcode only on main, after a merge: pull requests build with Xcode 16 alone
       matrix:
-        include:
-          - { runner: macos-15, xcode: 16.x, experimental: false }
-          - { runner: macos-26, xcode: latest-stable, experimental: true }
+        include: ${{ fromJSON(github.event_name == 'push' && '[{"runner":"macos-15","xcode":"16.x","experimental":false},{"runner":"macos-26","xcode":"latest-stable","experimental":true}]' || '[{"runner":"macos-15","xcode":"16.x","experimental":false}]') }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
