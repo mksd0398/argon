@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import app.argon.ui.ArgonSize
 import app.argon.ui.ArgonTheme
 import app.argon.ui.components.ArgonButton
+import app.storefront.AppGraph
 import app.storefront.data.CollectionCard
 import app.storefront.data.HomeContent
 import app.storefront.data.Img
@@ -80,7 +81,7 @@ internal fun BannerView(
         StoreImage(banner.image, null, Modifier.matchParentSize())
         if (heading == null && text == null && button == null) return@Box
         // What sits on a photo uses the dark palette in light and dark mode alike: a dark shade, light text, a light button.
-        ArgonTheme(darkTheme = true) {
+        ArgonTheme(darkTheme = true, headingFont = AppGraph.headingFont, bodyFont = AppGraph.bodyFont) {
             val colors = ArgonTheme.colors
             val spacing = ArgonTheme.spacing
             // the shade grows towards the bottom, where the words are; a banner without a picture is all shade. In a short

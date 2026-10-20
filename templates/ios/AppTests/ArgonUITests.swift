@@ -239,6 +239,20 @@ final class ArgonUITests: XCTestCase {
         XCTAssertEqual(variation.first { $0.key.intValue == 0x7767_6874 }?.value.intValue, 600, "the wght axis is set")
     }
 
+    func testRegisteredFontsReplaceTheBundledOnes() throws {
+        XCTAssertTrue(ArgonFonts.register())
+        defer { ArgonFonts.use(heading: nil, body: nil) }
+        // any registered names do: the bundled ones stand in for a merchant's
+        ArgonFonts.use(heading: [700: "HankenGrotesk-Regular"], body: [400: "InstrumentSerif-Regular", 700: "HankenGrotesk-Regular"])
+        let name = { (font: CTFont?) in font.map { CTFontCopyPostScriptName($0) as String } }
+        XCTAssertEqual(name(ArgonFonts.display(size: 20)), "HankenGrotesk-Regular", "the only heading weight")
+        XCTAssertEqual(name(ArgonFonts.text(size: 16, weight: 500)), "InstrumentSerif-Regular", "nearest 500 is 400")
+        XCTAssertEqual(name(ArgonFonts.text(size: 16, weight: 600)), "HankenGrotesk-Regular", "nearest 600 is 700")
+        ArgonFonts.use(heading: nil, body: [:])
+        XCTAssertEqual(name(ArgonFonts.display(size: 20)), "InstrumentSerif-Regular", "nothing set: the bundled font")
+        XCTAssertEqual(ArgonFonts.text(size: 16, weight: 600).map { CTFontCopyFamilyName($0) as String }, "Hanken Grotesk")
+    }
+
     // MARK: Icons
 
     func testEveryIconMapsToAnSFSymbol() {

@@ -151,3 +151,37 @@ enum Appearance: String, Equatable, Sendable {
         json?["mode"]?.string.flatMap { Appearance(rawValue: $0.trimmingCharacters(in: .whitespaces).lowercased()) }
     }
 }
+
+/// One merchant font (`appearance.fonts.heading` or `.body`): a Google Fonts family and its TTF files by CSS weight
+/// (100...900). Only files on fonts.gstatic.com are fetched.
+struct MerchantFont: Equatable, Sendable {
+    let family: String
+    let files: [Int: String]
+
+    /// `json` read leniently; nil when the family is blank, no file has a valid weight, or any file isn't on
+    /// fonts.gstatic.com (the role then keeps Argon's font). A key that isn't a weight is skipped.
+    static func decode(_ json: JSONValue?) -> MerchantFont? {
+        guard let map = json?.object, let family = map["family"]?.string?.trimmingCharacters(in: .whitespaces),
+              !family.isEmpty, let entries = map["files"]?.object else { return nil }
+        var files: [Int: String] = [:]
+        for (key, value) in entries {
+            guard let weight = Int(key.trimmingCharacters(in: .whitespaces)), (100...900).contains(weight) else { continue }
+            guard let url = value.string?.trimmingCharacters(in: .whitespaces), url.hasPrefix("https://fonts.gstatic.com/") else { return nil }
+            files[weight] = url
+        }
+        return files.isEmpty ? nil : MerchantFont(family: family, files: files)
+    }
+}
+
+/// The merchant's fonts (`appearance.fonts`): `heading` in place of Instrument Serif, `body` in place of Hanken Grotesk.
+struct MerchantFonts: Equatable, Sendable {
+    var heading: MerchantFont? = nil
+    var body: MerchantFont? = nil
+
+    /// `json` (the settings' `appearance`), each role on its own; nil when neither is valid.
+    static func decode(_ json: JSONValue?) -> MerchantFonts? {
+        let fonts = json?["fonts"]
+        let decoded = MerchantFonts(heading: MerchantFont.decode(fonts?["heading"]), body: MerchantFont.decode(fonts?["body"]))
+        return decoded.heading == nil && decoded.body == nil ? nil : decoded
+    }
+}

@@ -17,6 +17,9 @@ struct ArgonApp: SwiftUI.App {
         }
         // the merchant's bar colours, before the first bar is drawn
         applyBarColors(AppGraph.navigation)
+        // the merchant's fonts whose files are all on disk, before the first screen builds the theme
+        let fonts = AppGraph.remote?.fonts
+        ArgonFonts.use(heading: fonts?.heading.flatMap(AppGraph.fontStore.register), body: fonts?.body.flatMap(AppGraph.fontStore.register))
     }
 
     var body: some Scene {

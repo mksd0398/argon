@@ -77,14 +77,21 @@ object ArgonTheme {
 /**
  * Argon's tokens for [content], also mapped onto Material 3 (colour scheme, typography, shapes), so native
  * controls follow them: primary is the accent. [accentHex] is the shop's `#RRGGBB` brand colour; ink when absent.
+ * [headingFont] replaces the serif (display, title), [bodyFont] the sans (the other roles); null keeps Argon's.
  */
 @Composable
-fun ArgonTheme(accentHex: String? = null, darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+fun ArgonTheme(
+    accentHex: String? = null,
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    headingFont: FontFamily? = null,
+    bodyFont: FontFamily? = null,
+    content: @Composable () -> Unit,
+) {
     val context = LocalContext.current
-    val type = remember(context) {
+    val type = remember(context, headingFont, bodyFont) {
         argonType(
-            serif = family(context, R.font.instrument_serif_regular) { FontFamily(Font(R.font.instrument_serif_regular)) },
-            sans = family(context, R.font.hanken_grotesk) { FontFamily(listOf(400, 500, 600, 700).map(::hanken)) },
+            serif = headingFont ?: family(context, R.font.instrument_serif_regular) { FontFamily(Font(R.font.instrument_serif_regular)) },
+            sans = bodyFont ?: family(context, R.font.hanken_grotesk) { FontFamily(listOf(400, 500, 600, 700).map(::hanken)) },
         )
     }
     val colors = remember(accentHex, darkTheme) { argonColors(accentHex, darkTheme) }

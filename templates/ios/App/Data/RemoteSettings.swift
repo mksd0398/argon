@@ -39,6 +39,8 @@ struct RemoteSettings: Decodable, Equatable, Sendable {
     var announcement: Announcement? = nil
     /// `appearance.mode`; nil: the device's light or dark.
     var appearance: Appearance? = nil
+    /// `appearance.fonts`; nil: Argon's bundled fonts.
+    var fonts: MerchantFonts? = nil
 
     private enum Key: String, CodingKey {
         case brand, accent, home, collection, template, onboarding, enabled, pages, heading, text, cart, freeShippingThreshold
@@ -67,7 +69,9 @@ struct RemoteSettings: Decodable, Equatable, Sendable {
         judgeMeToken = string(.reviews, .judgeMePublicToken).flatMap { $0.isEmpty ? nil : $0 }
         navigation = Navigation.decode(try? root.decode(JSONValue.self, forKey: .navigation))
         announcement = Announcement.decode(try? root.decode(JSONValue.self, forKey: .announcement))
-        appearance = Appearance.decode(try? root.decode(JSONValue.self, forKey: .appearance))
+        let appearanceJson = try? root.decode(JSONValue.self, forKey: .appearance)
+        appearance = Appearance.decode(appearanceJson)
+        fonts = MerchantFonts.decode(appearanceJson)
     }
 
     /// The settings in `json`; nil when it isn't JSON or isn't an object.

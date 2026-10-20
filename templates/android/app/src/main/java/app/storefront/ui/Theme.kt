@@ -33,7 +33,7 @@ fun isBarDark(): Boolean {
  * or dark by [isAppDark]. The top bars take the settings' `navigation.topBar` colours.
  */
 @Composable
-fun AppTheme(accent: String?, content: @Composable () -> Unit) = ArgonTheme(accentHex = accent, darkTheme = isAppDark()) {
+fun AppTheme(accent: String?, content: @Composable () -> Unit) = ArgonTheme(accent, isAppDark(), AppGraph.headingFont, AppGraph.bodyFont) {
     val navigation = AppGraph.navigation
     val bar = ArgonBarColors(navigation.topBarBackground.toColor(), navigation.topBarForeground.toColor())
     // the status bar icons over a merchant's own bar colour (the theme's are set by MainActivity)
