@@ -5,11 +5,15 @@ import Foundation
 // built-in behaviour, so empty settings change nothing. The same on Android (Shell.kt).
 
 /// One tab of the bar. `id`: `home`, `shop`, `search`, `wishlist`, `cart`, `account`, or `screen:<handle>` (a custom
-/// page); `icon`: a name of Argon's icon set (`home`, `grid`, `search`, `heart`, `bag`, `person`, `star`, `tag`, `menu`).
+/// page); `icon`: a name of Argon's icon set (`home`, `grid`, `search`, `heart`, `bag`, `person`, `star`, `tag`, `menu`),
+/// or the merchant's own icon: an image in the store's Files (`https://cdn.shopify.com/...`), drawn in the tab's colours.
 struct ShellTab: Equatable, Sendable {
     let id: String
     let title: String
     let icon: String
+
+    /// The merchant's own icon's URL; nil for one of Argon's icons.
+    var iconUrl: String? { Navigation.isIconUrl(icon) ? icon : nil }
 
     /// The custom page's handle of a `screen:<handle>` tab; nil for the others.
     var screen: String? { id.hasPrefix("screen:") ? String(id.dropFirst("screen:".count)) : nil }
@@ -36,6 +40,8 @@ struct Navigation: Equatable, Sendable {
     func hasTab(_ id: String) -> Bool { tabs.contains { $0.id == id } }
 
     static let icons: Set<String> = ["home", "grid", "search", "heart", "bag", "person", "star", "tag", "menu"]
+    /// An uploaded icon: only the store's Files, where Krypton puts it.
+    static func isIconUrl(_ icon: String) -> Bool { icon.hasPrefix("https://cdn.shopify.com/") }
     private static let ids = ["home": "Home", "shop": "Shop", "search": "Search", "wishlist": "Wishlist", "cart": "Cart", "account": "Account"]
     private static let defaultIcons = ["home": "home", "shop": "grid", "search": "search", "wishlist": "heart", "cart": "bag", "account": "person"]
     private static let styles: Set<String> = ["standard", "centered_logo", "search"]
@@ -81,7 +87,7 @@ struct Navigation: Equatable, Sendable {
             let given = String((tab["title"]?.string?.trimmingCharacters(in: .whitespaces) ?? "").prefix(16))
             let title = !given.isEmpty ? given : ids[id] ?? (screen ?? "").replacingOccurrences(of: "-", with: " ")
                 .replacingOccurrences(of: "_", with: " ").capitalizedFirst
-            let icon = tab["icon"]?.string.flatMap { icons.contains($0) ? $0 : nil } ?? defaultIcons[id] ?? "star"
+            let icon = tab["icon"]?.string.flatMap { icons.contains($0) || isIconUrl($0) ? $0 : nil } ?? defaultIcons[id] ?? "star"
             tabs.append(ShellTab(id: id, title: title, icon: icon))
         }
         guard (2...5).contains(tabs.count), tabs.first?.id == "home", Set(tabs.map { $0.id }).count == tabs.count else { return nil }

@@ -88,6 +88,16 @@ final class ShellTests: XCTestCase {
         XCTAssertNil(decoded[0].screen)
     }
 
+    func testUploadedIconsComeFromTheStoresFilesOnly() throws {
+        let icon = "https://cdn.shopify.com/s/files/1/0001/files/sizes.png?v=1"
+        let decoded = try XCTUnwrap(tabs("""
+        [{"id": "home", "icon": "\(icon)"}, {"id": "cart", "icon": "https://example.com/x.png"}]
+        """))
+        XCTAssertEqual(decoded[0].iconUrl, icon)
+        XCTAssertEqual(decoded[1], ShellTab(id: "cart", title: "Cart", icon: "bag"), "another host is the id's own icon")
+        XCTAssertNil(decoded[1].iconUrl)
+    }
+
     func testTopBarAndDrawerValues() {
         XCTAssertNil(navigation(#"{"topBar": {"style": "fancy"}}"#)?.topBarStyle)
         XCTAssertEqual(navigation(#"{"topBar": {"style": "search"}}"#)?.topBarStyle, "search")

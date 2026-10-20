@@ -214,6 +214,34 @@ final class TabState {
     }
 }
 
+/// The merchant's uploaded tab icons: each downloaded once a launch and kept as a template image at the bar's size, so
+/// it takes the tab's colours. Argon's icon shows until it is here, and if it can't be.
+@MainActor @Observable
+final class TabIcons {
+    static let shared = TabIcons()
+    private var images: [String: Image] = [:]
+    @ObservationIgnored private var asked: Set<String> = []
+
+    func image(_ url: String?) -> Image? {
+        guard let url, let address = URL(string: url) else { return nil }
+        if asked.insert(url).inserted {
+            Task {
+                guard let (data, _) = try? await URLSession.shared.data(from: address), let picture = UIImage(data: data) else { return }
+                images[url] = Image(uiImage: Self.fit(picture))
+            }
+        }
+        return images[url]
+    }
+
+    /// `picture` within `side` points square, as a template image.
+    static func fit(_ picture: UIImage, side: CGFloat = 25) -> UIImage {
+        let scale = min(side / max(picture.size.width, 1), side / max(picture.size.height, 1))
+        let size = CGSize(width: picture.size.width * scale, height: picture.size.height * scale)
+        return UIGraphicsImageRenderer(size: size).image { _ in picture.draw(in: CGRect(origin: .zero, size: size)) }
+            .withRenderingMode(.alwaysTemplate)
+    }
+}
+
 /// A settings icon name (`Navigation.icons`) as the component library's icon.
 func shellIcon(_ name: String) -> ArgonIconName {
     switch name {
@@ -309,7 +337,7 @@ struct Tabs: View {
         // badge at 0).
         let navigation = AppGraph.navigation
         let items = navigation.tabs.map { tab in
-            ArgonBottomBarItem(id: tab.id, title: tab.title, icon: shellIcon(tab.icon), badge: tab.id == "cart" ? AppGraph.cart.cart?.totalQuantity : nil)
+            ArgonBottomBarItem(id: tab.id, title: tab.title, icon: shellIcon(tab.icon), image: TabIcons.shared.image(tab.iconUrl), badge: tab.id == "cart" ? AppGraph.cart.cart?.totalQuantity : nil)
         }
         ArgonBottomBar(
             items: items,
