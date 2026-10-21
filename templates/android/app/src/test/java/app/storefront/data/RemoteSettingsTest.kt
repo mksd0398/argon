@@ -36,6 +36,14 @@ class RemoteSettingsTest {
     // Decoding
 
     @Test
+    fun decodesDelivery() {
+        assertEquals(true, RemoteSettings.decode("""{"delivery":{"enabled":true,"source":"rules"}}""")!!.delivery)
+        assertEquals(false, RemoteSettings.decode("""{"delivery":{"enabled":false}}""")!!.delivery)
+        assertNull(RemoteSettings.decode("""{"delivery":{"enabled":"yes"}}""")!!.delivery)
+        assertNull(RemoteSettings.decode("{}")!!.delivery)
+    }
+
+    @Test
     fun decodesEveryField() {
         val s = RemoteSettings.decode(full)!!
         assertEquals("#1F6FEB", s.accent)

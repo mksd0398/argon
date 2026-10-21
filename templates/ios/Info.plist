@@ -53,6 +53,8 @@
 	<key>GokwikEnvironment</key>
 	<string>$(GOKWIK_ENVIRONMENT)</string>
 	<!-- The UPI apps GoKwik's checkout asks about (canOpenURL), to offer the installed ones. Harmless without it. -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Your location finds your pincode, to show when an order would arrive. It stays on your phone.</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>tez</string>
