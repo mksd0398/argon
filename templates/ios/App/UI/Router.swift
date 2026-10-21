@@ -372,6 +372,8 @@ struct Tabs: View {
         }
         // the stored session, so the Account tab opens signed in
         .task { await AppGraph.auth.load() }
+        // the KwikPass session (LOGIN=kwikpass), checked with GoKwik
+        .task { await AppGraph.kwikPass?.load() }
     }
 }
 

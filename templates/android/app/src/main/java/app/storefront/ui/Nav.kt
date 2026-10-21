@@ -299,6 +299,7 @@ private fun AppNav(startTab: AppTab? = null) {
             composable("orders") { OrdersScreen(nav) }
             composable("return/{orderId}") { ReturnScreen(it.arguments?.getString("orderId").orEmpty(), nav) }
             composable("profile") { ProfileScreen(nav) }
+            if (AppGraph.kwikPass != null) composable("kwikpass") { KwikPassScreen(nav) }
             composable("addresses") { AddressesScreen(nav) }
             composable("policy/{handle}") { PolicyScreen(it.arguments?.getString("handle").orEmpty(), nav) }
             composable("page/{handle}") { PageScreen(it.arguments?.getString("handle").orEmpty(), nav) }

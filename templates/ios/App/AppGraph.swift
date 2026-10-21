@@ -59,6 +59,15 @@ enum AppGraph {
     /// Whether the store's server reports the purchase to Google Analytics, and the app leaves it out (`SERVER_PURCHASE`,
     /// false unless it is `true`): Google Analytics would count one from each.
     static let serverPurchase = info("ServerPurchase").trimmingCharacters(in: .whitespaces).lowercased() == "true"
+    /// Whether "Checkout" and "Buy now" open GoKwik's checkout (`CHECKOUT=gokwik`) instead of Shopify's.
+    static let goKwikCheckout = info("Checkout").trimmingCharacters(in: .whitespaces).lowercased() == "gokwik"
+    /// Whether sign-in is KwikPass's phone OTP (`LOGIN=kwikpass`) instead of Shopify's customer accounts: see `kwikPass`.
+    static let kwikPassLogin = info("Login").trimmingCharacters(in: .whitespaces).lowercased() == "kwikpass"
+    /// GoKwik's merchant id (`GOKWIK_MERCHANT_ID`) and backend (`GOKWIK_ENVIRONMENT`), for either of the two.
+    static let goKwikMerchantId = info("GokwikMerchantId").trimmingCharacters(in: .whitespaces)
+    static let goKwikEnvironment = GoKwikEnvironment(config: info("GokwikEnvironment"))
+    /// Whether the app offers "Sign in": through KwikPass, or Shopify's customer accounts (a store can skip the client).
+    static let canSignIn = kwikPassLogin || !customerClientId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     /// The app's name, as under its icon (`APP_NAME`).
     static let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? ""
 
@@ -92,6 +101,9 @@ enum AppGraph {
 
     /// Whether there is an account to show: a signed-in customer, or the sample one.
     @MainActor static var hasAccount: Bool { auth.signedIn || sampleAccount }
+
+    /// Whether the shopper is signed in, through Shopify's customer accounts or KwikPass. Observable.
+    @MainActor static var signedIn: Bool { auth.signedIn || kwikPass?.signedIn == true }
 
     /// Product reviews (Judge.me). Without a `judgeMeToken` they are read the way Judge.me's own storefront widget reads
     /// them, and a store that has none shows none (see `JudgeMe`). The demo store's app has bundled sample reviews
@@ -131,7 +143,8 @@ enum AppGraph {
         defaults: .standard,
         accessToken: { try await AppGraph.auth.validAccessToken() },
         track: { AppGraph.analytics.track($0) },
-        cartAttributes: { await AppGraph.analytics.cartAttributes() }
+        cartAttributes: { await AppGraph.analytics.cartAttributes() },
+        contact: { AppGraph.kwikPass?.contact }
     )
 
     /// The company a signed-in B2B customer buys for: it puts `storefront` and `cart` in that company's context.
@@ -167,6 +180,11 @@ enum AppGraph {
         loadDocument: AppGraph.document,
         open: { url in try await AppGraph.browser.open(url, scheme: "shop.\(AppGraph.shopId).app") }
     )
+
+    /// The KwikPass session and sign-in (`LOGIN=kwikpass`); nil otherwise, and then nothing of KwikPass runs.
+    @MainActor static let kwikPass: KwikPassStore? = kwikPassLogin
+        ? KwikPassStore(environment: goKwikEnvironment, merchantId: goKwikMerchantId)
+        : nil
 
     /// The loaded brand (nil until `loadBrand` succeeds); the theme follows it.
     @MainActor static let brand = BrandState()

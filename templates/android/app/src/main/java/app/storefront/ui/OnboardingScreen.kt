@@ -70,7 +70,7 @@ fun OnboardingScreen(onDone: (signIn: Boolean) -> Unit) {
     }
     val brand = loaded ?: Brand(BuildConfig.APP_NAME, logo = null, cover = null, accent = null, hosts = emptySet())
     val pages = remember(brand) { Onboarding.pages(brand, AppGraph.homeTemplate).let { AppGraph.settings?.pages(it) ?: it } }
-    val canSignIn = AppGraph.customerClientId.isNotBlank()
+    val canSignIn = AppGraph.kwikPass != null || AppGraph.customerClientId.isNotBlank()
     val pager = rememberPagerState { pages.size }
     val scope = rememberCoroutineScope()
     val last = pager.currentPage == pages.lastIndex

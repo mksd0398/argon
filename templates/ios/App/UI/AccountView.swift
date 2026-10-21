@@ -32,7 +32,9 @@ struct AccountView: View {
 
     var body: some View {
         Group {
-            if AppGraph.hasAccount {
+            if let session = AppGraph.kwikPass?.session, session.complete, !AppGraph.sampleAccount {
+                KwikPassAccount(session: session, screen: screen)
+            } else if AppGraph.hasAccount {
                 // not kept: a new order shows on the next visit, and nothing of this customer outlives a sign-out
                 FreshLoader(load: loadAccount) { SignedIn(account: $0, screen: screen) }
             } else {
@@ -54,11 +56,13 @@ private struct SignedOut: View {
     @State private var starting = false
     @State private var failure: String? = nil
     @State private var policies: [ShopPolicy] = []
+    // KwikPass's sign-in screens are up (LOGIN=kwikpass)
+    @State private var kwikPassSignIn = false
     @Environment(\.argonTheme) private var theme
 
     var body: some View {
-        // the CLI lets a store skip the Customer Account client: no client id, no sign-in
-        let canSignIn = trimmedText(AppGraph.customerClientId) != nil
+        // the CLI lets a store skip the Customer Account client: no client id, no sign-in (KwikPass needs none)
+        let canSignIn = AppGraph.canSignIn
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 ScreenSections(slot: screen, part: .above, bottom: theme.spacing.l)
@@ -107,10 +111,19 @@ private struct SignedOut: View {
             .padding(.vertical, theme.spacing.l)
         }
         .task { policies = await loadPolicies() }
+        .argonFullScreenModal(isPresented: $kwikPassSignIn, title: "Sign in") {
+            if let kwikPass = AppGraph.kwikPass {
+                KwikPassSignIn(store: kwikPass) { kwikPassSignIn = false }
+            }
+        }
     }
 
     // Discovery runs first, so a store without the Customer Account API fails here (the error shows), before any browser opens.
     private func signIn() {
+        if AppGraph.kwikPass != nil {
+            kwikPassSignIn = true
+            return
+        }
         starting = true
         failure = nil
         Task {
@@ -344,10 +357,68 @@ private struct EmailOffers: View {
     }
 }
 
+// MARK: KwikPass
+
+/// The account of a shopper signed in with KwikPass (`LOGIN=kwikpass`): their phone and email, and the rows that need no
+/// Customer Account API (KwikPass gives the app no token for it: no orders, profile, addresses or returns here).
+@MainActor
+private struct KwikPassAccount: View {
+    let session: KwikPassSession
+    let screen: ScreenSlot
+    @State private var policies: [ShopPolicy] = []
+    @Environment(Router.self) private var router
+    @Environment(\.argonTheme) private var theme
+
+    var body: some View {
+        let spacing = theme.spacing
+        ScrollView {
+            VStack(alignment: .leading, spacing: spacing.l) {
+                ScreenSections(slot: screen, part: .above)
+                Group {
+                    HStack(spacing: spacing.m) {
+                        ArgonAvatar(imageUrl: nil, initials: initials(nil, nil, session.email), size: .l)
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(verbatim: "+91 \(session.phone)").font(theme.type.headline).foregroundStyle(theme.colors.ink)
+                            Text(session.email).font(theme.type.body).foregroundStyle(theme.colors.muted).lineLimit(1)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    Text("Your order updates arrive by SMS and email.").font(theme.type.caption).foregroundStyle(theme.colors.muted)
+                    VStack(spacing: 0) {
+                        ArgonListItem(title: "Wishlist", trailing: .chevron) { AppGraph.tabs.selected = .wishlist }
+                        StoreRows(policies: policies)
+                        DebugRows()
+                    }
+                    .buttonStyle(.plain)
+                    Privacy()
+                    NotificationsRow()
+                    VStack(spacing: spacing.s) {
+                        ArgonButton(title: "Sign out", style: .secondary, fullWidth: true) { signOut() }
+                        // the store's contact page takes the request, as for any account
+                        ArgonButton(title: "Delete account", style: .tertiary, fullWidth: true) { router.open(contactRoute()) }
+                    }
+                }
+                .padding(.horizontal, spacing.l)
+                ScreenSections(slot: screen, part: .below)
+            }
+            .padding(.vertical, spacing.l)
+        }
+        .task { policies = await loadPolicies() }
+    }
+}
+
 /// Leaves the account: the sample one is just switched off; a signed-in customer is signed out, not tied to the screen
 /// (which goes away as soon as the session does).
 @MainActor
 private func signOut() {
+    if let kwikPass = AppGraph.kwikPass, kwikPass.signedIn {
+        Task {
+            // the cart carries the shopper's email and phone: it goes with them
+            await AppGraph.cart.completed()
+            await kwikPass.signOut()
+        }
+        return
+    }
     let signedIn = AppGraph.auth.signedIn
     AppGraph.sampleAccount = false
     if !signedIn { return }

@@ -170,7 +170,8 @@ test("--demo --yes scaffolds both apps against mock.shop", async () => {
     for (const line of ["SHOP_DOMAIN=mock.shop", "SHOP_ID=68817551382", "STOREFRONT_TOKEN=", "CUSTOMER_CLIENT_ID=",
       "API_VERSION=2026-10", "APP_NAME=Mock.shop", "BUNDLE_ID=com.mockshop.demoapp", "PDP_METAFIELDS=",
       "HOME_TEMPLATE=fashion", "COLLECTION_TEMPLATE=top", "JUDGEME_PUBLIC_TOKEN=", "SHOW_VENDOR=false", "ONBOARDING=true", "FREE_SHIPPING_THRESHOLD=150",
-      "META_APP_ID=", "META_CLIENT_TOKEN=", "MOENGAGE_WORKSPACE_ID=", "MOENGAGE_DATA_CENTER=", "SERVER_PURCHASE=false"]) {
+      "META_APP_ID=", "META_CLIENT_TOKEN=", "MOENGAGE_WORKSPACE_ID=", "MOENGAGE_DATA_CENTER=", "SERVER_PURCHASE=false",
+      "CHECKOUT=shopify", "LOGIN=shopify", "GOKWIK_MERCHANT_ID=", "GOKWIK_ENVIRONMENT=production"]) {
       assert.ok(props.split("\n").includes(line), `shopify.properties has ${line}`);
     }
     // no analytics unless asked for: no SDK in the iOS package, no Firebase file, no server, nothing about it at the end

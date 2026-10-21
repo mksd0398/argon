@@ -120,13 +120,24 @@ internal tailrec fun Context.componentActivity(): ComponentActivity? = when (thi
  * Analytics hears of the whole way from here: `begin_checkout` as the sheet opens (the app has the whole cart), the
  * shipping and payment steps from the checkout's web pixel events, and the purchase from the completed order, which
  * comes once (the pixel's `checkout_completed` is left alone).
+ *
+ * A store on GoKwik's checkout (CHECKOUT=gokwik) gets that instead, for the same cart ([presentGoKwikCheckout]).
  */
 internal suspend fun presentCheckout(url: String, host: ComponentActivity, onError: (String) -> Unit) {
     // Behind a storefront password the sheet would end up on the shop's web pages: say so instead of opening it. A debug
     // build opens it anyway, so checkout can be tried on a development store (they all have a password): enter it, close
     // the sheet, and Checkout again
     if (!BuildConfig.DEBUG && passwordProtected(url, AppGraph.http)) return onError(PASSWORD_PROTECTED_CHECKOUT)
+    withContext(Dispatchers.Main) {
+        if (host.isFinishing || host.isDestroyed) return@withContext
+        val cart = AppGraph.cart.cart.value
+        cart?.let { AppGraph.analytics.track(beginCheckout(it)) }
+        if (AppGraph.goKwik.checkout && cart != null) presentGoKwikCheckout(cart, url, host, onError) else showShopifyCheckout(url, host, onError)
+    }
+}
 
+/** Checkout Kit's sheet for [url] over [host], on the main thread: [presentCheckout]'s, and GoKwik's when it hands back. */
+internal fun showShopifyCheckout(url: String, host: ComponentActivity, onError: (String) -> Unit) {
     // The sheet shows checkout and nothing of the shop's website: a store page (a link, a redirect, "Continue shopping")
     // closes it and opens the app's cart instead. A debug build lets the password page through, as above.
     val hosts = AppGraph.brand.value?.hosts.orEmpty() + setOfNotNull(AppGraph.shopDomain, Uri.parse(url).host)
@@ -165,12 +176,8 @@ internal suspend fun presentCheckout(url: String, host: ComponentActivity, onErr
         // A closed sheet is not reused: the page it was left on (a link it followed, say) is not checkout any more
         override fun onCheckoutCanceled() = ShopifyCheckoutSheetKit.invalidate()
     }
-    withContext(Dispatchers.Main) {
-        if (host.isFinishing || host.isDestroyed) return@withContext
-        AppGraph.cart.cart.value?.let { AppGraph.analytics.track(beginCheckout(it)) }
-        sheet = ShopifyCheckoutSheetKit.present(url, host, processor)
-        guardCheckoutSheet(storePage, leave)
-    }
+    sheet = ShopifyCheckoutSheetKit.present(url, host, processor)
+    guardCheckoutSheet(storePage, leave)
 }
 
 /** "Men's T-shirt · Small / Olive × 1": a bundle's part on a cart line (the variant left out when it is "Default Title"). */
@@ -273,7 +280,8 @@ fun CartScreen(nav: NavController) {
     var preload by remember { mutableStateOf<Job?>(null) }
     LaunchedEffect(cart) {
         preload = coroutineContext[Job]
-        if (activity == null || cart?.lines.isNullOrEmpty()) return@LaunchedEffect
+        // GoKwik's checkout has nothing to preload: Checkout Kit opens only if GoKwik hands back
+        if (activity == null || cart?.lines.isNullOrEmpty() || AppGraph.goKwik.checkout) return@LaunchedEffect
         delay(500)
         try {
             AppGraph.cart.checkoutUrl()?.let { ShopifyCheckoutSheetKit.preload(it, activity) }

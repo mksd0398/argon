@@ -28,6 +28,7 @@ test("parseArgs: --flag=value, defaults and missing value", () => {
     bundleId: "com.x.y", home: undefined, collection: undefined, judgemeToken: undefined,
     firebaseAndroid: undefined, firebaseIos: undefined, metaAppId: undefined, metaClientToken: undefined,
     moengageWorkspaceId: undefined, moengageDataCenter: undefined, settingsUrl: undefined, customerRedirectUri: undefined,
+    checkout: undefined, login: undefined, gokwikMerchantId: undefined, gokwikEnvironment: undefined,
     server: false, push: false, skipContent: false, yes: false, help: false,
   });
   assert.throws(() => parseArgs(["--store"]), /Missing value for --store/);
@@ -35,6 +36,17 @@ test("parseArgs: --flag=value, defaults and missing value", () => {
   assert.deepEqual([templates.home, templates.collection, templates.judgemeToken], ["grocery", "bottom", "pub"]);
   assert.throws(() => parseArgs(["--home=luxury"]), /--home must be one of: fashion, beauty, grocery, b2b/);
   assert.throws(() => parseArgs(["--collection=side"]), /--collection must be one of: top, bottom/);
+});
+
+test("parseArgs: GoKwik checkout and KwikPass", () => {
+  const o = parseArgs(["app", "--checkout=gokwik", "--login=kwikpass", "--gokwik-merchant-id=19g6jle2d5p3n", "--gokwik-environment=sandbox"]);
+  assert.deepEqual([o.checkout, o.login, o.gokwikMerchantId, o.gokwikEnvironment], ["gokwik", "kwikpass", "19g6jle2d5p3n", "sandbox"]);
+  assert.equal(parseArgs(["app", "--login=kwikpass", "--gokwik-merchant-id=m1"]).checkout, undefined, "KwikPass alone keeps Shopify's checkout");
+  assert.throws(() => parseArgs(["app", "--checkout=gokwik"]), /need --gokwik-merchant-id/);
+  assert.throws(() => parseArgs(["app", "--login=kwikpass"]), /need --gokwik-merchant-id/);
+  assert.throws(() => parseArgs(["app", "--checkout=razorpay"]), /--checkout must be one of: shopify, gokwik/);
+  assert.throws(() => parseArgs(["app", "--login=otp"]), /--login must be one of: shopify, kwikpass/);
+  assert.throws(() => parseArgs(["app", "--checkout=gokwik", "--gokwik-merchant-id=a b"]), /letters, digits/);
 });
 
 test("parseArgs: analytics flags", () => {

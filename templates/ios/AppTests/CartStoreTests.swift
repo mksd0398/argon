@@ -39,6 +39,7 @@ final class CartStoreTests: XCTestCase {
         token: String? = nil,
         accessToken: (() async throws -> String?)? = nil,
         attributes: @escaping () async -> [String: String] = { [:] },
+        contact: (email: String, phone: String)? = nil,
         reply: ((String) async throws -> String)? = nil
     ) -> CartStore {
         let cart = cartJson
@@ -53,7 +54,8 @@ final class CartStoreTests: XCTestCase {
             defaults: UserDefaults(suiteName: suite)!,
             accessToken: tokenSource,
             track: { self.events.append($0) },
-            cartAttributes: attributes
+            cartAttributes: attributes,
+            contact: { contact }
         )
     }
 
@@ -145,6 +147,20 @@ final class CartStoreTests: XCTestCase {
         let variables = calls[1].variables
         XCTAssertEqual(variables["cartId"] as? String, cartId)
         XCTAssertEqual((variables["buyerIdentity"] as? [String: Any])?["customerAccessToken"] as? String, "tok")
+    }
+
+    /// A KwikPass shopper (no Customer Account token) goes on the cart as their email and phone, once.
+    @MainActor
+    func testCheckoutUrlAttachesTheKwikPassContact() async throws {
+        let s = store(contact: (email: "ada@example.com", phone: "+919876543210"))
+        try await s.add("v1", quantity: 1)
+        _ = await s.checkoutUrl()
+        _ = await s.checkoutUrl()
+        XCTAssertEqual(names, ["CartCreate", "CartBuyerIdentityUpdate"])
+        let identity = try XCTUnwrap(calls[1].variables["buyerIdentity"] as? [String: Any])
+        XCTAssertEqual(identity["email"] as? String, "ada@example.com")
+        XCTAssertEqual(identity["phone"] as? String, "+919876543210")
+        XCTAssertNil(identity["customerAccessToken"])
     }
 
     // Shopify answers every buyer update with a checkout URL under a new key. Attaching the same customer to the same
