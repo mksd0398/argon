@@ -4,6 +4,7 @@
 
 ### Added
 
+- **Delivery dates by pincode:** with Krypton's Delivery dates on (`delivery.enabled` in the settings), the product page shows "Deliver to 560001 · Bengaluru · Change" and "Delivery by Thu, 24 Oct", cash on delivery, or that the store doesn't deliver to the pincode. The customer types a pincode, uses the phone's location (asked for only on that tap, geocoded on the device) or picks a saved address; the default address fills it in the first time. Only the pincode is sent, to Krypton's `/v1/delivery/{shop}`. Android declares the coarse and fine location permissions; iOS has `NSLocationWhenInUseUsageDescription` and declares coarse location (app functionality, not linked) in its privacy manifest.
 - **Reviews without a Judge.me token:** with `JUDGEME_PUBLIC_TOKEN` empty the apps read the reviews through the endpoint Judge.me's own storefront widget uses (the list and the count; no star breakdown). It is not a documented API, so the token stays the supported route.
 - **Free shipping only in the shop's currency:** the cart's free-shipping row is hidden when the shopper buys in another currency, because `FREE_SHIPPING_THRESHOLD` is a number in the shop's own.
 - **Analytics: Google Analytics, Meta and MoEngage**, off unless asked for. An app carries a provider's SDK only when that provider is configured.

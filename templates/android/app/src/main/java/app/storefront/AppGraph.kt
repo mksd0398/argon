@@ -24,6 +24,8 @@ import app.storefront.data.CartBuyerIdentityInput
 import app.storefront.data.CartStore
 import app.storefront.data.CollectionTemplate
 import app.storefront.data.CustomerAccountApi
+import app.storefront.data.DeliveryStore
+import app.storefront.data.deliveryEndpoint
 import app.storefront.data.FontCache
 import app.storefront.data.GoKwikConfig
 import app.storefront.data.HomeTemplate
@@ -100,6 +102,7 @@ class StorefrontApp : Application(), SingletonImageLoader.Factory {
         AppGraph.wishlist = WishlistStore(prefs("wishlist"), AppGraph.scope, track = AppGraph.analytics::track)
         AppGraph.recentlyViewed = RecentlyViewedStore(prefs("recent"), AppGraph.scope)
         AppGraph.onboardingStore = OnboardingStore(prefs("onboarding"), AppGraph.scope)
+        AppGraph.delivery = DeliveryStore(prefs("delivery"), AppGraph.scope, AppGraph.deliveryUrl, AppGraph.http)
         AppGraph.auth = AuthStore(
             domain = AppGraph.shopDomain,
             clientId = AppGraph.customerClientId,
@@ -261,6 +264,12 @@ object AppGraph {
     /** The strip above the top bar on the tab roots (the settings'); null: none. */
     val announcement: Announcement? by lazy { settings?.announcement }
 
+    /** Where delivery dates are asked for (Krypton's `/v1/delivery/{shop}`, next to [settingsUrl]); empty: none. */
+    val deliveryUrl: String = deliveryEndpoint(settingsUrl)
+
+    /** Whether product pages show the delivery date for the customer's pincode (the settings' `delivery.enabled`). */
+    val deliveryEnabled: Boolean by lazy { settings?.delivery == true && deliveryUrl.isNotEmpty() }
+
     /** Light or dark (the settings', else the device's). */
     val appearance: Appearance by lazy { settings?.appearance ?: Appearance.System }
 
@@ -303,6 +312,7 @@ object AppGraph {
     internal lateinit var analytics: Analytics
 
     internal lateinit var wishlist: WishlistStore
+    internal lateinit var delivery: DeliveryStore
     internal lateinit var recentlyViewed: RecentlyViewedStore
     internal lateinit var onboardingStore: OnboardingStore
     internal lateinit var cart: CartStore

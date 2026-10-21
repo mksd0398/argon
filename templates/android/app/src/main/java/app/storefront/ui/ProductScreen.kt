@@ -68,6 +68,7 @@ import app.storefront.ui.product.DESCRIPTION
 import app.storefront.ui.product.GalleryViewer
 import app.storefront.ui.product.ProductAvailability
 import app.storefront.ui.product.ProductBundle
+import app.storefront.ui.product.ProductDelivery
 import app.storefront.ui.product.ProductDetails
 import app.storefront.ui.product.ProductGallery
 import app.storefront.ui.product.ProductOptions
@@ -141,12 +142,12 @@ internal fun shownVariant(product: Product, selection: Map<String, String>, rich
 
 /** The page's blocks, top to bottom. Each one hides itself when it has nothing to show. */
 internal enum class ProductBlock {
-    Gallery, Title, Price, Options, Availability, PurchaseOptions, Quantity, Bundle, Details, Trust, Reviews, PairsWith, AlsoLike, RecentlyViewed,
+    Gallery, Title, Price, Options, Availability, Delivery, PurchaseOptions, Quantity, Bundle, Details, Trust, Reviews, PairsWith, AlsoLike, RecentlyViewed,
 }
 
 /**
  * The page's blocks for the PDP block names of screens v2 (`main.blocks`, [productBlocks]), in that order: "purchase"
- * is availability, purchase options and quantity; "details" the details and the trust row; "rails" the three product
+ * is availability, delivery, purchase options and quantity; "details" the details and the trust row; "rails" the three product
  * rails. All the names in their default order give [ProductBlock]'s own order.
  */
 internal fun productBlockList(names: List<String>): List<ProductBlock> = names.flatMap { name ->
@@ -155,7 +156,7 @@ internal fun productBlockList(names: List<String>): List<ProductBlock> = names.f
         "title" -> listOf(ProductBlock.Title)
         "price" -> listOf(ProductBlock.Price)
         "options" -> listOf(ProductBlock.Options)
-        "purchase" -> listOf(ProductBlock.Availability, ProductBlock.PurchaseOptions, ProductBlock.Quantity)
+        "purchase" -> listOf(ProductBlock.Availability, ProductBlock.Delivery, ProductBlock.PurchaseOptions, ProductBlock.Quantity)
         "bundle" -> listOf(ProductBlock.Bundle)
         "details" -> listOf(ProductBlock.Details, ProductBlock.Trust)
         "reviews" -> listOf(ProductBlock.Reviews)
@@ -483,6 +484,7 @@ private fun ProductContent(state: ProductState, nav: NavController) {
                     }
                 }
                 ProductBlock.Availability -> ProductAvailability(variant, state.pickup)
+                ProductBlock.Delivery -> if (AppGraph.deliveryEnabled) ProductDelivery()
                 ProductBlock.PurchaseOptions -> ProductPurchaseOptions(variant, product.requiresSellingPlan, state.plan) { state.planId = it }
                 ProductBlock.Quantity -> if (state.canBuy) {
                     ProductQuantity(

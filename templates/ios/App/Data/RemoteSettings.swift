@@ -41,10 +41,12 @@ struct RemoteSettings: Decodable, Equatable, Sendable {
     var appearance: Appearance? = nil
     /// `appearance.fonts`; nil: Argon's bundled fonts.
     var fonts: MerchantFonts? = nil
+    /// `delivery.enabled`: product pages show the delivery date for the customer's pincode (`DeliveryStore`).
+    var delivery: Bool? = nil
 
     private enum Key: String, CodingKey {
         case brand, accent, home, collection, template, onboarding, enabled, pages, heading, text, cart, freeShippingThreshold
-        case product, showVendor, reviews, judgeMePublicToken, navigation, announcement, appearance
+        case product, showVendor, reviews, judgeMePublicToken, navigation, announcement, appearance, delivery
     }
 
     init() {}
@@ -72,6 +74,7 @@ struct RemoteSettings: Decodable, Equatable, Sendable {
         let appearanceJson = try? root.decode(JSONValue.self, forKey: .appearance)
         appearance = Appearance.decode(appearanceJson)
         fonts = MerchantFonts.decode(appearanceJson)
+        delivery = try? section(.delivery)?.decode(Bool.self, forKey: .enabled)
     }
 
     /// The settings in `json`; nil when it isn't JSON or isn't an object.

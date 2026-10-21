@@ -440,8 +440,9 @@ private struct ProductContent: View {
                 }
             }
         case .purchase:
-            // availability, purchase options, quantity with Buy now
+            // availability, delivery, purchase options, quantity with Buy now
             ProductAvailability(variant: variant, pickup: state.pickup)
+            if AppGraph.deliveryEnabled { ProductDelivery() }
             ProductPurchaseOptions(variant: variant, requiresSellingPlan: product.requiresSellingPlan, plan: state.plan) {
                 state.planId = $0
             }

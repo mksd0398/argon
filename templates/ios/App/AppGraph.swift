@@ -29,6 +29,10 @@ enum AppGraph {
     /// The merchant's font files (`appearance.fonts`): registered as the app launches, fetched after the settings.
     static let fontStore = FontStore(directory: URL.cachesDirectory.appending(path: "fonts"))
     /// Push notifications (`PUSH`, true only for an app built with `--push`, which has Firebase Messaging): see `push`.
+    /// Where delivery dates are asked for (Krypton's `/v1/delivery/{shop}`, next to `settingsUrl`); empty: none.
+    static let deliveryUrl = deliveryEndpoint(settingsUrl)
+    /// Whether product pages show the delivery date for the customer's pincode (the settings' `delivery.enabled`).
+    static let deliveryEnabled = remote?.delivery == true && !deliveryUrl.isEmpty
     static let pushEnabled = info("Push").trimmingCharacters(in: .whitespaces).lowercased() == "true"
     /// Where the app reports its push opt-in (`DEVICES_URL`, Krypton's); empty: nowhere.
     static let devicesUrl = info("DevicesUrl").trimmingCharacters(in: .whitespaces)
@@ -138,6 +142,7 @@ enum AppGraph {
     @MainActor static let wishlist = WishlistStore(defaults: .standard, track: { AppGraph.analytics.track($0) })
     @MainActor static let recentlyViewed = RecentlyViewedStore(defaults: .standard)
     @MainActor static let onboardingStore = OnboardingStore(defaults: .standard)
+    @MainActor static let delivery = DeliveryStore(defaults: .standard, url: deliveryUrl)
     @MainActor static let cart = CartStore(
         api: AppGraph.storefront,
         defaults: .standard,

@@ -3,6 +3,9 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Delivery dates: the pincode from the device's location, asked for only when the shopper taps "Use my location" -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <!-- Push (PUSH): asked for only when the shopper turns notifications on (Account, or the offer after a first purchase) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 

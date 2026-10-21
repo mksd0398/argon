@@ -45,6 +45,8 @@ data class RemoteSettings(
     val appearance: Appearance? = null,
     /** `appearance.fonts`; null: Argon's own. */
     val fonts: RemoteFonts? = null,
+    /** `delivery.enabled`: product pages show the delivery date for the customer's pincode ([DeliveryStore]). */
+    val delivery: Boolean? = null,
 ) {
     /** The free-shipping threshold: the remote one when set (zero: none), else [builtIn]. */
     fun freeShippingThreshold(builtIn: Double?): Double? = when (val remote = freeShippingThreshold) {
@@ -87,6 +89,7 @@ data class RemoteSettings(
                 announcement = Announcement.decode(root.obj("announcement")),
                 appearance = Appearance.decode(root.obj("appearance")),
                 fonts = RemoteFonts.decode(root.obj("appearance")?.obj("fonts")),
+                delivery = root.obj("delivery")?.bool("enabled"),
             )
         }
 
