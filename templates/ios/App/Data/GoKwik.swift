@@ -73,10 +73,7 @@ func goKwikCheckoutUrl(
         ],
     ]
     var link = environment.checkoutBase + base64Json(storeInfo)
-    // typed, so it can't fall through to empty data as an untyped dictionary can on Apple's JSONSerialization
-    if let token = coreToken, !token.isEmpty, let json = try? JSONEncoder().encode(["coreToken": token]) {
-        link += "&gk_token=" + json.base64EncodedString()
-    }
+    if let token = coreToken, !token.isEmpty { link += "&gk_token=" + base64Json(["coreToken": token]) }
     if let email = email, !email.isEmpty { link += "&kp_email=" + base64(email) }
     if !upiApps.isEmpty { link += "&upi_apps=" + base64Json(upiApps) }
     return URL(string: link)

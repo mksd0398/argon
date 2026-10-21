@@ -51,9 +51,9 @@ final class GoKwikTests: XCTestCase {
 
     func testSignedInSendsTheCoreTokenAndEmail() throws {
         let values = params(try url(coreToken: "core1", email: "ada@example.com", upiApps: ["googlepay", "phonepe"]))
-        // base64 of {"coreToken":"core1"}
-        XCTAssertEqual(values["gk_token"], "eyJjb3JlVG9rZW4iOiJjb3JlMSJ9")
-        XCTAssertEqual(try decoded(values["kp_email"]) as? String, "ada@example.com")
+        XCTAssertEqual(try decoded(values["gk_token"]) as? [String: String], ["coreToken": "core1"])
+        // the email itself in base64, not JSON
+        XCTAssertEqual(try XCTUnwrap(values["kp_email"]).data(using: .utf8).flatMap { Data(base64Encoded: $0) }.flatMap { String(data: $0, encoding: .utf8) }, "ada@example.com")
         XCTAssertEqual(try decoded(values["upi_apps"]) as? [String], ["googlepay", "phonepe"])
     }
 
