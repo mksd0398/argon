@@ -179,6 +179,25 @@ class CartStoreTest {
         assertEquals("tok2", calls[2].second.getValue("buyerIdentity").jsonObject.getValue("customerAccessToken").jsonPrimitive.content)
     }
 
+    // KwikPass: no customer token, so the shopper's email and phone go on the cart (once), and a token wins over them
+    @Test
+    fun checkoutUrlPutsTheContactOnTheCartWithoutAToken() = runBlocking {
+        val s = CartStore(
+            StorefrontApi({ name, vars -> calls += name to vars; answer(name) }),
+            disk(),
+            accessToken = { null },
+            contact = { CartBuyerIdentityInput(email = "a@b.in", phone = "+919876543210") },
+        )
+        s.add("v1", 1)
+        s.checkoutUrl()
+        s.checkoutUrl()
+        assertEquals(listOf("CartCreate", "CartBuyerIdentityUpdate"), names)
+        val buyer = calls[1].second.getValue("buyerIdentity").jsonObject
+        assertEquals("a@b.in", buyer.getValue("email").jsonPrimitive.content)
+        assertEquals("+919876543210", buyer.getValue("phone").jsonPrimitive.content)
+        assertNull(buyer["customerAccessToken"])
+    }
+
     @Test
     fun checkoutUrlSkipsTheBuyerWhenSignedOut() = runBlocking {
         val s = store(token = null)

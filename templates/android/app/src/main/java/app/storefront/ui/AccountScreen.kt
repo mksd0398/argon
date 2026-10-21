@@ -46,6 +46,7 @@ import app.argon.ui.components.ArgonTagStyle
 import app.argon.ui.components.ArgonTopBar
 import app.storefront.AppGraph
 import app.storefront.BuildConfig
+import app.storefront.auth.KwikPassUser
 import app.storefront.data.BuyerCompany
 import app.storefront.data.Customer
 import app.storefront.data.Money
@@ -98,8 +99,8 @@ private suspend fun <T> optional(what: String, load: suspend () -> T): T? = try 
 /**
  * The Account tab. Signed out: what an account is for, "Sign in", and on the demo store "Preview with a sample account".
  * With an account (a signed-in customer, or the sample one): the customer, their company, store credit and latest order,
- * and the ways on (orders, profile, addresses, wishlist, policies, help). The store's sections (screens v2) go above
- * and below either.
+ * and the ways on (orders, profile, addresses, wishlist, policies, help); a KwikPass shopper (LOGIN=kwikpass), their
+ * email and phone ([KwikPassAccount]). The store's sections (screens v2) go above and below either.
  */
 @Composable
 fun AccountScreen(nav: NavController) {
@@ -110,8 +111,15 @@ fun AccountScreen(nav: NavController) {
     Scaffold(topBar = { ArgonTopBar("Account", leading = nav.tabLeading("account")) }, containerColor = screenBackground(sections)) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             val hasAccount by AppGraph.hasAccount.collectAsState()
-            // not kept: a new order shows on the next visit, and nothing of this customer outlives a sign-out
-            if (hasAccount) Loader(::loadAccount, keep = false) { SignedIn(it, nav, placement, env) } else SignedOut(nav, placement, env)
+            val sample by AppGraph.sampleAccount.collectAsState()
+            val kwikPassUser = AppGraph.kwikPass?.user?.collectAsState()?.value
+            when {
+                !hasAccount -> SignedOut(nav, placement, env)
+                // KwikPass has no Customer Account API token: the shopper, without what that API serves
+                kwikPassUser != null && !sample -> KwikPassAccount(kwikPassUser, nav, placement, env)
+                // not kept: a new order shows on the next visit, and nothing of this customer outlives a sign-out
+                else -> Loader(::loadAccount, keep = false) { SignedIn(it, nav, placement, env) }
+            }
         }
     }
 }
@@ -129,11 +137,13 @@ private fun SignedOut(nav: NavController, sections: Placement?, env: SectionEnv?
     val callbackError by AppGraph.auth.signInError.collectAsState()
     var starting by remember { mutableStateOf(false) }
     var failure by remember { mutableStateOf<String?>(null) }
-    // the CLI lets a store skip the Customer Account client: no client id, no sign-in
-    val canSignIn = AppGraph.customerClientId.isNotBlank()
+    // the CLI lets a store skip the Customer Account client: no client id, no sign-in (KwikPass needs none)
+    val canSignIn = AppGraph.kwikPass != null || AppGraph.customerClientId.isNotBlank()
 
     // Discovery runs first, so a store without the Customer Account API fails here (the error shows), before any browser opens.
+    // KwikPass signs in on its own screens instead.
     fun signIn() {
+        if (AppGraph.kwikPass != null) return nav.navigate("kwikpass")
         starting = true
         failure = null
         screen.launch {
@@ -301,6 +311,46 @@ private fun SignedIn(account: Account, nav: NavController, sections: Placement?,
     }
 }
 
+/**
+ * A KwikPass shopper's account: their email and phone, the rows that need no Customer Account API (wishlist, policies,
+ * help), the store's web account for the rest, and "Sign out". Orders, addresses and the profile are left out: KwikPass
+ * gives the app no token for them.
+ */
+@Composable
+private fun KwikPassAccount(user: KwikPassUser, nav: NavController, sections: Placement?, env: SectionEnv?) {
+    val spacing = ArgonTheme.spacing
+    val gutter = Modifier.padding(horizontal = spacing.l)
+    val policies by produceState(emptyList<Policy>()) { value = loadPolicies() }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(vertical = spacing.l), verticalArrangement = Arrangement.spacedBy(spacing.l)) {
+        SectionColumn(sections?.above.orEmpty(), env)
+        Row(gutter.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing.m), verticalAlignment = Alignment.CenterVertically) {
+            ArgonAvatar(initials = initials(null, null, user.email), size = ArgonSize.L)
+            Column(Modifier.weight(1f)) {
+                Text(user.email, style = ArgonTheme.type.headline, color = ArgonTheme.colors.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("+91 ${user.phone}", style = ArgonTheme.type.body, color = ArgonTheme.colors.muted, maxLines = 1)
+            }
+        }
+        Text("Updates on your orders come by SMS and email.", gutter, style = ArgonTheme.type.caption, color = ArgonTheme.colors.muted)
+        Column {
+            ArgonListItem("Wishlist", trailing = ArgonListTrailing.Chevron, onClick = { AppGraph.tabs.select(AppTab.Wishlist) })
+            StoreRows(policies, nav)
+            ArgonListItem(
+                "Orders and account on the web",
+                trailing = ArgonListTrailing.Chevron,
+                onClick = { nav.open(Route.Web("https://shopify.com/${AppGraph.shopId}/account")) },
+            )
+            DebugRows(nav)
+        }
+        NotificationsSwitch(gutter)
+        Privacy(gutter)
+        Column(gutter, verticalArrangement = Arrangement.spacedBy(spacing.s)) {
+            ArgonButton("Sign out", style = ArgonButtonStyle.Secondary, fullWidth = true) { signOut() }
+            ArgonButton("Delete account", style = ArgonButtonStyle.Tertiary, fullWidth = true) { nav.open(contactRoute()) }
+        }
+        SectionColumn(sections?.below.orEmpty(), env)
+    }
+}
+
 /** The avatar (the customer's picture, else their initials), their name and email. */
 @Composable
 private fun AccountHeader(customer: Customer, modifier: Modifier) {
@@ -373,7 +423,20 @@ private fun EmailOffers(customer: Customer, gutter: Modifier) {
  */
 private fun signOut() {
     val signedIn = AppGraph.auth.signedIn.value
+    val kwikPass = AppGraph.kwikPass?.takeIf { it.user.value != null }
     AppGraph.sampleAccount.value = false
+    if (kwikPass != null) {
+        AppGraph.analytics.identify(null)
+        // the cart too, as below: it carries the shopper's email and phone for checkout
+        AppGraph.scope.launch {
+            try {
+                AppGraph.cart.completed()
+            } finally {
+                kwikPass.signOut()
+            }
+        }
+        return
+    }
     if (!signedIn) return
     AppGraph.analytics.identify(null)
     AppGraph.scope.launch {

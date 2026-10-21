@@ -55,7 +55,7 @@ android {
             "HOME_TEMPLATE", "COLLECTION_TEMPLATE", "JUDGEME_PUBLIC_TOKEN", "SHOW_VENDOR",
             "ONBOARDING", "FREE_SHIPPING_THRESHOLD", "SETTINGS_URL", "CUSTOMER_REDIRECT_URI",
             "META_APP_ID", "META_CLIENT_TOKEN", "MOENGAGE_WORKSPACE_ID", "MOENGAGE_DATA_CENTER", "SERVER_PURCHASE",
-            "PUSH", "DEVICES_URL",
+            "PUSH", "DEVICES_URL", "CHECKOUT", "LOGIN", "GOKWIK_MERCHANT_ID", "GOKWIK_ENVIRONMENT",
         )) buildConfigField("String", key, javaString(config(key)))
         resValue("string", "app_name", resourceString(config("APP_NAME")))
         manifestPlaceholders["authScheme"] = "shop.${config("SHOP_ID")}.app"

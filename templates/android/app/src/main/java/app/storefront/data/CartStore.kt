@@ -22,6 +22,9 @@ import kotlinx.coroutines.sync.withLock
  * Analytics: [track] gets what each change of the lines put in the cart and took out of it, once Shopify has accepted it,
  * whoever asked for the change; [cartAttributes] are what a new cart carries (`Analytics.cartAttributes`). Neither may
  * throw: the hub's don't.
+ *
+ * [contact] is the email and phone of a shopper signed in without a customer token (KwikPass), put on the cart before
+ * checkout in the token's place so Shopify's checkout starts filled in; null for anyone else.
  */
 class CartStore(
     private val api: StorefrontApi,
@@ -29,6 +32,7 @@ class CartStore(
     private val accessToken: suspend () -> String? = { null },
     private val track: (AnalyticsEvent) -> Unit = {},
     private val cartAttributes: suspend () -> Map<String, String> = { emptyMap() },
+    private val contact: suspend () -> CartBuyerIdentityInput? = { null },
 ) {
     private val idKey = stringPreferencesKey("cartId")
 
@@ -157,10 +161,15 @@ class CartStore(
     suspend fun checkoutUrl(): String? = lock.withLock {
         val current = state.value ?: return null
         try {
-            val token = accessToken() ?: return current.checkoutUrl
-            val buyer = Triple(current.id, token, companyLocationId)
+            val token = accessToken()
+            val input = if (token != null) {
+                CartBuyerIdentityInput(customerAccessToken = token, companyLocationId = companyLocationId)
+            } else {
+                contact() ?: return current.checkoutUrl
+            }
+            val buyer = Triple(current.id, token ?: "${input.email} ${input.phone}", companyLocationId)
             if (buyer == attached) return current.checkoutUrl
-            val updated = change({ api.updateBuyerIdentity(it, CartBuyerIdentityInput(customerAccessToken = token, companyLocationId = companyLocationId)) })
+            val updated = change({ api.updateBuyerIdentity(it, input) })
             if (updated != null) attached = buyer
             updated?.checkoutUrl
         } catch (e: CancellationException) {

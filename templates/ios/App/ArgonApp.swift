@@ -77,7 +77,7 @@ struct AppRoot: View {
                 // A preloaded checkout shows the cart and the buyer as they were: a cart change (a product added, a stepper
                 // tap), a sign-in or a sign-out makes it stale.
                 .onChange(of: AppGraph.cart.cart) { ShopifyCheckoutSheetKit.invalidate() }
-                .onChange(of: AppGraph.auth.signedIn) { ShopifyCheckoutSheetKit.invalidate() }
+                .onChange(of: AppGraph.signedIn) { ShopifyCheckoutSheetKit.invalidate() }
                 // The B2B buyer follows the session: looked up at start (when there is a session), after sign-in and each
                 // time the token changes (the Storefront API and the cart hold the token itself), dropped on sign-out.
                 // The sample account shows its company the same way.

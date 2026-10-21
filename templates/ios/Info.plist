@@ -44,6 +44,24 @@
 	<string>$(PUSH)</string>
 	<key>DevicesUrl</key>
 	<string>$(DEVICES_URL)</string>
+	<key>Checkout</key>
+	<string>$(CHECKOUT)</string>
+	<key>Login</key>
+	<string>$(LOGIN)</string>
+	<key>GokwikMerchantId</key>
+	<string>$(GOKWIK_MERCHANT_ID)</string>
+	<key>GokwikEnvironment</key>
+	<string>$(GOKWIK_ENVIRONMENT)</string>
+	<!-- The UPI apps GoKwik's checkout asks about (canOpenURL), to offer the installed ones. Harmless without it. -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>tez</string>
+		<string>phonepe</string>
+		<string>bhim</string>
+		<string>paytmmp</string>
+		<string>credpay</string>
+		<string>slice-upi</string>
+	</array>
 	<!-- Analytics. The keys the providers' SDKs read themselves; nothing reads them in an app without the SDK.
 	     Meta's app (META_APP_ID, META_CLIENT_TOKEN): -->
 	<key>FacebookAppID</key>

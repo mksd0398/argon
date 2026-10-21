@@ -31,7 +31,8 @@ final class AsyncLock {
 private let cartLog = Logger(subsystem: "app.storefront", category: "CartStore")
 
 /// The shopper's cart through the Storefront Cart API. Only the cart id is kept on the device; `cart` is whatever the last
-/// response said. `accessToken` is the signed-in customer's token (nil when signed out), attached to the cart before checkout.
+/// response said. `accessToken` is the signed-in customer's token (nil when signed out), attached to the cart before checkout;
+/// so is `contact`, the KwikPass shopper's email and phone (nil otherwise), which prefills Shopify's checkout.
 /// A change Shopify refuses throws its `ArgonAPIError.userErrors` (Shopify's message, meant for the shopper).
 ///
 /// Analytics: `track` gets what each change of the lines put in the cart and took out of it, once Shopify has accepted it,
@@ -47,11 +48,12 @@ final class CartStore {
     private let accessToken: () async throws -> String?
     private let track: (AnalyticsEvent) -> Void
     private let cartAttributes: () async -> [String: String]
+    private let contact: @MainActor () -> (email: String, phone: String)?
     // One change at a time: two quick taps must not create two carts or interleave line updates.
     private let lock: AsyncLock
     /// The company location a B2B customer buys for (`setBuyer`); nil for anyone else.
     private var companyLocationId: String? = nil
-    /// The buyer Shopify last put on the cart: the cart's id, the customer's token and the company location. Shopify
+    /// The buyer Shopify last put on the cart: the cart's id, the customer's token, the company location, the contact. Shopify
     /// answers every buyer update with a checkout URL under a new key, so attaching the same buyer again changes the
     /// cart each time: a screen that prepares checkout whenever the cart changes would then reload it without end.
     private var attached: AttachedBuyer? = nil
@@ -61,6 +63,8 @@ final class CartStore {
         let cartId: String
         let token: String
         let companyLocationId: String?
+        var email: String? = nil
+        var phone: String? = nil
     }
 
     init(
@@ -68,13 +72,15 @@ final class CartStore {
         defaults: UserDefaults,
         accessToken: @escaping () async throws -> String? = { nil },
         track: @escaping (AnalyticsEvent) -> Void = { _ in },
-        cartAttributes: @escaping () async -> [String: String] = { [:] }
+        cartAttributes: @escaping () async -> [String: String] = { [:] },
+        contact: @escaping @MainActor () -> (email: String, phone: String)? = { nil }
     ) {
         self.api = api
         self.defaults = defaults
         self.accessToken = accessToken
         self.track = track
         self.cartAttributes = cartAttributes
+        self.contact = contact
         lock = AsyncLock()
     }
 
@@ -163,10 +169,16 @@ final class CartStore {
         defer { lock.unlock() }
         guard let current = cart else { return nil }
         do {
-            guard let token = try await accessToken() else { return current.checkoutUrl }
-            let buyer = AttachedBuyer(cartId: current.id, token: token, companyLocationId: companyLocationId)
+            let token = try await accessToken()
+            let contact = self.contact()
+            guard token != nil || contact != nil else { return current.checkoutUrl }
+            let buyer = AttachedBuyer(
+                cartId: current.id, token: token ?? "", companyLocationId: companyLocationId, email: contact?.email, phone: contact?.phone
+            )
             if buyer == attached { return current.checkoutUrl }
-            let identity = CartBuyerIdentityInput(customerAccessToken: token, companyLocationId: companyLocationId)
+            let identity = CartBuyerIdentityInput(
+                email: contact?.email, phone: contact?.phone, customerAccessToken: token, companyLocationId: companyLocationId
+            )
             let updated = try await change({ try await self.api.updateBuyerIdentity(cartId: $0, buyerIdentity: identity) })
             if updated != nil { attached = buyer }
             return updated?.checkoutUrl

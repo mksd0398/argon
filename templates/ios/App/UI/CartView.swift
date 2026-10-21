@@ -105,48 +105,97 @@ private struct CheckoutPresenter: ViewModifier {
     @State private var failure: String? = nil
     // an order was placed in this checkout: once it has gone, push (when the app has it) may be offered
     @State private var ordered = false
+    // GoKwik turned itself off for this cart: Shopify's checkout at this URL takes its place
+    @State private var fallback: URL? = nil
 
     func body(content: Content) -> some View {
-        content.sheet(isPresented: $isPresented, onDismiss: { dismissed() }) {
-            if let url = url {
-                CheckoutSheet(checkout: url)
-                    // A closed sheet is not reused: the page it was left on (a link it followed, say) is not checkout any more
-                    .onCancel {
-                        ShopifyCheckoutSheetKit.invalidate()
-                        isPresented = false
-                    }
-                    // the sheet stays open on the order confirmation until the shopper closes it (onCancel)
-                    .onComplete { event in
-                        AppGraph.analytics.track(purchase(event.orderDetails))
-                        ordered = true
-                        Task { await AppGraph.cart.completed() }
-                    }
-                    .onPixelEvent { event in
-                        if let step = checkoutStep(event) { AppGraph.analytics.track(step) }
-                    }
-                    .onFail { error in
-                        ShopifyCheckoutSheetKit.invalidate()
-                        // the cart is kept; one Shopify no longer has (expired, already paid) is dropped by loading it again
-                        if case .checkoutExpired = error { Task { _ = try? await AppGraph.cart.load() } }
-                        failure = checkoutMessage(error)
-                        isPresented = false
-                    }
-                    // the links checkout hands out (ones that open a new window): the store's go to the app's cart, others
-                    // open as usual
-                    .onLinkClick { link in
-                        if storePage(link, checkout: url) { leave() } else { UIApplication.shared.open(link) }
-                    }
-                    .onAppear {
-                        // the kit builds its web view as the sheet appears: guarded once it is there
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            guardCheckoutSheet(isStorePage: { storePage($0, checkout: url) }, leave: leave)
-                        }
-                    }
-                    .ignoresSafeArea()
+        presented(content)
+            .onChange(of: isPresented) { _, presented in
+                if presented, let cart = AppGraph.cart.cart { AppGraph.analytics.track(beginCheckout(cart)) }
+            }
+    }
+
+    /// Shopify's checkout as a sheet; GoKwik's full screen (`CHECKOUT=gokwik`, `url` is then GoKwik's), with Shopify's in
+    /// its place once GoKwik turns itself off for the cart.
+    @ViewBuilder
+    private func presented(_ content: Content) -> some View {
+        if AppGraph.goKwikCheckout {
+            content.fullScreenCover(isPresented: $isPresented, onDismiss: { dismissed() }) {
+                if let fallback = fallback {
+                    shopify(fallback)
+                } else if let url = url {
+                    GoKwikCheckoutView(url: url, onEvent: goKwik)
+                }
+            }
+        } else {
+            content.sheet(isPresented: $isPresented, onDismiss: { dismissed() }) {
+                if let url = url { shopify(url) }
             }
         }
-        .onChange(of: isPresented) { _, presented in
-            if presented, let cart = AppGraph.cart.cart { AppGraph.analytics.track(beginCheckout(cart)) }
+    }
+
+    private func shopify(_ url: URL) -> some View {
+        CheckoutSheet(checkout: url)
+            // A closed sheet is not reused: the page it was left on (a link it followed, say) is not checkout any more
+            .onCancel {
+                ShopifyCheckoutSheetKit.invalidate()
+                isPresented = false
+            }
+            // the sheet stays open on the order confirmation until the shopper closes it (onCancel)
+            .onComplete { event in
+                AppGraph.analytics.track(purchase(event.orderDetails))
+                ordered = true
+                Task { await AppGraph.cart.completed() }
+            }
+            .onPixelEvent { event in
+                if let step = checkoutStep(event) { AppGraph.analytics.track(step) }
+            }
+            .onFail { error in
+                ShopifyCheckoutSheetKit.invalidate()
+                // the cart is kept; one Shopify no longer has (expired, already paid) is dropped by loading it again
+                if case .checkoutExpired = error { Task { _ = try? await AppGraph.cart.load() } }
+                failure = checkoutMessage(error)
+                isPresented = false
+            }
+            // the links checkout hands out (ones that open a new window): the store's go to the app's cart, others
+            // open as usual
+            .onLinkClick { link in
+                if storePage(link, checkout: url) { leave() } else { UIApplication.shared.open(link) }
+            }
+            .onAppear {
+                // the kit builds its web view as the sheet appears: guarded once it is there
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    guardCheckoutSheet(isStorePage: { storePage($0, checkout: url) }, leave: leave)
+                }
+            }
+            .ignoresSafeArea()
+    }
+
+    /// What GoKwik's page said. A placed order spends the cart as Shopify's does, then checkout closes.
+    private func goKwik(_ event: GoKwikEvent) {
+        switch event {
+        case .loaded:
+            break
+        case .orderSuccess(let data):
+            // best-effort: GoKwik's payload without an order id has no purchase to report
+            if let order = goKwikPurchase(data, cart: AppGraph.cart.cart) { AppGraph.analytics.track(order) }
+            ordered = true
+            Task { await AppGraph.cart.completed() }
+            isPresented = false
+        case .closed:
+            isPresented = false
+        case .failed(let reason):
+            failure = reason
+            isPresented = false
+        case .openInBrowser(let link):
+            UIApplication.shared.open(link)
+        case .disabled:
+            // the cart's Shopify checkout; without the cart there is none, and checkout closes
+            if let link = AppGraph.cart.cart?.checkoutUrl, let shopifyUrl = URL(string: link) {
+                fallback = shopifyUrl
+            } else {
+                isPresented = false
+            }
         }
     }
 
@@ -171,6 +220,7 @@ private struct CheckoutPresenter: ViewModifier {
     private func dismissed() {
         let reason = failure
         failure = nil
+        fallback = nil
         if ordered {
             ordered = false
             AppGraph.push?.offerAfterPurchase()
@@ -179,7 +229,8 @@ private struct CheckoutPresenter: ViewModifier {
     }
 }
 
-/// The cart's checkout to open (nil without a cart): what the cart's "Checkout" and the product page's "Buy now" open.
+/// The cart's checkout to open (nil without a cart): what the cart's "Checkout" and the product page's "Buy now" open;
+/// with `CHECKOUT=gokwik`, GoKwik's for the cart.
 /// Throws `CheckoutUnavailable` behind a storefront password, where the sheet would end up on the shop's web pages. A
 /// debug build opens it anyway, so checkout can be tried on a development store (they all have a password): enter it,
 /// close the sheet, and Checkout again.
@@ -189,11 +240,25 @@ func checkoutToOpen() async throws -> URL? {
     #if !DEBUG
     if await passwordProtected(url) { throw CheckoutUnavailable() }
     #endif
+    if AppGraph.goKwikCheckout, let cart = AppGraph.cart.cart {
+        // the KwikPass shopper's session goes along, so checkout doesn't ask for an OTP again
+        let session = AppGraph.kwikPass?.session
+        return goKwikCheckoutUrl(
+            cartId: cart.id,
+            storefrontToken: AppGraph.storefrontToken,
+            shopDomain: AppGraph.shopDomain,
+            merchantId: AppGraph.goKwikMerchantId,
+            environment: AppGraph.goKwikEnvironment,
+            coreToken: session?.coreToken,
+            email: session?.email,
+            upiApps: installedUpiApps()
+        )
+    }
     return url
 }
 
 extension View {
-    /// Shows Shopify's checkout for `url` over this screen while `isPresented`: the cart screen's "Checkout" and the
+    /// Shows Shopify's checkout (or GoKwik's) for `url` over this screen while `isPresented`: the cart screen's "Checkout" and the
     /// product page's "Buy now". A placed order spends the cart. A checkout that fails keeps it; one Shopify no longer has
     /// (expired, already paid) is dropped by loading the cart again. `onDismiss` runs once the sheet has gone, with the
     /// reason when it failed: keep `url` set until then, so the sheet doesn't blank while it animates out.
@@ -375,7 +440,8 @@ struct CartView: View {
         // preloading is only a hint: checkout still works without it, and Checkout reports real problems
         guard let link = await AppGraph.cart.checkoutUrl(), let url = URL(string: link), !Task.isCancelled else { return }
         // not while the sheet is open: Checkout Kit 3.9.1 would swap the view under it and lose its onComplete and onFail
-        guard !checkingOut else { return }
+        // GoKwik's checkout isn't Checkout Kit's: nothing to preload.
+        guard !checkingOut, !AppGraph.goKwikCheckout else { return }
         ShopifyCheckoutSheetKit.preload(checkout: url)
     }
 

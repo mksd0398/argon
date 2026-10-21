@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.content.Intent
 import android.content.res.AssetManager
+import android.provider.Settings
 import android.util.Log
 import androidx.compose.ui.text.font.FontFamily
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
@@ -11,6 +12,7 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import app.storefront.auth.AuthStore
+import app.storefront.auth.KwikPassStore
 import app.storefront.auth.TokenCrypto
 import app.storefront.data.Analytics
 import app.storefront.data.AnalyticsConsentStore
@@ -18,10 +20,12 @@ import app.storefront.data.Announcement
 import app.storefront.data.Appearance
 import app.storefront.data.Brand
 import app.storefront.data.BuyerStore
+import app.storefront.data.CartBuyerIdentityInput
 import app.storefront.data.CartStore
 import app.storefront.data.CollectionTemplate
 import app.storefront.data.CustomerAccountApi
 import app.storefront.data.FontCache
+import app.storefront.data.GoKwikConfig
 import app.storefront.data.HomeTemplate
 import app.storefront.data.JudgeMe
 import app.storefront.data.LogSink
@@ -60,6 +64,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -107,12 +112,26 @@ class StorefrontApp : Application(), SingletonImageLoader.Factory {
             decrypt = TokenCrypto::decrypt,
             loadDocument = AppGraph::document,
         )
+        // KwikPass (LOGIN=kwikpass): GoKwik's phone sign-in in place of the Customer Account one; none otherwise
+        if (AppGraph.goKwik.kwikPass) {
+            AppGraph.kwikPass = KwikPassStore(
+                AppGraph.goKwik,
+                AppGraph.http,
+                prefs("kwikpass"),
+                encrypt = TokenCrypto::encrypt,
+                decrypt = TokenCrypto::decrypt,
+                appVersion = BuildConfig.VERSION_NAME,
+                deviceId = { Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID).orEmpty() },
+            )
+        }
         AppGraph.cart = CartStore(
             AppGraph.storefront,
             prefs("cart"),
             accessToken = { AppGraph.auth.validAccessToken() },
             track = AppGraph.analytics::track,
             cartAttributes = AppGraph.analytics::cartAttributes,
+            // a KwikPass shopper has no customer token: their email and phone fill in Shopify's checkout instead
+            contact = { AppGraph.kwikPass?.user?.value?.let { CartBuyerIdentityInput(email = it.email, phone = it.e164) } },
         )
         AppGraph.buyer = BuyerStore(
             AppGraph.storefront,
@@ -134,7 +153,19 @@ class StorefrontApp : Application(), SingletonImageLoader.Factory {
         }
         // A preloaded checkout shows the cart and the buyer as they were: a cart change (a PDP add, a stepper tap), a sign-in
         // or a sign-out makes it stale.
-        MainScope().launch { merge(AppGraph.cart.cart, AppGraph.auth.signedIn).collect { ShopifyCheckoutSheetKit.invalidate() } }
+        MainScope().launch {
+            merge(AppGraph.cart.cart, AppGraph.auth.signedIn, AppGraph.kwikPass?.user ?: emptyFlow()).collect { ShopifyCheckoutSheetKit.invalidate() }
+        }
+        // the stored KwikPass session, checked with GoKwik (one it refuses signs out)
+        AppGraph.kwikPass?.let { kwikPass ->
+            AppGraph.scope.launch {
+                try {
+                    kwikPass.load()
+                } catch (e: Exception) {
+                    Log.w("AppGraph", "KwikPass session load failed", e)
+                }
+            }
+        }
         // the Cart tab's badge needs the stored cart before that tab is ever opened
         AppGraph.scope.launch {
             try {
@@ -277,6 +308,12 @@ object AppGraph {
     internal lateinit var cart: CartStore
     internal lateinit var auth: AuthStore
 
+    /** GoKwik's checkout and KwikPass sign-in, as the app was built (`CHECKOUT`, `LOGIN`, `GOKWIK_*`); both off by default. */
+    val goKwik: GoKwikConfig = GoKwikConfig.of(BuildConfig.CHECKOUT, BuildConfig.LOGIN, BuildConfig.GOKWIK_MERCHANT_ID, BuildConfig.GOKWIK_ENVIRONMENT)
+
+    /** The KwikPass session ([goKwik] `kwikPass`), which signs in in place of [auth]; null in an app without it. */
+    internal var kwikPass: KwikPassStore? = null
+
     /** The company a signed-in B2B customer buys for; it puts [storefront] and [cart] in that company's context. */
     internal lateinit var buyer: BuyerStore
 
@@ -310,10 +347,11 @@ object AppGraph {
      */
     val sampleAccount = MutableStateFlow(false)
 
-    /** Whether there is an account to show: a signed-in customer, or the sample account. */
+    /** Whether there is an account to show: a signed-in customer (KwikPass's too), or the sample account. */
     val hasAccount: StateFlow<Boolean> by lazy {
-        combine(auth.signedIn, sampleAccount) { signedIn, sample -> signedIn || sample }
-            .stateIn(scope, SharingStarted.Eagerly, auth.signedIn.value || sampleAccount.value)
+        val kwikPassUser = kwikPass?.user ?: MutableStateFlow(null)
+        combine(auth.signedIn, sampleAccount, kwikPassUser) { signedIn, sample, user -> signedIn || sample || user != null }
+            .stateIn(scope, SharingStarted.Eagerly, auth.signedIn.value || sampleAccount.value || kwikPassUser.value != null)
     }
 
     /**
