@@ -1,5 +1,5 @@
 import XCTest
-@testable import App
+@testable import ArgonStorefront
 
 final class DeliveryTests: XCTestCase {
     private func address(zip: String?, city: String? = nil, countryCode: String? = nil) -> CustomerAddress {
