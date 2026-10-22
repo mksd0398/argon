@@ -74,6 +74,8 @@ final class DeliveryTests: XCTestCase {
         store.prefill(address(zip: "560001"))
         XCTAssertEqual(store.location?.pincode, "110001", "prefill never replaces a chosen location")
         store.set(DeliveryLocation(pincode: "560001"))
+        store.fill(DeliveryLocation(pincode: "400001", city: "Mumbai"))
+        XCTAssertEqual(store.location?.pincode, "560001", "the device's location never replaces a chosen one")
         XCTAssertEqual(DeliveryStore(defaults: defaults, url: "").location, DeliveryLocation(pincode: "560001"), "kept on the device")
         let first = await store.estimate("560001")
         XCTAssertEqual(first?.date, DeliveryEstimate.day("2026-10-24"))

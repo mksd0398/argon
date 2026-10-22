@@ -95,7 +95,7 @@ The order page offers **Return or exchange items** when the store has self-serve
 
 ### Delivery dates
 
-With `SETTINGS_URL` from Krypton and its **Delivery dates** integration on (`delivery.enabled`), the product page shows "Deliver to 560001 · Bengaluru" and, for that pincode, "Delivery by Thu, 24 Oct" with cash on delivery, or that the store doesn't deliver there. The customer sets the pincode by typing it, from the phone's location (asked for only when they tap **Use my location**; the device's geocoder turns it into a pincode and the coordinates stay on the phone), or from a saved address; the signed-in customer's default address fills it in the first time. It is kept on the device. Only the pincode is sent, to Krypton's `/v1/delivery/{shop}`, which answers from the merchant's rules or Shiprocket.
+With `SETTINGS_URL` from Krypton and its **Delivery dates** integration on (`delivery.enabled`), the product page shows "Deliver to 560001 · Bengaluru" and, for that pincode, "Delivery by Thu, 24 Oct" with cash on delivery, or that the store doesn't deliver there. The customer sets the pincode by typing it, from the phone's location (asked for only when they tap **Use my location**; the device's geocoder turns it into a pincode and the coordinates stay on the phone), or from a saved address; the signed-in customer's default address fills it in the first time, else the phone's location when the app already has location permission (it never asks for it unprompted). It is kept on the device. Only the pincode is sent, to Krypton's `/v1/delivery/{shop}`, which answers from the merchant's rules or Shiprocket.
 
 ## Analytics
 
