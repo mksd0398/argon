@@ -3,6 +3,7 @@ package app.storefront.ui.product
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.pm.PackageManager
 import android.location.Geocoder
 import android.location.Location
 import android.location.LocationManager
@@ -32,6 +33,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import app.argon.ui.ArgonTheme
 import app.argon.ui.components.ArgonBottomSheet
 import app.argon.ui.components.ArgonButton
@@ -70,9 +72,12 @@ internal fun ProductDelivery(modifier: Modifier = Modifier) {
     var estimate by remember { mutableStateOf<DeliveryEstimate?>(null) }
     var picking by rememberSaveable { mutableStateOf(false) }
 
-    // No location yet: the signed-in customer's default address
+    // No location yet: the signed-in customer's default address, else the device's location when the app already may
+    // read it (never asked for here: only "Use my location" asks)
+    val context = LocalContext.current
     LaunchedEffect(signedIn) {
-        if (signedIn && location == null) {
+        if (location != null) return@LaunchedEffect
+        if (signedIn) {
             try {
                 store.prefill(AppGraph.customerAccount.customer().defaultAddress)
             } catch (e: CancellationException) {
@@ -81,6 +86,7 @@ internal fun ProductDelivery(modifier: Modifier = Modifier) {
                 log.warning("default address unread (${e.javaClass.name})")
             }
         }
+        if (store.unset() && mayLocate(context)) store.fill(detectLocation(context))
     }
     LaunchedEffect(location?.pincode) {
         val pin = location
@@ -214,6 +220,11 @@ private fun DeliverySheet(isPresented: Boolean, current: DeliveryLocation?, onDi
         }
     }
 }
+
+/** Whether the app may already read the device's location (approximate or precise). */
+private fun mayLocate(context: Context): Boolean =
+    listOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION)
+        .any { ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED }
 
 /**
  * The device's pincode and city: one location fix (a fresh one, else the last known), turned into an address by the

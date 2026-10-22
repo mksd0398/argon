@@ -128,11 +128,16 @@ class DeliveryStore(private val dataStore: DataStore<Preferences>, scope: Corout
         }
     }
 
-    /** The signed-in customer's default address, when the customer has set no location yet. */
-    suspend fun prefill(address: CustomerAddress?) {
-        val location = DeliveryLocation.of(address) ?: return
-        if (state.value == null && dataStore.safeData().first()[pincodeKey] == null) set(location)
+    /** Whether the customer has no location yet, on screen or on disk. */
+    suspend fun unset(): Boolean = state.value == null && dataStore.safeData().first()[pincodeKey] == null
+
+    /** [location] (the default address's, or the device's) when the customer has set none yet. */
+    suspend fun fill(location: DeliveryLocation?) {
+        if (location != null && unset()) set(location)
     }
+
+    /** The signed-in customer's default address, when the customer has set no location yet. */
+    suspend fun prefill(address: CustomerAddress?) = fill(DeliveryLocation.of(address))
 
     /** The estimate for [pincode]; null when it can't be had (no endpoint, offline, the store turned it off). */
     suspend fun estimate(pincode: String): DeliveryEstimate? {

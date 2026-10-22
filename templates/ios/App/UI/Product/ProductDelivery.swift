@@ -39,10 +39,12 @@ struct ProductDelivery: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, theme.spacing.l)
         .padding(.top, theme.spacing.m)
-        // No location yet: the signed-in customer's default address
+        // No location yet: the signed-in customer's default address, else the device's location when the app already
+        // may read it (never asked for here: only "Use my location" asks)
         .task(id: AppGraph.auth.signedIn) {
-            guard AppGraph.auth.signedIn, store.location == nil else { return }
-            store.prefill(try? await AppGraph.customerAccount.customer().defaultAddress)
+            guard store.location == nil else { return }
+            if AppGraph.auth.signedIn { store.prefill(try? await AppGraph.customerAccount.customer().defaultAddress) }
+            if store.location == nil, LocationFinder.mayLocate { store.fill(await LocationFinder().find()) }
         }
         .task(id: location?.pincode) {
             guard let location else { return estimate = nil }
@@ -139,6 +141,11 @@ final class LocationFinder: NSObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
     private var waiting: CheckedContinuation<CLLocation?, Never>?
     private(set) var denied = false
+
+    /// Whether the app may already read the device's location.
+    static var mayLocate: Bool {
+        [.authorizedWhenInUse, .authorizedAlways].contains(CLLocationManager().authorizationStatus)
+    }
 
     override init() {
         super.init()

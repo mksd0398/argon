@@ -138,10 +138,13 @@ final class DeliveryStore {
         defaults.set(location.city, forKey: "delivery.city")
     }
 
-    /// The signed-in customer's default address, when the customer has set no location yet.
-    func prefill(_ address: CustomerAddress?) {
-        if location == nil, let found = DeliveryLocation(address: address) { set(found) }
+    /// `found` (the default address's, or the device's) when the customer has set no location yet.
+    func fill(_ found: DeliveryLocation?) {
+        if location == nil, let found { set(found) }
     }
+
+    /// The signed-in customer's default address, when the customer has set no location yet.
+    func prefill(_ address: CustomerAddress?) { fill(DeliveryLocation(address: address)) }
 
     /// The estimate for `pincode`; nil when it can't be had (no endpoint, offline, the store turned it off).
     func estimate(_ pincode: String) async -> DeliveryEstimate? {
