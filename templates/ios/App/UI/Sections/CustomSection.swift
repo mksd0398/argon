@@ -151,8 +151,10 @@ private struct WebSection: View {
     var body: some View {
         // the theme's colours (the merchant's background and text, not Argon's own), as Android's ArgonTheme.colors
         let dark = scheme == .dark
-        func hex(_ name: String) -> String { theme.look.hex(name, dark: dark) ?? "#000000" }
-        let document = customDocument(html, accent: hex("accent"), text: hex("text"), background: hex("background"))
+        let document = customDocument(
+            html, accent: theme.look.hex("accent", dark: dark) ?? "#000000", text: theme.look.hex("text", dark: dark) ?? "#000000",
+            background: theme.look.hex("background", dark: dark) ?? "#FFFFFF"
+        )
         HtmlWebView(document: document, baseURL: URL(string: "https://\(AppGraph.shopDomain)/"), onHeight: { measured = $0 }, onLink: open)
             .frame(height: height > 0 ? CGFloat(height) : measured)
     }
