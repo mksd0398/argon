@@ -59,11 +59,11 @@ public struct ArgonButton: View {
             .padding(.horizontal, size == .s ? theme.spacing.m : theme.spacing.xl)
             // every size keeps the 44 pt touch target
             .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: size == .s ? 44 : size == .m ? 48 : 56)
-            .background(background, in: Capsule())
+            .background(background, in: RoundedRectangle(cornerRadius: theme.radius.button))
             .overlay {
-                if style == .secondary { Capsule().strokeBorder(theme.colors.ink, lineWidth: 1) }
+                if style == .secondary { RoundedRectangle(cornerRadius: theme.radius.button).strokeBorder(theme.colors.ink, lineWidth: 1) }
             }
-            .contentShape(Capsule())
+            .contentShape(RoundedRectangle(cornerRadius: theme.radius.button))
         }
         .buttonStyle(ArgonPressStyle())
         .disabled(!isEnabled || isLoading)

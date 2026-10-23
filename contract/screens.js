@@ -15,8 +15,13 @@ export const APP_SCREEN_DEFINITION = {
   ],
 };
 
-/** Built-in screens: whether sections may go above and below the screen's own content (its `main` section). */
+/**
+ * Built-in screens: whether sections may go above and below the screen's own content (its `main` section). `only`: the
+ * one section type the screen takes, and that only it takes.
+ */
 export const SYSTEM_SCREENS = {
+  // the first-launch welcome (2026-10-23-theme-and-onboarding-design.md)
+  onboarding: { main: false, only: "onboarding" },
   home: { main: false },
   product: { main: true, above: true, below: true },
   collection: { main: true, above: true, below: false },
@@ -34,7 +39,7 @@ const choice = (key, choices, value) => s(key, "choice", { choices, default: val
 const HEIGHTS = ["small", "medium", "large"];
 /** The icons a feature block can show: Argon's icon set (ArgonIconName / ArgonIcon), snake_case. */
 export const FEATURE_ICONS = ["truck", "returns", "lock", "leaf", "gift", "clock", "star", "heart", "globe", "check", "tag", "phone", "mail", "location", "info"];
-/** Every section type also takes these: a colour drawn behind it, and room above and below inside that colour. */
+/** Every section type but the welcome also takes these: a colour drawn behind it, and room above and below inside that colour. */
 const STYLE_SETTINGS = [s("background", "color"), choice("padding", ["none", "small", "medium", "large"], undefined)];
 
 /** Section types: their settings (type, default, limits) and the blocks they take. */
@@ -109,6 +114,20 @@ export const SECTION_TYPES = {
     blocks: { feature: { name: "Feature", settings: [choice("icon", FEATURE_ICONS, "check"), s("heading", "text"), s("text", "text")] } },
     maxBlocks: 8,
   },
+  onboarding: {
+    name: "Welcome pages",
+    settings: [s("enabled", "boolean", { default: true })],
+    blocks: {
+      page: {
+        name: "Page",
+        settings: [
+          s("image", "image"), s("video", "url"), s("heading", "text", { max: 60 }), s("text", "text", { max: 200 }),
+          s("button_label", "text", { max: 24 }),
+        ],
+      },
+    },
+    maxBlocks: 5,
+  },
   image_grid: {
     name: "Image grid",
     settings: [s("heading", "text"), choice("columns", ["2", "3"], "2"), choice("aspect", ["square", "portrait", "landscape"], "square")],
@@ -116,7 +135,9 @@ export const SECTION_TYPES = {
     maxBlocks: 12,
   },
 };
-for (const type of Object.values(SECTION_TYPES)) type.settings.push(...STYLE_SETTINGS);
+for (const [key, type] of Object.entries(SECTION_TYPES)) if (key !== "onboarding") type.settings.push(...STYLE_SETTINGS);
+/** The screen a section type is only for (its `only`); null: any screen but those. */
+const onlyOn = (type) => Object.keys(SYSTEM_SCREENS).find((screen) => SYSTEM_SCREENS[screen].only === type) ?? null;
 
 /**
  * A template's `screen`: how the screen itself looks. `top_bar` and `top_bar_tint` are for screens drawn wholly from
@@ -185,7 +206,7 @@ function checkValue(setting, value, at) {
   switch (setting.type) {
     case "text": case "richtext": case "html": case "url":
       if (typeof value !== "string") throw fail("must be text");
-      if (value.length > LIMITS[setting.type]) throw fail(`is longer than ${LIMITS[setting.type]} characters`);
+      if (value.length > (setting.max ?? LIMITS[setting.type])) throw fail(`is longer than ${setting.max ?? LIMITS[setting.type]} characters`);
       if (setting.type === "url" && value && !/^https:\/\/\S+$/.test(value)) throw fail("must be an https link");
       return value;
     case "image":
@@ -273,6 +294,7 @@ export function checkTemplate(template, screen) {
     }
     const type = SECTION_TYPES[section.type];
     if (!type) throw new TemplateError(`${at}: unknown section type "${section.type}"`);
+    if (onlyOn(section.type) !== (system?.only ? screen : null)) throw new TemplateError(`${at}: the ${screen} screen doesn't take ${type.name} sections`);
     out.settings = checkSettings(type.settings, section.settings, `${at}.settings`);
     if (section.blocks !== undefined) {
       if (!type.blocks || !Array.isArray(section.blocks) || section.blocks.length > (type.maxBlocks ?? 0)) throw new TemplateError(`${at}.blocks: not allowed here, or too many`);
@@ -297,6 +319,7 @@ export function checkTemplate(template, screen) {
     return out;
   });
   if (mains > 1) throw new TemplateError("A screen has one main section");
+  if (system?.only && sections.length > 1) throw new TemplateError(`The ${screen} screen has one section`);
   if (system?.main && !mains) sections.push({ id: "main", type: "main", settings: {} });
   if (system?.main) {
     const main = sections.findIndex((x) => x.type === "main");
@@ -306,7 +329,7 @@ export function checkTemplate(template, screen) {
   const checked = { version: 2, sections };
   if (template.screen !== undefined) {
     const look = checkSettings(SCREEN_SETTINGS, template.screen, "screen");
-    if (system?.main && ("top_bar" in look || "top_bar_tint" in look)) {
+    if ((system?.main || system?.only) && ("top_bar" in look || "top_bar_tint" in look)) {
       throw new TemplateError(`screen: the ${screen} screen keeps its own top bar; top_bar is for home and your pages`);
     }
     if (Object.keys(look).length) checked.screen = look;

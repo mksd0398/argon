@@ -96,4 +96,44 @@ class OnboardingTest {
         s.finish() // the write fails; the welcome is done for this run all the same
         assertEquals(true, s.done.value)
     }
+
+    // The onboarding screen
+
+    private fun screen(section: String) = """{"sections":[$section]}"""
+
+    @Test
+    fun theScreensPagesInOrderAPageWithoutAPictureOverTheStockOneForItsPlace() {
+        val json = screen(
+            """{"id":"w","type":"onboarding","settings":{},"blocks":[
+              {"id":"a","type":"page","settings":{"heading":"Fresh","text":"Daily","image":{"url":"https://cdn.shopify.com/a.jpg"},"button_label":"Go on"}},
+              {"id":"b","type":"page","settings":{"video":"https://cdn.shopify.com/v.mp4"}},
+              {"id":"x","type":"slide","settings":{"heading":"not a page"}},
+              {"id":"c","type":"page","settings":{"video":"http://insecure.test/v.mp4"}},
+              {"id":"d","type":"page"}]}""",
+        )
+        val pages = (Onboarding.fromScreen(json, HomeTemplate.Fashion) as Welcome.Pages).pages
+        assertEquals(
+            listOf(
+                OnboardingPage("https://cdn.shopify.com/a.jpg", "Fresh", "Daily", button = "Go on"),
+                OnboardingPage(StockImages.url(HomeTemplate.Fashion, 2), "", "", video = "https://cdn.shopify.com/v.mp4"),
+                OnboardingPage(StockImages.url(HomeTemplate.Fashion, 3), "", ""),
+                OnboardingPage(StockImages.url(HomeTemplate.Fashion, 1), "", ""),
+            ),
+            pages,
+        )
+    }
+
+    @Test
+    fun aScreenThatTurnsTheWelcomeOffOrHidesIt() {
+        val page = """{"id":"a","type":"page","settings":{"heading":"Hi"}}"""
+        assertEquals(Welcome.Off, Onboarding.fromScreen(screen("""{"id":"w","type":"onboarding","settings":{"enabled":false},"blocks":[$page]}"""), HomeTemplate.Fashion))
+        assertEquals(Welcome.Off, Onboarding.fromScreen(screen("""{"id":"w","type":"onboarding","hidden":true,"blocks":[$page]}"""), HomeTemplate.Fashion))
+    }
+
+    @Test
+    fun noScreenNoSectionOrNoPagesIsTheAppsOwnWelcome() {
+        for (json in listOf(null, "not json", screen(""), screen("""{"id":"b","type":"banner"}"""), screen("""{"id":"w","type":"onboarding","blocks":[]}"""))) {
+            assertEquals(json, null, Onboarding.fromScreen(json, HomeTemplate.Fashion))
+        }
+    }
 }

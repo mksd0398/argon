@@ -39,3 +39,13 @@ struct OnBrand: ViewModifier {
         }
     }
 }
+
+extension ThemeLook {
+    /// The look as ArgonTheme takes it, with `accent` (`#RRGGBB`, nil for ink).
+    func argon(accent: String?) -> ArgonLook {
+        ArgonLook(
+            accentHex: accent, backgroundHex: background, textHex: text,
+            corners: ArgonCorners(rawValue: corners) ?? .rounded, buttons: ArgonButtonShape(rawValue: buttons) ?? .pill
+        )
+    }
+}

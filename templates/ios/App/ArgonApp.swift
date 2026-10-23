@@ -72,7 +72,7 @@ struct AppRoot: View {
                 AppGraph.onboardingStore.finish()
             }
             // Argon's own accent, not the shop's: over a photo the button is the light one
-            .argonTheme(accentHex: nil)
+            .argonTheme(look: AppGraph.look.argon(accent: nil))
         } else {
             Tabs()
                 // A preloaded checkout shows the cart and the buyer as they were: a cart change (a product added, a stepper
@@ -88,7 +88,7 @@ struct AppRoot: View {
                     if phase == .active { refreshBuyer() }
                 }
                 // Argon components read the theme (the screens that still draw native controls are tinted in `Tabs`)
-                .argonTheme(accentHex: AppGraph.brand.value?.accent)
+                .argonTheme(look: AppGraph.look.argon(accent: AppGraph.brand.value?.accent))
         }
     }
 

@@ -26,6 +26,8 @@ enum AppGraph {
     static let announcement = remote?.announcement
     /// Light or dark: the merchant's, else the device's.
     static let appearance = remote?.appearance ?? .system
+    /// The theme's background, text, corners and buttons: the merchant's, else Argon's.
+    static let look = remote?.look ?? ThemeLook()
     /// The merchant's font files (`appearance.fonts`): registered as the app launches, fetched after the settings.
     static let fontStore = FontStore(directory: URL.cachesDirectory.appending(path: "fonts"))
     /// Push notifications (`PUSH`, true only for an app built with `--push`, which has Firebase Messaging): see `push`.

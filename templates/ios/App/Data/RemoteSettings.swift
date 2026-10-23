@@ -41,6 +41,8 @@ struct RemoteSettings: Decodable, Equatable, Sendable {
     var appearance: Appearance? = nil
     /// `appearance.fonts`; nil: Argon's bundled fonts.
     var fonts: MerchantFonts? = nil
+    /// `appearance.colors`, `corners` and `buttons`; nil: Argon's own.
+    var look: ThemeLook? = nil
     /// `delivery.enabled`: product pages show the delivery date for the customer's pincode (`DeliveryStore`).
     var delivery: Bool? = nil
 
@@ -74,6 +76,7 @@ struct RemoteSettings: Decodable, Equatable, Sendable {
         let appearanceJson = try? root.decode(JSONValue.self, forKey: .appearance)
         appearance = Appearance.decode(appearanceJson)
         fonts = MerchantFonts.decode(appearanceJson)
+        look = ThemeLook.decode(appearanceJson)
         delivery = try? section(.delivery)?.decode(Bool.self, forKey: .enabled)
     }
 

@@ -50,19 +50,28 @@ object ArgonSpacing {
     val xxl = 32.dp
 }
 
-/** Corner tokens: 4, 8, 16 and pill. */
-object ArgonRadius {
-    val s = RoundedCornerShape(4.dp)
-    val m = RoundedCornerShape(8.dp)
-    val l = RoundedCornerShape(16.dp)
+/** Corner tokens, s/m/l by [corners] (rounded: 4, 8, 16), and pill; [button] is the buttons' shape. */
+@Immutable
+class ArgonRadius(corners: ArgonCorners = ArgonCorners.Rounded, buttons: ArgonButtonShape = ArgonButtonShape.Pill) {
+    val s = RoundedCornerShape(corners.dp[0].dp)
+    val m = RoundedCornerShape(corners.dp[1].dp)
+    val l = RoundedCornerShape(corners.dp[2].dp)
     val pill = RoundedCornerShape(percent = 50)
+    val button = if (buttons == ArgonButtonShape.Pill) pill else RoundedCornerShape(buttons.dp.dp)
 }
+
+/** The theme's corners (contract/theme.js CORNERS): s, m and l in dp. */
+enum class ArgonCorners(val dp: List<Int>) { Square(listOf(0, 0, 0)), Rounded(listOf(4, 8, 16)), Round(listOf(8, 16, 24)) }
+
+/** The buttons' shape (contract/theme.js BUTTONS). */
+enum class ArgonButtonShape(val dp: Int) { Pill(999), Rounded(8), Square(0) }
 
 /** Small, medium, large (iOS `.s/.m/.l`): avatars, buttons, spinners. */
 enum class ArgonSize { S, M, L }
 
 private val LocalArgonColors = staticCompositionLocalOf { argonColors(null, dark = false) }
 private val LocalArgonType = staticCompositionLocalOf { argonType(FontFamily.Default, FontFamily.Default) }
+private val LocalArgonRadius = staticCompositionLocalOf { ArgonRadius() }
 
 /** The tokens of the nearest [ArgonTheme]. */
 object ArgonTheme {
@@ -71,13 +80,15 @@ object ArgonTheme {
     val type: ArgonType
         @Composable @ReadOnlyComposable get() = LocalArgonType.current
     val spacing = ArgonSpacing
-    val radius = ArgonRadius
+    val radius: ArgonRadius
+        @Composable @ReadOnlyComposable get() = LocalArgonRadius.current
 }
 
 /**
  * Argon's tokens for [content], also mapped onto Material 3 (colour scheme, typography, shapes), so native
  * controls follow them: primary is the accent. [accentHex] is the shop's `#RRGGBB` brand colour; ink when absent.
  * [headingFont] replaces the serif (display, title), [bodyFont] the sans (the other roles); null keeps Argon's.
+ * [backgroundHex] and [textHex] replace paper and ink in light mode ([argonColors]); [corners] and [buttons] shape it.
  */
 @Composable
 fun ArgonTheme(
@@ -85,6 +96,10 @@ fun ArgonTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     headingFont: FontFamily? = null,
     bodyFont: FontFamily? = null,
+    backgroundHex: String? = null,
+    textHex: String? = null,
+    corners: ArgonCorners = ArgonCorners.Rounded,
+    buttons: ArgonButtonShape = ArgonButtonShape.Pill,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
@@ -94,9 +109,10 @@ fun ArgonTheme(
             sans = bodyFont ?: family(context, R.font.hanken_grotesk) { FontFamily(listOf(400, 500, 600, 700).map(::hanken)) },
         )
     }
-    val colors = remember(accentHex, darkTheme) { argonColors(accentHex, darkTheme) }
-    CompositionLocalProvider(LocalArgonColors provides colors, LocalArgonType provides type) {
-        MaterialTheme(colorScheme = colors.material(darkTheme), typography = type.material(), shapes = shapes, content = content)
+    val colors = remember(accentHex, darkTheme, backgroundHex, textHex) { argonColors(accentHex, darkTheme, backgroundHex, textHex) }
+    val radius = remember(corners, buttons) { ArgonRadius(corners, buttons) }
+    CompositionLocalProvider(LocalArgonColors provides colors, LocalArgonType provides type, LocalArgonRadius provides radius) {
+        MaterialTheme(colorScheme = colors.material(darkTheme), typography = type.material(), shapes = radius.material(), content = content)
     }
 }
 
@@ -182,10 +198,4 @@ private fun ArgonType.material(): Typography {
     )
 }
 
-private val shapes = Shapes(
-    extraSmall = RoundedCornerShape(4.dp),
-    small = RoundedCornerShape(8.dp),
-    medium = RoundedCornerShape(8.dp),
-    large = RoundedCornerShape(16.dp),
-    extraLarge = RoundedCornerShape(16.dp),
-)
+private fun ArgonRadius.material() = Shapes(extraSmall = s, small = m, medium = m, large = l, extraLarge = l)

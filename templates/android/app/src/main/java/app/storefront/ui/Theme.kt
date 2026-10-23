@@ -21,24 +21,30 @@ fun isAppDark(): Boolean = when (AppGraph.appearance) {
     Appearance.System -> isSystemInDarkTheme()
 }
 
-/** Whether the status bar lies on a dark colour: the settings' `navigation.topBar.background` when set, else the theme. */
+/** Whether the status bar lies on a dark colour: the settings' `navigation.topBar.background` when set, else the theme's. */
 @Composable
 fun isBarDark(): Boolean {
-    val bar = AppGraph.navigation.topBarBackground.toColor()
+    // the merchant's bar colour, else (light mode) the theme's own background, which the bar takes
+    val bar = AppGraph.navigation.topBarBackground.toColor().takeIf { it.isSpecified }
+        ?: if (isAppDark()) Color.Unspecified else AppGraph.look.background.toColor()
     return if (bar.isSpecified) bar.luminance() < 0.5f else isAppDark()
 }
 
 /**
  * The Argon theme with [accent] (`#RRGGBB` from the shop's brand) as the accent, ink when it's absent or unreadable; light
- * or dark by [isAppDark]. The top bars take the settings' `navigation.topBar` colours.
+ * or dark by [isAppDark]; the settings' background, text, corners and buttons ([AppGraph.look]). The top bars take the
+ * settings' `navigation.topBar` colours.
  */
 @Composable
-fun AppTheme(accent: String?, content: @Composable () -> Unit) = ArgonTheme(accent, isAppDark(), AppGraph.headingFont, AppGraph.bodyFont) {
-    val navigation = AppGraph.navigation
-    val bar = ArgonBarColors(navigation.topBarBackground.toColor(), navigation.topBarForeground.toColor())
-    // the status bar icons over a merchant's own bar colour (the theme's are set by MainActivity)
-    if (bar.container.isSpecified) StatusBarIcons(light = false)
-    CompositionLocalProvider(LocalArgonBarColors provides bar, content = content)
+fun AppTheme(accent: String?, content: @Composable () -> Unit) {
+    val look = AppGraph.look
+    ArgonTheme(accent, isAppDark(), AppGraph.headingFont, AppGraph.bodyFont, look.background, look.text, look.corners, look.buttons) {
+        val navigation = AppGraph.navigation
+        val bar = ArgonBarColors(navigation.topBarBackground.toColor(), navigation.topBarForeground.toColor())
+        // the status bar icons over a merchant's own bar colour (the theme's are set by MainActivity)
+        if (bar.container.isSpecified) StatusBarIcons(light = false)
+        CompositionLocalProvider(LocalArgonBarColors provides bar, content = content)
+    }
 }
 
 /** A settings colour (`#RRGGBB`) as a colour; Unspecified (the theme's) when unset. */
