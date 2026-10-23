@@ -1,0 +1,524 @@
+{
+  "id": "cloud-nine",
+  "name": "Cloud Nine",
+  "vertical": "Playful sleep and bedding",
+  "description": "Lilac skies and candy pink with friendly round type, for sleep and bedding brands that like to smile.",
+  "plan": "free",
+  "settings": {
+    "brand": {
+      "accent": "#6C5CE7"
+    },
+    "appearance": {
+      "mode": "",
+      "fonts": {
+        "heading": {
+          "family": "Nunito",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/nunito/v32/XRXI3I6Li01BKofiOc5wtlZ2di8HDLshRTM.ttf",
+            "700": "https://fonts.gstatic.com/s/nunito/v32/XRXI3I6Li01BKofiOc5wtlZ2di8HDFwmRTM.ttf"
+          }
+        },
+        "body": {
+          "family": "Nunito Sans",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/nunitosans/v19/pe1mMImSLYBIv1o4X1M8ce2xCx3yop4tQpF_MeTm0lfGWVpNn64CL7U8upHZIbMV51Q42ptCp5F5bxqqtQ1yiU4G1ilntA.ttf",
+            "500": "https://fonts.gstatic.com/s/nunitosans/v19/pe1mMImSLYBIv1o4X1M8ce2xCx3yop4tQpF_MeTm0lfGWVpNn64CL7U8upHZIbMV51Q42ptCp5F5bxqqtQ1yiU4G5ClntA.ttf",
+            "600": "https://fonts.gstatic.com/s/nunitosans/v19/pe1mMImSLYBIv1o4X1M8ce2xCx3yop4tQpF_MeTm0lfGWVpNn64CL7U8upHZIbMV51Q42ptCp5F5bxqqtQ1yiU4GCC5ntA.ttf",
+            "700": "https://fonts.gstatic.com/s/nunitosans/v19/pe1mMImSLYBIv1o4X1M8ce2xCx3yop4tQpF_MeTm0lfGWVpNn64CL7U8upHZIbMV51Q42ptCp5F5bxqqtQ1yiU4GMS5ntA.ttf"
+          }
+        }
+      },
+      "colors": {
+        "background": "#F7F5FF",
+        "text": "#26214A",
+        "secondary": "#FF8FAB"
+      },
+      "corners": "round",
+      "buttons": "pill",
+      "type": {
+        "scale": "large"
+      },
+      "icons": "filled"
+    },
+    "navigation": {
+      "tabs": [
+        {
+          "id": "home",
+          "title": "Home",
+          "icon": "home"
+        },
+        {
+          "id": "shop",
+          "title": "Shop",
+          "icon": "grid"
+        },
+        {
+          "id": "wishlist",
+          "title": "Wishlist",
+          "icon": "heart"
+        },
+        {
+          "id": "cart",
+          "title": "Bag",
+          "icon": "bag"
+        },
+        {
+          "id": "account",
+          "title": "Account",
+          "icon": "person"
+        }
+      ],
+      "labels": true,
+      "topBar": {
+        "style": "standard",
+        "transparentOnHome": false,
+        "background": "",
+        "foreground": ""
+      },
+      "tabBar": {
+        "background": "surface",
+        "active": "accent",
+        "inactive": ""
+      },
+      "drawer": {
+        "enabled": false,
+        "menu": ""
+      }
+    },
+    "announcement": {
+      "enabled": true,
+      "messages": [
+        {
+          "text": "Sleep on it for 100 nights",
+          "link": ""
+        },
+        {
+          "text": "Free delivery, always",
+          "link": ""
+        }
+      ],
+      "background": "secondary",
+      "color": "#26214A",
+      "interval": 5,
+      "dismissible": true
+    },
+    "home": {
+      "template": "beauty"
+    },
+    "collection": {
+      "template": "bottom"
+    }
+  },
+  "screens": {
+    "home": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "banner-123",
+          "type": "banner",
+          "settings": {
+            "image": {
+              "url": "https://burst.shopifycdn.com/photos/bedroom-with-heart-pillows.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+              "alt": "Bedroom with pillows",
+              "width": 0,
+              "height": 0
+            },
+            "heading": "Hello, sweet sleep",
+            "text": "Mattresses, pillows and all things cosy.",
+            "button_label": "Shop now",
+            "link": "/collections/all",
+            "style": "hero",
+            "height": "medium",
+            "text_color": "#FFFFFF"
+          }
+        },
+        {
+          "id": "features-124",
+          "type": "features",
+          "settings": {
+            "layout": "grid",
+            "background": "surface",
+            "padding": "medium"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "heart",
+                "heading": "100-night trial",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "star",
+                "heading": "Loved by sleepers",
+                "text": ""
+              }
+            },
+            {
+              "id": "b3",
+              "type": "feature",
+              "settings": {
+                "icon": "truck",
+                "heading": "Free delivery",
+                "text": ""
+              }
+            },
+            {
+              "id": "b4",
+              "type": "feature",
+              "settings": {
+                "icon": "tag",
+                "heading": "Easy EMI",
+                "text": ""
+              }
+            }
+          ]
+        },
+        {
+          "id": "collections-125",
+          "type": "collections",
+          "settings": {
+            "heading": "Shop by category",
+            "style": "circles"
+          }
+        },
+        {
+          "id": "products-126",
+          "type": "products",
+          "settings": {
+            "heading": "Bestsellers",
+            "style": "carousel",
+            "limit": 8,
+            "show_all": true
+          }
+        },
+        {
+          "id": "image-grid-127",
+          "type": "image_grid",
+          "settings": {
+            "heading": "Make it cosy",
+            "columns": "2",
+            "aspect": "landscape"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "tile",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/yellow-pillow-bedside-table.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Pillow",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Pillows",
+                "link": "/collections/all"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "tile",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/copper-light-in-bedroom.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Bedroom light",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Bedding",
+                "link": "/collections/all"
+              }
+            }
+          ]
+        },
+        {
+          "id": "image-with-text-128",
+          "type": "image_with_text",
+          "settings": {
+            "image": {
+              "url": "https://burst.shopifycdn.com/photos/holding-coffee-in-bed.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+              "alt": "Coffee in bed",
+              "width": 0,
+              "height": 0
+            },
+            "heading": "Wake up happy",
+            "text": "<p>Bouncy, breathable and cool: built for long lie-ins.</p>",
+            "button_label": "Find yours",
+            "link": "/collections/all",
+            "image_position": "start",
+            "padding": "medium"
+          }
+        },
+        {
+          "id": "products-129",
+          "type": "products",
+          "settings": {
+            "heading": "New arrivals",
+            "style": "grid",
+            "limit": 4,
+            "show_all": true
+          }
+        },
+        {
+          "id": "faq-130",
+          "type": "faq",
+          "settings": {
+            "heading": "Good to know"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "question",
+              "settings": {
+                "question": "How does the 100-night trial work?",
+                "answer": "<p>Sleep on it for up to 100 nights. If it isn't right, we'll pick it up and refund you.</p>"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "question",
+              "settings": {
+                "question": "How long does delivery take?",
+                "answer": "<p>Most orders arrive in 3 to 7 days. We'll message you a delivery slot.</p>"
+              }
+            },
+            {
+              "id": "b3",
+              "type": "question",
+              "settings": {
+                "question": "What does the warranty cover?",
+                "answer": "<p>Sagging and manufacturing defects, for 10 years.</p>"
+              }
+            },
+            {
+              "id": "b4",
+              "type": "question",
+              "settings": {
+                "question": "Can I pay in instalments?",
+                "answer": "<p>Yes: no-cost EMI on most cards at checkout.</p>"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "product": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "blocks": [
+              {
+                "type": "gallery"
+              },
+              {
+                "type": "title"
+              },
+              {
+                "type": "price"
+              },
+              {
+                "type": "options"
+              },
+              {
+                "type": "purchase"
+              },
+              {
+                "type": "details"
+              },
+              {
+                "type": "reviews"
+              },
+              {
+                "type": "rails"
+              }
+            ]
+          }
+        },
+        {
+          "id": "features-131",
+          "type": "features",
+          "settings": {
+            "layout": "grid"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "heart",
+                "heading": "100-night trial",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "truck",
+                "heading": "Free delivery",
+                "text": ""
+              }
+            },
+            {
+              "id": "b3",
+              "type": "feature",
+              "settings": {
+                "icon": "check",
+                "heading": "10-year warranty",
+                "text": ""
+              }
+            },
+            {
+              "id": "b4",
+              "type": "feature",
+              "settings": {
+                "icon": "tag",
+                "heading": "Easy EMI",
+                "text": ""
+              }
+            }
+          ]
+        },
+        {
+          "id": "faq-132",
+          "type": "faq",
+          "settings": {
+            "heading": "Good to know"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "question",
+              "settings": {
+                "question": "How does the 100-night trial work?",
+                "answer": "<p>Sleep on it for up to 100 nights. If it isn't right, we'll pick it up and refund you.</p>"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "question",
+              "settings": {
+                "question": "How long does delivery take?",
+                "answer": "<p>Most orders arrive in 3 to 7 days. We'll message you a delivery slot.</p>"
+              }
+            },
+            {
+              "id": "b3",
+              "type": "question",
+              "settings": {
+                "question": "What does the warranty cover?",
+                "answer": "<p>Sagging and manufacturing defects, for 10 years.</p>"
+              }
+            },
+            {
+              "id": "b4",
+              "type": "question",
+              "settings": {
+                "question": "Can I pay in instalments?",
+                "answer": "<p>Yes: no-cost EMI on most cards at checkout.</p>"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "collection": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "filters": "bottom"
+          }
+        }
+      ]
+    },
+    "cart": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "banner-133",
+          "type": "banner",
+          "settings": {
+            "heading": "Free delivery, always",
+            "style": "card",
+            "height": "small",
+            "background": "secondary",
+            "text_color": "#26214A"
+          }
+        },
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {}
+        }
+      ]
+    },
+    "onboarding": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "onboarding-134",
+          "type": "onboarding",
+          "settings": {
+            "enabled": true
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/bedroom-with-heart-pillows.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Bedroom with pillows",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Hey there, sleepyhead!",
+                "text": "Welcome to {{ shop.name }}."
+              }
+            },
+            {
+              "id": "b2",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/holding-coffee-in-bed.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Coffee in bed",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "100 nights to fall in love",
+                "text": "Not cosy enough? Send it back for free."
+              }
+            },
+            {
+              "id": "b3",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/yellow-pillow-bedside-table.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Pillow",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Delivered to your door",
+                "text": "Free, always.",
+                "button_label": "Let's get cosy"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

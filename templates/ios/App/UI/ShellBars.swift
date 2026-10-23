@@ -116,7 +116,8 @@ extension Appearance {
 @MainActor
 func applyBarColors(_ navigation: Navigation) {
     // a theme colour's name follows the theme in light and dark; a hex is itself
-    let look = AppGraph.look.argon(accent: AppGraph.brand.value?.accent)
+    // the brand loads later: the settings' accent, so `accent` on a bar is the theme's and not text
+    let look = AppGraph.look.argon(accent: AppGraph.remote?.accent ?? AppGraph.brand.value?.accent)
     func color(_ value: String?) -> UIColor? {
         guard look.hex(value, dark: false) != nil else { return nil }
         return UIColor { traits in

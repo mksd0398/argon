@@ -1,0 +1,429 @@
+{
+  "id": "temple-silk",
+  "name": "Temple Silk",
+  "vertical": "Heritage silk sarees",
+  "description": "Ivory, deep maroon and antique gold for heritage silk and wedding sarees with a story.",
+  "plan": "free",
+  "settings": {
+    "brand": {
+      "accent": "#7B1E2B"
+    },
+    "appearance": {
+      "mode": "light",
+      "fonts": {
+        "heading": {
+          "family": "Marcellus",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/marcellus/v14/wEO_EBrOk8hQLDvIAF8FUQ.ttf"
+          }
+        },
+        "body": {
+          "family": "Mulish",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/mulish/v18/1Ptyg83HX_SGhgqO0yLcmjzUAuWexZNRwaA.ttf",
+            "500": "https://fonts.gstatic.com/s/mulish/v18/1Ptyg83HX_SGhgqO0yLcmjzUAuWexaFRwaA.ttf",
+            "600": "https://fonts.gstatic.com/s/mulish/v18/1Ptyg83HX_SGhgqO0yLcmjzUAuWexU1WwaA.ttf",
+            "700": "https://fonts.gstatic.com/s/mulish/v18/1Ptyg83HX_SGhgqO0yLcmjzUAuWexXRWwaA.ttf"
+          }
+        }
+      },
+      "colors": {
+        "background": "#FBF6EC",
+        "text": "#2A1A12",
+        "secondary": "#A67C1B"
+      },
+      "corners": "rounded",
+      "buttons": "rounded",
+      "type": {
+        "scale": "medium"
+      },
+      "icons": "outline"
+    },
+    "navigation": {
+      "tabs": [
+        {
+          "id": "home",
+          "title": "Home",
+          "icon": "home"
+        },
+        {
+          "id": "shop",
+          "title": "Shop",
+          "icon": "grid"
+        },
+        {
+          "id": "search",
+          "title": "Search",
+          "icon": "search"
+        },
+        {
+          "id": "wishlist",
+          "title": "Wishlist",
+          "icon": "heart"
+        },
+        {
+          "id": "account",
+          "title": "Account",
+          "icon": "person"
+        }
+      ],
+      "labels": true,
+      "topBar": {
+        "style": "centered_logo",
+        "transparentOnHome": false,
+        "background": "accent",
+        "foreground": "#FFFFFF"
+      },
+      "tabBar": {
+        "background": "",
+        "active": "accent",
+        "inactive": ""
+      },
+      "drawer": {
+        "enabled": false,
+        "menu": ""
+      }
+    },
+    "announcement": {
+      "enabled": true,
+      "messages": [
+        {
+          "text": "Pure silk, silk mark certified",
+          "link": ""
+        },
+        {
+          "text": "Worldwide shipping",
+          "link": ""
+        }
+      ],
+      "background": "accent",
+      "color": "#FFFFFF",
+      "interval": 5,
+      "dismissible": true
+    },
+    "home": {
+      "template": "fashion"
+    },
+    "collection": {
+      "template": "top"
+    }
+  },
+  "screens": {
+    "home": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "banner-70",
+          "type": "banner",
+          "settings": {
+            "image": {
+              "url": "https://burst.shopifycdn.com/photos/woman-in-pink-silk.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+              "alt": "Silk drape",
+              "width": 0,
+              "height": 0
+            },
+            "heading": "Woven for the occasion",
+            "text": "Pure silk sarees for weddings and festivals.",
+            "button_label": "Shop silks",
+            "link": "/collections/all",
+            "style": "card",
+            "height": "large",
+            "text_color": "#FFFFFF",
+            "padding": "small"
+          }
+        },
+        {
+          "id": "rich-text-71",
+          "type": "rich_text",
+          "settings": {
+            "heading": "A legacy in every thread",
+            "text": "<p>Handpicked from weaving clusters across India, each saree carries generations of craft.</p>",
+            "alignment": "center",
+            "padding": "medium"
+          }
+        },
+        {
+          "id": "collections-72",
+          "type": "collections",
+          "settings": {
+            "heading": "Shop by weave",
+            "style": "grid"
+          }
+        },
+        {
+          "id": "products-73",
+          "type": "products",
+          "settings": {
+            "heading": "Wedding edit",
+            "style": "carousel",
+            "limit": 8,
+            "show_all": true
+          }
+        },
+        {
+          "id": "image-with-text-74",
+          "type": "image_with_text",
+          "settings": {
+            "image": {
+              "url": "https://burst.shopifycdn.com/photos/woman-in-silk.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+              "alt": "Silk saree detail",
+              "width": 0,
+              "height": 0
+            },
+            "heading": "From the loom to you",
+            "text": "<p>Every drape is checked by hand for weave, zari and finish before it reaches you.</p>",
+            "button_label": "Read the story",
+            "link": "/collections/all",
+            "image_position": "end",
+            "background": "surface",
+            "padding": "medium"
+          }
+        },
+        {
+          "id": "products-75",
+          "type": "products",
+          "settings": {
+            "heading": "Bestsellers",
+            "style": "grid",
+            "limit": 6,
+            "show_all": true
+          }
+        },
+        {
+          "id": "features-76",
+          "type": "features",
+          "settings": {
+            "layout": "row",
+            "padding": "small"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "check",
+                "heading": "Silk mark",
+                "text": "Certified pure"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "globe",
+                "heading": "Ships worldwide",
+                "text": ""
+              }
+            },
+            {
+              "id": "b3",
+              "type": "feature",
+              "settings": {
+                "icon": "gift",
+                "heading": "Blouse stitching",
+                "text": "On request"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "product": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "blocks": [
+              {
+                "type": "gallery"
+              },
+              {
+                "type": "title"
+              },
+              {
+                "type": "price"
+              },
+              {
+                "type": "options"
+              },
+              {
+                "type": "purchase"
+              },
+              {
+                "type": "details"
+              },
+              {
+                "type": "reviews"
+              },
+              {
+                "type": "rails"
+              }
+            ]
+          }
+        },
+        {
+          "id": "features-77",
+          "type": "features",
+          "settings": {
+            "layout": "grid"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "check",
+                "heading": "Silk mark certified",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "globe",
+                "heading": "Worldwide shipping",
+                "text": ""
+              }
+            },
+            {
+              "id": "b3",
+              "type": "feature",
+              "settings": {
+                "icon": "gift",
+                "heading": "Fall and pico",
+                "text": "Complimentary"
+              }
+            },
+            {
+              "id": "b4",
+              "type": "feature",
+              "settings": {
+                "icon": "returns",
+                "heading": "Easy returns",
+                "text": "7 days"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "collection": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "rich-text-78",
+          "type": "rich_text",
+          "settings": {
+            "text": "<p>Pure silks, handpicked from weavers.</p>",
+            "alignment": "center",
+            "padding": "small"
+          }
+        },
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "filters": "top"
+          }
+        }
+      ]
+    },
+    "cart": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {}
+        },
+        {
+          "id": "features-79",
+          "type": "features",
+          "settings": {
+            "layout": "row"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "gift",
+                "heading": "Fall and pico included",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "globe",
+                "heading": "Worldwide shipping",
+                "text": ""
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "onboarding": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "onboarding-80",
+          "type": "onboarding",
+          "settings": {
+            "enabled": true
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/woman-in-pink-silk.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Silk drape",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Welcome to {{ shop.name }}",
+                "text": "Heritage silk sarees, woven for your occasions."
+              }
+            },
+            {
+              "id": "b2",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/woman-in-silk.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Silk saree detail",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Certified pure",
+                "text": "Every silk carries the silk mark."
+              }
+            },
+            {
+              "id": "b3",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/dancing-with-temples-in-the-orange-mist.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Temples in mist",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "We ship worldwide",
+                "text": "From our looms to wherever you celebrate.",
+                "button_label": "Explore the collection"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

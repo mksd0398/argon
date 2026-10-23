@@ -1,0 +1,442 @@
+{
+  "id": "loom-story",
+  "name": "Loom Story",
+  "vertical": "Handwoven sarees and storytelling",
+  "description": "Earthy terracotta and leaf green with a warm serif, for handloom labels that tell the weaver's story.",
+  "plan": "free",
+  "settings": {
+    "brand": {
+      "accent": "#A4532F"
+    },
+    "appearance": {
+      "mode": "",
+      "fonts": {
+        "heading": {
+          "family": "Fraunces",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIctxujDg.ttf",
+            "700": "https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcUByjDg.ttf"
+          }
+        },
+        "body": {
+          "family": "Karla",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/karla/v33/qkBIXvYC6trAT55ZBi1ueQVIjQTD-JqqFA.ttf",
+            "500": "https://fonts.gstatic.com/s/karla/v33/qkBIXvYC6trAT55ZBi1ueQVIjQTDypqqFA.ttf",
+            "600": "https://fonts.gstatic.com/s/karla/v33/qkBIXvYC6trAT55ZBi1ueQVIjQTDJp2qFA.ttf",
+            "700": "https://fonts.gstatic.com/s/karla/v33/qkBIXvYC6trAT55ZBi1ueQVIjQTDH52qFA.ttf"
+          }
+        }
+      },
+      "colors": {
+        "background": "#F4EEE4",
+        "text": "#2E2620",
+        "secondary": "#4F6B4A"
+      },
+      "corners": "round",
+      "buttons": "pill",
+      "type": {
+        "scale": "medium"
+      },
+      "icons": "outline"
+    },
+    "navigation": {
+      "tabs": [
+        {
+          "id": "home",
+          "title": "Home",
+          "icon": "home"
+        },
+        {
+          "id": "shop",
+          "title": "Shop",
+          "icon": "grid"
+        },
+        {
+          "id": "search",
+          "title": "Search",
+          "icon": "search"
+        },
+        {
+          "id": "wishlist",
+          "title": "Wishlist",
+          "icon": "heart"
+        },
+        {
+          "id": "account",
+          "title": "Account",
+          "icon": "person"
+        }
+      ],
+      "labels": true,
+      "topBar": {
+        "style": "standard",
+        "transparentOnHome": false,
+        "background": "",
+        "foreground": ""
+      },
+      "tabBar": {
+        "background": "surface",
+        "active": "accent",
+        "inactive": ""
+      },
+      "drawer": {
+        "enabled": false,
+        "menu": ""
+      }
+    },
+    "announcement": {
+      "enabled": true,
+      "messages": [
+        {
+          "text": "Handwoven by artisans across India",
+          "link": ""
+        },
+        {
+          "text": "Free shipping above ₹1,500",
+          "link": ""
+        }
+      ],
+      "background": "secondary",
+      "color": "#FFFFFF",
+      "interval": 5,
+      "dismissible": true
+    },
+    "home": {
+      "template": "fashion"
+    },
+    "collection": {
+      "template": "top"
+    }
+  },
+  "screens": {
+    "home": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "banner-81",
+          "type": "banner",
+          "settings": {
+            "image": {
+              "url": "https://burst.shopifycdn.com/photos/woman-dressed-in-white-leans-against-a-wall.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+              "alt": "Woman in white",
+              "width": 0,
+              "height": 0
+            },
+            "heading": "Slow, soft, handwoven",
+            "text": "Cotton and mul sarees for every day.",
+            "button_label": "Explore",
+            "link": "/collections/all",
+            "style": "card",
+            "height": "large",
+            "text_color": "#FFFFFF",
+            "padding": "small"
+          }
+        },
+        {
+          "id": "rich-text-82",
+          "type": "rich_text",
+          "settings": {
+            "heading": "Every saree has a story",
+            "text": "<p>We work directly with weaving families. Each drape names the cluster it comes from and the hands that made it.</p>",
+            "alignment": "center",
+            "padding": "medium"
+          }
+        },
+        {
+          "id": "collections-83",
+          "type": "collections",
+          "settings": {
+            "heading": "Shop by weave",
+            "style": "grid"
+          }
+        },
+        {
+          "id": "products-84",
+          "type": "products",
+          "settings": {
+            "heading": "New arrivals",
+            "style": "carousel",
+            "limit": 8,
+            "show_all": true
+          }
+        },
+        {
+          "id": "image-grid-85",
+          "type": "image_grid",
+          "settings": {
+            "heading": "For every day",
+            "columns": "2",
+            "aspect": "portrait"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "tile",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/woman-in-flower-blossoms.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Woman among flowers",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Everyday cottons",
+                "link": "/collections/all"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "tile",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/woman-in-red-in-yellow-field.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Woman in a field",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Festive",
+                "link": "/collections/all"
+              }
+            }
+          ]
+        },
+        {
+          "id": "image-with-text-86",
+          "type": "image_with_text",
+          "settings": {
+            "image": {
+              "url": "https://burst.shopifycdn.com/photos/slow-fashion-dress-from.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+              "alt": "Handmade garment",
+              "width": 0,
+              "height": 0
+            },
+            "heading": "Made slowly, worn for years",
+            "text": "<p>Natural dyes, breathable cotton and patient hands: clothes that last.</p>",
+            "button_label": "Read the story",
+            "link": "/collections/all",
+            "image_position": "end",
+            "background": "surface",
+            "padding": "medium"
+          }
+        },
+        {
+          "id": "products-87",
+          "type": "products",
+          "settings": {
+            "heading": "Bestsellers",
+            "style": "grid",
+            "limit": 6,
+            "show_all": true
+          }
+        },
+        {
+          "id": "features-88",
+          "type": "features",
+          "settings": {
+            "layout": "row",
+            "padding": "small"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "leaf",
+                "heading": "Natural fibres",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "heart",
+                "heading": "Fair to artisans",
+                "text": ""
+              }
+            },
+            {
+              "id": "b3",
+              "type": "feature",
+              "settings": {
+                "icon": "truck",
+                "heading": "Free shipping",
+                "text": "Above ₹1,500"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "product": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "blocks": [
+              {
+                "type": "gallery"
+              },
+              {
+                "type": "title"
+              },
+              {
+                "type": "price"
+              },
+              {
+                "type": "options"
+              },
+              {
+                "type": "purchase"
+              },
+              {
+                "type": "details"
+              },
+              {
+                "type": "reviews"
+              },
+              {
+                "type": "rails"
+              }
+            ]
+          }
+        },
+        {
+          "id": "features-89",
+          "type": "features",
+          "settings": {
+            "layout": "grid"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "leaf",
+                "heading": "Handwoven",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "heart",
+                "heading": "Fair wages",
+                "text": ""
+              }
+            },
+            {
+              "id": "b3",
+              "type": "feature",
+              "settings": {
+                "icon": "truck",
+                "heading": "Free shipping",
+                "text": "Above ₹1,500"
+              }
+            },
+            {
+              "id": "b4",
+              "type": "feature",
+              "settings": {
+                "icon": "returns",
+                "heading": "Easy returns",
+                "text": "7 days"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "collection": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "filters": "top"
+          }
+        }
+      ]
+    },
+    "cart": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {}
+        },
+        {
+          "id": "rich-text-90",
+          "type": "rich_text",
+          "settings": {
+            "text": "<p>Every order supports a weaving family.</p>",
+            "alignment": "center",
+            "padding": "small"
+          }
+        }
+      ]
+    },
+    "onboarding": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "onboarding-91",
+          "type": "onboarding",
+          "settings": {
+            "enabled": true
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/woman-dressed-in-white-leans-against-a-wall.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Woman in white",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Welcome to {{ shop.name }}",
+                "text": "Handwoven sarees, made slowly."
+              }
+            },
+            {
+              "id": "b2",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/slow-fashion-dress-from.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Handmade garment",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Meet the makers",
+                "text": "Every saree tells you where and who it comes from."
+              }
+            },
+            {
+              "id": "b3",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/woman-in-flower-blossoms.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Woman among flowers",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Wear it for years",
+                "text": "Natural fibres that get softer with every wash.",
+                "button_label": "Begin"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

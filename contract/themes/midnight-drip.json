@@ -1,0 +1,450 @@
+{
+  "id": "midnight-drip",
+  "name": "Midnight Drip",
+  "vertical": "Premium streetwear",
+  "description": "After-dark luxe for premium streetwear: always dark, acid-lime accents, bold condensed headlines.",
+  "plan": "free",
+  "settings": {
+    "brand": {
+      "accent": "#B8F23A"
+    },
+    "appearance": {
+      "mode": "dark",
+      "fonts": {
+        "heading": {
+          "family": "Bebas Neue",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/bebasneue/v16/JTUSjIg69CK48gW7PXooxW4.ttf"
+          }
+        },
+        "body": {
+          "family": "Space Grotesk",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/spacegrotesk/v22/V8mQoQDjQSkFtoMM3T6r8E7mF71Q-gOoraIAEj7oUUsj.ttf",
+            "500": "https://fonts.gstatic.com/s/spacegrotesk/v22/V8mQoQDjQSkFtoMM3T6r8E7mF71Q-gOoraIAEj7aUUsj.ttf",
+            "600": "https://fonts.gstatic.com/s/spacegrotesk/v22/V8mQoQDjQSkFtoMM3T6r8E7mF71Q-gOoraIAEj42Vksj.ttf",
+            "700": "https://fonts.gstatic.com/s/spacegrotesk/v22/V8mQoQDjQSkFtoMM3T6r8E7mF71Q-gOoraIAEj4PVksj.ttf"
+          }
+        }
+      },
+      "colors": {
+        "background": "#F4F4F0",
+        "text": "#0B0B0C",
+        "secondary": "#8E7CFF"
+      },
+      "corners": "square",
+      "buttons": "square",
+      "type": {
+        "scale": "large"
+      },
+      "icons": "filled"
+    },
+    "navigation": {
+      "tabs": [
+        {
+          "id": "home",
+          "title": "Home",
+          "icon": "home"
+        },
+        {
+          "id": "shop",
+          "title": "Shop",
+          "icon": "grid"
+        },
+        {
+          "id": "search",
+          "title": "Search",
+          "icon": "search"
+        },
+        {
+          "id": "wishlist",
+          "title": "Wishlist",
+          "icon": "heart"
+        },
+        {
+          "id": "cart",
+          "title": "Bag",
+          "icon": "bag"
+        }
+      ],
+      "labels": false,
+      "topBar": {
+        "style": "centered_logo",
+        "transparentOnHome": true,
+        "background": "",
+        "foreground": ""
+      },
+      "tabBar": {
+        "background": "",
+        "active": "accent",
+        "inactive": ""
+      },
+      "drawer": {
+        "enabled": false,
+        "menu": ""
+      }
+    },
+    "announcement": {
+      "enabled": true,
+      "messages": [
+        {
+          "text": "Members get early access",
+          "link": ""
+        },
+        {
+          "text": "Complimentary shipping on every order",
+          "link": ""
+        }
+      ],
+      "background": "accent",
+      "color": "#0B0B0C",
+      "interval": 5,
+      "dismissible": true
+    },
+    "home": {
+      "template": "fashion"
+    },
+    "collection": {
+      "template": "bottom"
+    }
+  },
+  "screens": {
+    "home": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "banner-20",
+          "type": "banner",
+          "settings": {
+            "image": {
+              "url": "https://burst.shopifycdn.com/photos/model-poses-with-neon-reflection.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+              "alt": "Neon portrait",
+              "width": 0,
+              "height": 0
+            },
+            "heading": "AFTER DARK",
+            "text": "The midnight collection is live.",
+            "button_label": "Shop the drop",
+            "link": "/collections/all",
+            "style": "hero",
+            "height": "large",
+            "text_color": "#FFFFFF"
+          }
+        },
+        {
+          "id": "marquee-21",
+          "type": "marquee",
+          "settings": {
+            "text": "MIDNIGHT COLLECTION  •  MEMBERS FIRST  •  COMPLIMENTARY SHIPPING  •",
+            "speed": "fast",
+            "background": "accent",
+            "text_color": "#0B0B0C"
+          }
+        },
+        {
+          "id": "products-22",
+          "type": "products",
+          "settings": {
+            "heading": "Just dropped",
+            "style": "grid",
+            "limit": 6,
+            "show_all": true,
+            "padding": "medium"
+          }
+        },
+        {
+          "id": "image-grid-23",
+          "type": "image_grid",
+          "settings": {
+            "heading": "Shop the fits",
+            "columns": "2",
+            "aspect": "portrait"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "tile",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/woman-in-fur-under-neon.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Neon fashion",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Outerwear",
+                "link": "/collections/all"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "tile",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/dark-haired-man-in-brown-leather-jacket.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Leather jacket",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Leather",
+                "link": "/collections/all"
+              }
+            },
+            {
+              "id": "b3",
+              "type": "tile",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/fashion-model-under-carnival-lights.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Night portrait",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Statement",
+                "link": "/collections/all"
+              }
+            },
+            {
+              "id": "b4",
+              "type": "tile",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/black-fashion-backpack.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Backpack",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Bags",
+                "link": "/collections/all"
+              }
+            }
+          ]
+        },
+        {
+          "id": "products-24",
+          "type": "products",
+          "settings": {
+            "heading": "Most wanted",
+            "style": "carousel",
+            "limit": 10,
+            "show_all": true
+          }
+        },
+        {
+          "id": "features-25",
+          "type": "features",
+          "settings": {
+            "layout": "row",
+            "padding": "small"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "truck",
+                "heading": "Free shipping",
+                "text": "Above ₹999"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "returns",
+                "heading": "Easy exchange",
+                "text": "Within 15 days"
+              }
+            },
+            {
+              "id": "b3",
+              "type": "feature",
+              "settings": {
+                "icon": "star",
+                "heading": "Members' drops",
+                "text": "First access"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "product": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "marquee-27",
+          "type": "marquee",
+          "settings": {
+            "text": "COMPLIMENTARY SHIPPING  •  MEMBERS FIRST  •",
+            "speed": "medium"
+          }
+        },
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "blocks": [
+              {
+                "type": "gallery"
+              },
+              {
+                "type": "title"
+              },
+              {
+                "type": "price"
+              },
+              {
+                "type": "options"
+              },
+              {
+                "type": "purchase"
+              },
+              {
+                "type": "details"
+              },
+              {
+                "type": "rails"
+              },
+              {
+                "type": "reviews"
+              }
+            ]
+          }
+        },
+        {
+          "id": "features-26",
+          "type": "features",
+          "settings": {
+            "layout": "row"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "returns",
+                "heading": "15-day exchange",
+                "text": "Free pickup"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "truck",
+                "heading": "Ships in 24h",
+                "text": "From our warehouse"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "collection": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "filters": "bottom"
+          }
+        }
+      ]
+    },
+    "cart": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {}
+        },
+        {
+          "id": "features-28",
+          "type": "features",
+          "settings": {
+            "layout": "row"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "lock",
+                "heading": "Secure checkout",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "gift",
+                "heading": "Gift packaging",
+                "text": "On request"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "onboarding": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "onboarding-29",
+          "type": "onboarding",
+          "settings": {
+            "enabled": true
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/model-poses-with-neon-reflection.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Neon portrait",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "{{ shop.name }}",
+                "text": "Premium streetwear, made in small runs."
+              }
+            },
+            {
+              "id": "b2",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/woman-in-fur-under-neon.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Neon fashion",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Members go first",
+                "text": "Sign in for early access to every drop."
+              }
+            },
+            {
+              "id": "b3",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/black-fashion-backpack.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Backpack",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Ready when you are",
+                "text": "Your bag and wishlist stay on this phone.",
+                "button_label": "Enter"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

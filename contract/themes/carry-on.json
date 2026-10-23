@@ -1,0 +1,420 @@
+{
+  "id": "carry-on",
+  "name": "Carry On",
+  "vertical": "Luggage and travel gear",
+  "description": "Stone, olive and quiet type for travel gear and luggage: minimal, product-first, features that reassure.",
+  "plan": "free",
+  "settings": {
+    "brand": {
+      "accent": "#55624A"
+    },
+    "appearance": {
+      "mode": "light",
+      "fonts": {
+        "heading": {
+          "family": "Manrope",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/manrope/v20/xn7_YHE41ni1AdIRqAuZuw1Bx9mbZk79FO_F.ttf",
+            "700": "https://fonts.gstatic.com/s/manrope/v20/xn7_YHE41ni1AdIRqAuZuw1Bx9mbZk4aE-_F.ttf"
+          }
+        },
+        "body": {
+          "family": "Manrope",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/manrope/v20/xn7_YHE41ni1AdIRqAuZuw1Bx9mbZk79FO_F.ttf",
+            "500": "https://fonts.gstatic.com/s/manrope/v20/xn7_YHE41ni1AdIRqAuZuw1Bx9mbZk7PFO_F.ttf",
+            "600": "https://fonts.gstatic.com/s/manrope/v20/xn7_YHE41ni1AdIRqAuZuw1Bx9mbZk4jE-_F.ttf",
+            "700": "https://fonts.gstatic.com/s/manrope/v20/xn7_YHE41ni1AdIRqAuZuw1Bx9mbZk4aE-_F.ttf"
+          }
+        }
+      },
+      "colors": {
+        "background": "#F1EFEA",
+        "text": "#1C1C1A",
+        "secondary": "#C8B79A"
+      },
+      "corners": "rounded",
+      "buttons": "square",
+      "type": {
+        "scale": "medium"
+      },
+      "icons": "outline"
+    },
+    "navigation": {
+      "tabs": [
+        {
+          "id": "home",
+          "title": "Home",
+          "icon": "home"
+        },
+        {
+          "id": "shop",
+          "title": "Shop",
+          "icon": "grid"
+        },
+        {
+          "id": "search",
+          "title": "Search",
+          "icon": "search"
+        },
+        {
+          "id": "cart",
+          "title": "Bag",
+          "icon": "bag"
+        },
+        {
+          "id": "account",
+          "title": "Account",
+          "icon": "person"
+        }
+      ],
+      "labels": true,
+      "topBar": {
+        "style": "standard",
+        "transparentOnHome": false,
+        "background": "",
+        "foreground": ""
+      },
+      "tabBar": {
+        "background": "",
+        "active": "",
+        "inactive": ""
+      },
+      "drawer": {
+        "enabled": false,
+        "menu": ""
+      }
+    },
+    "announcement": {
+      "enabled": true,
+      "messages": [
+        {
+          "text": "5-year warranty on all luggage",
+          "link": ""
+        },
+        {
+          "text": "Free shipping",
+          "link": ""
+        }
+      ],
+      "background": "text",
+      "color": "background",
+      "interval": 5,
+      "dismissible": true
+    },
+    "home": {
+      "template": "fashion"
+    },
+    "collection": {
+      "template": "top"
+    }
+  },
+  "screens": {
+    "home": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "banner-183",
+          "type": "banner",
+          "settings": {
+            "image": {
+              "url": "https://burst.shopifycdn.com/photos/preparing-for-travel.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+              "alt": "Packing for travel",
+              "width": 0,
+              "height": 0
+            },
+            "heading": "Travel lighter",
+            "text": "Cabin, check-in and everyday bags.",
+            "button_label": "Shop luggage",
+            "link": "/collections/all",
+            "style": "hero",
+            "height": "large",
+            "text_color": "#FFFFFF"
+          }
+        },
+        {
+          "id": "collections-184",
+          "type": "collections",
+          "settings": {
+            "heading": "Shop by category",
+            "style": "list"
+          }
+        },
+        {
+          "id": "products-185",
+          "type": "products",
+          "settings": {
+            "heading": "Bestsellers",
+            "style": "grid",
+            "limit": 4,
+            "show_all": true
+          }
+        },
+        {
+          "id": "features-186",
+          "type": "features",
+          "settings": {
+            "heading": "Built for the road",
+            "layout": "grid",
+            "background": "surface",
+            "padding": "medium"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "check",
+                "heading": "5-year warranty",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "lock",
+                "heading": "TSA locks",
+                "text": ""
+              }
+            },
+            {
+              "id": "b3",
+              "type": "feature",
+              "settings": {
+                "icon": "truck",
+                "heading": "Free shipping",
+                "text": ""
+              }
+            },
+            {
+              "id": "b4",
+              "type": "feature",
+              "settings": {
+                "icon": "returns",
+                "heading": "30-day returns",
+                "text": ""
+              }
+            }
+          ]
+        },
+        {
+          "id": "image-with-text-187",
+          "type": "image_with_text",
+          "settings": {
+            "image": {
+              "url": "https://burst.shopifycdn.com/photos/flatlay-of-coffee-and-items-ready-to-travel.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+              "alt": "Travel essentials",
+              "width": 0,
+              "height": 0
+            },
+            "heading": "Every pocket, thought through",
+            "text": "<p>Compression straps, laundry pouches and smooth spinner wheels.</p>",
+            "button_label": "See details",
+            "link": "/collections/all",
+            "image_position": "start",
+            "padding": "medium"
+          }
+        },
+        {
+          "id": "products-188",
+          "type": "products",
+          "settings": {
+            "heading": "Travel accessories",
+            "style": "carousel",
+            "limit": 8,
+            "show_all": true
+          }
+        }
+      ]
+    },
+    "product": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "blocks": [
+              {
+                "type": "gallery"
+              },
+              {
+                "type": "title"
+              },
+              {
+                "type": "price"
+              },
+              {
+                "type": "options"
+              },
+              {
+                "type": "purchase"
+              },
+              {
+                "type": "details"
+              },
+              {
+                "type": "reviews"
+              },
+              {
+                "type": "rails"
+              }
+            ]
+          }
+        },
+        {
+          "id": "features-189",
+          "type": "features",
+          "settings": {
+            "layout": "grid"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "check",
+                "heading": "5-year warranty",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "returns",
+                "heading": "30-day returns",
+                "text": ""
+              }
+            },
+            {
+              "id": "b3",
+              "type": "feature",
+              "settings": {
+                "icon": "truck",
+                "heading": "Free shipping",
+                "text": ""
+              }
+            },
+            {
+              "id": "b4",
+              "type": "feature",
+              "settings": {
+                "icon": "lock",
+                "heading": "TSA approved",
+                "text": ""
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "collection": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "filters": "top"
+          }
+        }
+      ]
+    },
+    "cart": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {}
+        },
+        {
+          "id": "features-190",
+          "type": "features",
+          "settings": {
+            "layout": "row"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "check",
+                "heading": "5-year warranty",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "truck",
+                "heading": "Free shipping",
+                "text": ""
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "onboarding": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "onboarding-191",
+          "type": "onboarding",
+          "settings": {
+            "enabled": true
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/preparing-for-travel.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Packing for travel",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Welcome to {{ shop.name }}",
+                "text": "Luggage and gear for every trip."
+              }
+            },
+            {
+              "id": "b2",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/flatlay-of-coffee-and-items-ready-to-travel.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Travel essentials",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Covered for 5 years",
+                "text": "Every bag carries our warranty."
+              }
+            },
+            {
+              "id": "b3",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/black-bag-over-the-shoulder.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Shoulder bag",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Free shipping",
+                "text": "And 30-day returns.",
+                "button_label": "Start packing"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

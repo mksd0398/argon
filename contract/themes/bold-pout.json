@@ -1,0 +1,411 @@
+{
+  "id": "bold-pout",
+  "name": "Bold Pout",
+  "vertical": "Bold makeup",
+  "description": "Jet black with a hot rose accent, square and fearless, for makeup brands built on shades and swatches.",
+  "plan": "free",
+  "settings": {
+    "brand": {
+      "accent": "#D61F69"
+    },
+    "appearance": {
+      "mode": "",
+      "fonts": {
+        "heading": {
+          "family": "Montserrat",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCtr6Ew-.ttf",
+            "700": "https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCuM70w-.ttf"
+          }
+        },
+        "body": {
+          "family": "Work Sans",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/worksans/v24/QGY_z_wNahGAdqQ43RhVcIgYT2Xz5u32K0nXNig.ttf",
+            "500": "https://fonts.gstatic.com/s/worksans/v24/QGY_z_wNahGAdqQ43RhVcIgYT2Xz5u32K3vXNig.ttf",
+            "600": "https://fonts.gstatic.com/s/worksans/v24/QGY_z_wNahGAdqQ43RhVcIgYT2Xz5u32K5fQNig.ttf",
+            "700": "https://fonts.gstatic.com/s/worksans/v24/QGY_z_wNahGAdqQ43RhVcIgYT2Xz5u32K67QNig.ttf"
+          }
+        }
+      },
+      "colors": {
+        "background": "#FFFFFF",
+        "text": "#111111",
+        "secondary": "#111111"
+      },
+      "corners": "square",
+      "buttons": "square",
+      "type": {
+        "scale": "medium"
+      },
+      "icons": "filled"
+    },
+    "navigation": {
+      "tabs": [
+        {
+          "id": "home",
+          "title": "Home",
+          "icon": "home"
+        },
+        {
+          "id": "shop",
+          "title": "Shop",
+          "icon": "grid"
+        },
+        {
+          "id": "search",
+          "title": "Search",
+          "icon": "search"
+        },
+        {
+          "id": "cart",
+          "title": "Bag",
+          "icon": "bag"
+        },
+        {
+          "id": "account",
+          "title": "Account",
+          "icon": "person"
+        }
+      ],
+      "labels": true,
+      "topBar": {
+        "style": "centered_logo",
+        "transparentOnHome": false,
+        "background": "#111111",
+        "foreground": "#FFFFFF"
+      },
+      "tabBar": {
+        "background": "#111111",
+        "active": "accent",
+        "inactive": "#9A9A9A"
+      },
+      "drawer": {
+        "enabled": false,
+        "menu": ""
+      }
+    },
+    "announcement": {
+      "enabled": true,
+      "messages": [
+        {
+          "text": "Free lipstick on orders above ₹999",
+          "link": ""
+        },
+        {
+          "text": "Cruelty-free, always",
+          "link": ""
+        }
+      ],
+      "background": "accent",
+      "color": "#FFFFFF",
+      "interval": 5,
+      "dismissible": true
+    },
+    "home": {
+      "template": "beauty"
+    },
+    "collection": {
+      "template": "bottom"
+    }
+  },
+  "screens": {
+    "home": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "slideshow-147",
+          "type": "slideshow",
+          "settings": {
+            "autoplay": true,
+            "interval": 4,
+            "height": "medium"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "slide",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/lipstick-shade-of-red.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Red lipstick",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Bold looks good on you",
+                "text": "Long-wear lip colours in 40 shades.",
+                "button_label": "Find your shade",
+                "link": "/collections/all"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "slide",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/bright-eyeshadow-makeup.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Eyeshadow",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Eyes that pop",
+                "text": "High-pigment palettes.",
+                "button_label": "Shop eyes",
+                "link": "/collections/all"
+              }
+            }
+          ]
+        },
+        {
+          "id": "collections-148",
+          "type": "collections",
+          "settings": {
+            "heading": "Shop by face, eyes, lips",
+            "style": "circles",
+            "padding": "small"
+          }
+        },
+        {
+          "id": "products-149",
+          "type": "products",
+          "settings": {
+            "heading": "Bestsellers",
+            "style": "carousel",
+            "limit": 8,
+            "show_all": true
+          }
+        },
+        {
+          "id": "banner-150",
+          "type": "banner",
+          "settings": {
+            "image": {
+              "url": "https://burst.shopifycdn.com/photos/makeup-and-brushes-on-black-background.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+              "alt": "Makeup on black",
+              "width": 0,
+              "height": 0
+            },
+            "heading": "Free lipstick",
+            "text": "On orders above ₹999.",
+            "button_label": "Shop the offer",
+            "link": "/collections/all",
+            "style": "card",
+            "height": "small",
+            "text_color": "#FFFFFF",
+            "padding": "small"
+          }
+        },
+        {
+          "id": "products-151",
+          "type": "products",
+          "settings": {
+            "heading": "New launches",
+            "style": "grid",
+            "limit": 6,
+            "show_all": true
+          }
+        },
+        {
+          "id": "features-152",
+          "type": "features",
+          "settings": {
+            "layout": "row",
+            "padding": "small"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "leaf",
+                "heading": "Cruelty-free",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "check",
+                "heading": "Long wear",
+                "text": "Up to 12h"
+              }
+            },
+            {
+              "id": "b3",
+              "type": "feature",
+              "settings": {
+                "icon": "truck",
+                "heading": "Free shipping",
+                "text": "Above ₹499"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "product": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "marquee-154",
+          "type": "marquee",
+          "settings": {
+            "text": "FREE LIPSTICK ABOVE ₹999  •  CRUELTY-FREE  •",
+            "speed": "medium",
+            "background": "accent",
+            "text_color": "#FFFFFF"
+          }
+        },
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "blocks": [
+              {
+                "type": "gallery"
+              },
+              {
+                "type": "title"
+              },
+              {
+                "type": "price"
+              },
+              {
+                "type": "options"
+              },
+              {
+                "type": "purchase"
+              },
+              {
+                "type": "details"
+              },
+              {
+                "type": "reviews"
+              },
+              {
+                "type": "rails"
+              }
+            ]
+          }
+        },
+        {
+          "id": "features-153",
+          "type": "features",
+          "settings": {
+            "layout": "row"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "leaf",
+                "heading": "Cruelty-free",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "check",
+                "heading": "Dermat tested",
+                "text": ""
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "collection": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "filters": "bottom"
+          }
+        }
+      ]
+    },
+    "cart": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "marquee-155",
+          "type": "marquee",
+          "settings": {
+            "text": "FREE LIPSTICK ON ORDERS ABOVE ₹999  •",
+            "speed": "medium",
+            "background": "accent",
+            "text_color": "#FFFFFF"
+          }
+        },
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {}
+        }
+      ]
+    },
+    "onboarding": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "onboarding-156",
+          "type": "onboarding",
+          "settings": {
+            "enabled": true
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/lipstick-shade-of-red.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Red lipstick",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Welcome to {{ shop.name }}",
+                "text": "Bold, long-wear makeup in every shade."
+              }
+            },
+            {
+              "id": "b2",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/bright-eyeshadow-makeup.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Eyeshadow",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Find your shade",
+                "text": "Save shades to your wishlist and compare."
+              }
+            },
+            {
+              "id": "b3",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/makeup-and-brushes-on-black-background.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Makeup on black",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Free lipstick",
+                "text": "On every order above ₹999.",
+                "button_label": "Start shopping"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

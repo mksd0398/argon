@@ -1,0 +1,374 @@
+{
+  "id": "fandom-fest",
+  "name": "Fandom Fest",
+  "vertical": "Pop-culture merchandise",
+  "description": "Poster-bold crimson and navy for fandom merch: shop by fandom, new merch, combos.",
+  "plan": "free",
+  "settings": {
+    "brand": {
+      "accent": "#C42B3A"
+    },
+    "appearance": {
+      "mode": "",
+      "fonts": {
+        "heading": {
+          "family": "Oswald",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/oswald/v57/TK3_WkUHHAIjg75cFRf3bXL8LICs1_FvgUE.ttf",
+            "700": "https://fonts.gstatic.com/s/oswald/v57/TK3_WkUHHAIjg75cFRf3bXL8LICs1xZogUE.ttf"
+          }
+        },
+        "body": {
+          "family": "Roboto",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWubEbWmT.ttf",
+            "500": "https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWub2bWmT.ttf",
+            "600": "https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWuYaammT.ttf",
+            "700": "https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWuYjammT.ttf"
+          }
+        }
+      },
+      "colors": {
+        "background": "#FFFFFF",
+        "text": "#161616",
+        "secondary": "#1B3A6B"
+      },
+      "corners": "rounded",
+      "buttons": "rounded",
+      "type": {
+        "scale": "medium"
+      },
+      "icons": "outline"
+    },
+    "navigation": {
+      "tabs": [
+        {
+          "id": "home",
+          "title": "Home",
+          "icon": "home"
+        },
+        {
+          "id": "shop",
+          "title": "Shop",
+          "icon": "grid"
+        },
+        {
+          "id": "wishlist",
+          "title": "Wishlist",
+          "icon": "heart"
+        },
+        {
+          "id": "cart",
+          "title": "Bag",
+          "icon": "bag"
+        },
+        {
+          "id": "account",
+          "title": "Account",
+          "icon": "person"
+        }
+      ],
+      "labels": true,
+      "topBar": {
+        "style": "search",
+        "transparentOnHome": false,
+        "background": "secondary",
+        "foreground": "#FFFFFF"
+      },
+      "tabBar": {
+        "background": "",
+        "active": "",
+        "inactive": ""
+      },
+      "drawer": {
+        "enabled": false,
+        "menu": ""
+      }
+    },
+    "announcement": {
+      "enabled": true,
+      "messages": [
+        {
+          "text": "Official merch, new every week",
+          "link": ""
+        },
+        {
+          "text": "Combos: 2 for ₹999",
+          "link": ""
+        }
+      ],
+      "background": "accent",
+      "color": "#FFFFFF",
+      "interval": 5,
+      "dismissible": true
+    },
+    "home": {
+      "template": "fashion"
+    },
+    "collection": {
+      "template": "top"
+    }
+  },
+  "screens": {
+    "home": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "banner-41",
+          "type": "banner",
+          "settings": {
+            "image": {
+              "url": "https://burst.shopifycdn.com/photos/young-woman-in-orange-shirt-with-pomegranate-tattoo.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+              "alt": "Graphic tee",
+              "width": 0,
+              "height": 0
+            },
+            "heading": "Your fandom. Your fit.",
+            "text": "New merch from the shows you love.",
+            "button_label": "Shop new",
+            "link": "/collections/all",
+            "style": "hero",
+            "height": "medium",
+            "text_color": "#FFFFFF"
+          }
+        },
+        {
+          "id": "collections-42",
+          "type": "collections",
+          "settings": {
+            "heading": "Shop by fandom",
+            "style": "grid"
+          }
+        },
+        {
+          "id": "products-43",
+          "type": "products",
+          "settings": {
+            "heading": "New merch",
+            "style": "carousel",
+            "limit": 8,
+            "show_all": true
+          }
+        },
+        {
+          "id": "banner-44",
+          "type": "banner",
+          "settings": {
+            "heading": "Combo deals",
+            "text": "Any 2 tees for ₹999.",
+            "button_label": "Build a combo",
+            "link": "/collections/all",
+            "style": "card",
+            "height": "small",
+            "background": "secondary",
+            "text_color": "#FFFFFF",
+            "padding": "small"
+          }
+        },
+        {
+          "id": "products-45",
+          "type": "products",
+          "settings": {
+            "heading": "Top picks",
+            "style": "grid",
+            "limit": 6,
+            "show_all": true
+          }
+        },
+        {
+          "id": "image-grid-46",
+          "type": "image_grid",
+          "settings": {
+            "heading": "More to love",
+            "columns": "2",
+            "aspect": "square"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "tile",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/set-of-custom-enamel-pins.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Enamel pins",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Pins & badges",
+                "link": "/collections/all"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "tile",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/black-fashion-backpack.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Backpack",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Bags",
+                "link": "/collections/all"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "product": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "blocks": [
+              {
+                "type": "gallery"
+              },
+              {
+                "type": "title"
+              },
+              {
+                "type": "price"
+              },
+              {
+                "type": "options"
+              },
+              {
+                "type": "purchase"
+              },
+              {
+                "type": "details"
+              },
+              {
+                "type": "reviews"
+              },
+              {
+                "type": "rails"
+              }
+            ]
+          }
+        },
+        {
+          "id": "features-47",
+          "type": "features",
+          "settings": {
+            "layout": "row"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "check",
+                "heading": "Official merch",
+                "text": "Licensed designs"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "returns",
+                "heading": "Easy returns",
+                "text": "30 days"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "collection": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "filters": "top"
+          }
+        }
+      ]
+    },
+    "cart": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "banner-48",
+          "type": "banner",
+          "settings": {
+            "heading": "Combo deals apply at checkout",
+            "style": "card",
+            "height": "small",
+            "background": "secondary",
+            "text_color": "#FFFFFF"
+          }
+        },
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {}
+        }
+      ]
+    },
+    "onboarding": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "onboarding-49",
+          "type": "onboarding",
+          "settings": {
+            "enabled": true
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/young-woman-in-orange-shirt-with-pomegranate-tattoo.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Graphic tee",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Welcome to {{ shop.name }}",
+                "text": "Merch from the worlds you love."
+              }
+            },
+            {
+              "id": "b2",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/set-of-custom-enamel-pins.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Enamel pins",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Never miss a launch",
+                "text": "Turn on notifications for new fandom drops."
+              }
+            },
+            {
+              "id": "b3",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/black-fashion-backpack.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Backpack",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Combos save more",
+                "text": "Mix tees, hoodies and more. Deals apply at checkout.",
+                "button_label": "Start exploring"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

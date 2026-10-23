@@ -131,7 +131,7 @@ func customDocument(_ html: String, accent: String, text: String, background: St
     <!doctype html><html><head><meta charset="utf-8">\
     <meta name="viewport" content="width=device-width, initial-scale=1">\
     <style>:root{--accent:\(accent);--text:\(text);--background:\(background)}\
-    body{margin:0;padding:0 16px;font-family:"Hanken Grotesk",-apple-system,sans-serif;color:var(--text);background:var(--background)}\
+    body{margin:0;padding:0 16px;font-family:"Hanken Grotesk",-apple-system,sans-serif;color:var(--text);background:transparent}\
     img{max-width:100%;height:auto}a{color:var(--accent)}</style></head><body>\(html)</body></html>
     """
 }
@@ -149,8 +149,10 @@ private struct WebSection: View {
     @Environment(\.argonTheme) private var theme
 
     var body: some View {
-        let palette = scheme == .dark ? ArgonPalette.dark : ArgonPalette.light
-        let document = customDocument(html, accent: AppGraph.brand.value?.accent ?? palette.ink, text: palette.ink, background: palette.paper)
+        // the theme's colours (the merchant's background and text, not Argon's own), as Android's ArgonTheme.colors
+        let dark = scheme == .dark
+        func hex(_ name: String) -> String { theme.look.hex(name, dark: dark) ?? "#000000" }
+        let document = customDocument(html, accent: hex("accent"), text: hex("text"), background: hex("background"))
         HtmlWebView(document: document, baseURL: URL(string: "https://\(AppGraph.shopDomain)/"), onHeight: { measured = $0 }, onLink: open)
             .frame(height: height > 0 ? CGFloat(height) : measured)
     }

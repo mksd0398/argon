@@ -1,0 +1,568 @@
+{
+  "id": "hearth",
+  "name": "Hearth & Home",
+  "vertical": "Furniture and home",
+  "description": "Warm amber on cream for furniture and home stores: shop by room, delivery and EMI front and centre.",
+  "plan": "free",
+  "settings": {
+    "brand": {
+      "accent": "#C9631A"
+    },
+    "appearance": {
+      "mode": "",
+      "fonts": {
+        "heading": {
+          "family": "DM Sans",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/dmsans/v17/rP2tp2ywxg089UriI5-g4vlH9VoD8CmcqZG40F9JadbnoEwAopxhTg.ttf",
+            "700": "https://fonts.gstatic.com/s/dmsans/v17/rP2tp2ywxg089UriI5-g4vlH9VoD8CmcqZG40F9JadbnoEwARZthTg.ttf"
+          }
+        },
+        "body": {
+          "family": "DM Sans",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/dmsans/v17/rP2tp2ywxg089UriI5-g4vlH9VoD8CmcqZG40F9JadbnoEwAopxhTg.ttf",
+            "500": "https://fonts.gstatic.com/s/dmsans/v17/rP2tp2ywxg089UriI5-g4vlH9VoD8CmcqZG40F9JadbnoEwAkJxhTg.ttf",
+            "600": "https://fonts.gstatic.com/s/dmsans/v17/rP2tp2ywxg089UriI5-g4vlH9VoD8CmcqZG40F9JadbnoEwAfJthTg.ttf",
+            "700": "https://fonts.gstatic.com/s/dmsans/v17/rP2tp2ywxg089UriI5-g4vlH9VoD8CmcqZG40F9JadbnoEwARZthTg.ttf"
+          }
+        }
+      },
+      "colors": {
+        "background": "#FFFBF5",
+        "text": "#2B2118",
+        "secondary": "#3D5A80"
+      },
+      "corners": "rounded",
+      "buttons": "rounded",
+      "type": {
+        "scale": "medium"
+      },
+      "icons": "outline"
+    },
+    "navigation": {
+      "tabs": [
+        {
+          "id": "home",
+          "title": "Home",
+          "icon": "home"
+        },
+        {
+          "id": "shop",
+          "title": "Shop",
+          "icon": "grid"
+        },
+        {
+          "id": "wishlist",
+          "title": "Wishlist",
+          "icon": "heart"
+        },
+        {
+          "id": "cart",
+          "title": "Bag",
+          "icon": "bag"
+        },
+        {
+          "id": "account",
+          "title": "Account",
+          "icon": "person"
+        }
+      ],
+      "labels": true,
+      "topBar": {
+        "style": "search",
+        "transparentOnHome": false,
+        "background": "",
+        "foreground": ""
+      },
+      "tabBar": {
+        "background": "",
+        "active": "",
+        "inactive": ""
+      },
+      "drawer": {
+        "enabled": false,
+        "menu": ""
+      }
+    },
+    "announcement": {
+      "enabled": true,
+      "messages": [
+        {
+          "text": "Free delivery and installation",
+          "link": ""
+        },
+        {
+          "text": "No-cost EMI from ₹999/month",
+          "link": ""
+        }
+      ],
+      "background": "secondary",
+      "color": "#FFFFFF",
+      "interval": 5,
+      "dismissible": true
+    },
+    "home": {
+      "template": "b2b"
+    },
+    "collection": {
+      "template": "top"
+    }
+  },
+  "screens": {
+    "home": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "banner-135",
+          "type": "banner",
+          "settings": {
+            "image": {
+              "url": "https://burst.shopifycdn.com/photos/sunlight-creeps-through-a-bright-living-room.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+              "alt": "Bright living room",
+              "width": 0,
+              "height": 0
+            },
+            "heading": "Make it home",
+            "text": "Furniture and mattresses, delivered and installed.",
+            "button_label": "Shop now",
+            "link": "/collections/all",
+            "style": "hero",
+            "height": "medium",
+            "text_color": "#FFFFFF"
+          }
+        },
+        {
+          "id": "features-136",
+          "type": "features",
+          "settings": {
+            "layout": "grid",
+            "background": "surface",
+            "padding": "medium"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "truck",
+                "heading": "Free delivery",
+                "text": "And installation"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "tag",
+                "heading": "No-cost EMI",
+                "text": ""
+              }
+            },
+            {
+              "id": "b3",
+              "type": "feature",
+              "settings": {
+                "icon": "check",
+                "heading": "Warranty",
+                "text": "Up to 10 years"
+              }
+            },
+            {
+              "id": "b4",
+              "type": "feature",
+              "settings": {
+                "icon": "returns",
+                "heading": "Easy returns",
+                "text": ""
+              }
+            }
+          ]
+        },
+        {
+          "id": "collections-137",
+          "type": "collections",
+          "settings": {
+            "heading": "Shop by category",
+            "style": "circles"
+          }
+        },
+        {
+          "id": "products-138",
+          "type": "products",
+          "settings": {
+            "heading": "Bestsellers",
+            "style": "carousel",
+            "limit": 8,
+            "show_all": true
+          }
+        },
+        {
+          "id": "image-grid-139",
+          "type": "image_grid",
+          "settings": {
+            "heading": "Shop by room",
+            "columns": "2",
+            "aspect": "landscape"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "tile",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/comfortable-living-room-cat.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Living room",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Living room",
+                "link": "/collections/all"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "tile",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/copper-light-in-bedroom.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Bedroom",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Bedroom",
+                "link": "/collections/all"
+              }
+            },
+            {
+              "id": "b3",
+              "type": "tile",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/photo-of-a-desk-and-white-corner-seating-area.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Study",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Study",
+                "link": "/collections/all"
+              }
+            },
+            {
+              "id": "b4",
+              "type": "tile",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/kitchen-ready-for-cooking.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Kitchen",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Dining",
+                "link": "/collections/all"
+              }
+            }
+          ]
+        },
+        {
+          "id": "image-with-text-140",
+          "type": "image_with_text",
+          "settings": {
+            "image": {
+              "url": "https://burst.shopifycdn.com/photos/teak-headboard-table.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+              "alt": "Teak headboard",
+              "width": 0,
+              "height": 0
+            },
+            "heading": "Built to last",
+            "text": "<p>Solid engineered wood, tested for everyday Indian homes.</p>",
+            "button_label": "Find yours",
+            "link": "/collections/all",
+            "image_position": "start",
+            "padding": "medium"
+          }
+        },
+        {
+          "id": "products-141",
+          "type": "products",
+          "settings": {
+            "heading": "New arrivals",
+            "style": "grid",
+            "limit": 4,
+            "show_all": true
+          }
+        },
+        {
+          "id": "faq-142",
+          "type": "faq",
+          "settings": {
+            "heading": "Good to know"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "question",
+              "settings": {
+                "question": "How does the 100-night trial work?",
+                "answer": "<p>Sleep on it for up to 100 nights. If it isn't right, we'll pick it up and refund you.</p>"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "question",
+              "settings": {
+                "question": "How long does delivery take?",
+                "answer": "<p>Most orders arrive in 3 to 7 days. We'll message you a delivery slot.</p>"
+              }
+            },
+            {
+              "id": "b3",
+              "type": "question",
+              "settings": {
+                "question": "What does the warranty cover?",
+                "answer": "<p>Sagging and manufacturing defects, for 10 years.</p>"
+              }
+            },
+            {
+              "id": "b4",
+              "type": "question",
+              "settings": {
+                "question": "Can I pay in instalments?",
+                "answer": "<p>Yes: no-cost EMI on most cards at checkout.</p>"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "product": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "blocks": [
+              {
+                "type": "gallery"
+              },
+              {
+                "type": "title"
+              },
+              {
+                "type": "price"
+              },
+              {
+                "type": "options"
+              },
+              {
+                "type": "purchase"
+              },
+              {
+                "type": "details"
+              },
+              {
+                "type": "reviews"
+              },
+              {
+                "type": "rails"
+              }
+            ]
+          }
+        },
+        {
+          "id": "features-143",
+          "type": "features",
+          "settings": {
+            "layout": "grid"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "truck",
+                "heading": "Free delivery",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "check",
+                "heading": "Warranty",
+                "text": ""
+              }
+            },
+            {
+              "id": "b3",
+              "type": "feature",
+              "settings": {
+                "icon": "tag",
+                "heading": "No-cost EMI",
+                "text": ""
+              }
+            },
+            {
+              "id": "b4",
+              "type": "feature",
+              "settings": {
+                "icon": "returns",
+                "heading": "Easy returns",
+                "text": ""
+              }
+            }
+          ]
+        },
+        {
+          "id": "faq-144",
+          "type": "faq",
+          "settings": {
+            "heading": "Good to know"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "question",
+              "settings": {
+                "question": "How does the 100-night trial work?",
+                "answer": "<p>Sleep on it for up to 100 nights. If it isn't right, we'll pick it up and refund you.</p>"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "question",
+              "settings": {
+                "question": "How long does delivery take?",
+                "answer": "<p>Most orders arrive in 3 to 7 days. We'll message you a delivery slot.</p>"
+              }
+            },
+            {
+              "id": "b3",
+              "type": "question",
+              "settings": {
+                "question": "What does the warranty cover?",
+                "answer": "<p>Sagging and manufacturing defects, for 10 years.</p>"
+              }
+            },
+            {
+              "id": "b4",
+              "type": "question",
+              "settings": {
+                "question": "Can I pay in instalments?",
+                "answer": "<p>Yes: no-cost EMI on most cards at checkout.</p>"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "collection": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "filters": "top"
+          }
+        }
+      ]
+    },
+    "cart": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {}
+        },
+        {
+          "id": "features-145",
+          "type": "features",
+          "settings": {
+            "layout": "row"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "truck",
+                "heading": "Free installation",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "tag",
+                "heading": "EMI at checkout",
+                "text": ""
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "onboarding": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "onboarding-146",
+          "type": "onboarding",
+          "settings": {
+            "enabled": true
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/sunlight-creeps-through-a-bright-living-room.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Bright living room",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Welcome to {{ shop.name }}",
+                "text": "Everything for a home you love."
+              }
+            },
+            {
+              "id": "b2",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/teak-headboard-table.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Teak headboard",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Delivered and installed",
+                "text": "Free, by our own team."
+              }
+            },
+            {
+              "id": "b3",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/comfortable-living-room-cat.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Living room",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Pay in easy EMIs",
+                "text": "No-cost EMI on most cards.",
+                "button_label": "Explore"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

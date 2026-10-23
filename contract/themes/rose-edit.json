@@ -1,0 +1,419 @@
+{
+  "id": "rose-edit",
+  "name": "Rose Edit",
+  "vertical": "Women's fashion",
+  "description": "Rose on blush with high-contrast Didone headings, for women's fashion stores built around edits.",
+  "plan": "free",
+  "settings": {
+    "brand": {
+      "accent": "#B8336A"
+    },
+    "appearance": {
+      "mode": "",
+      "fonts": {
+        "heading": {
+          "family": "Bodoni Moda",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/bodonimoda/v28/aFT67PxzY382XsXX63LUYL6GYFcan6NJrKp-VPjfJMShrpsGFUt8oU7awIA.ttf",
+            "700": "https://fonts.gstatic.com/s/bodonimoda/v28/aFT67PxzY382XsXX63LUYL6GYFcan6NJrKp-VPjfJMShrpsGFUt8oandwIA.ttf"
+          }
+        },
+        "body": {
+          "family": "Inter",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfMZg.ttf",
+            "500": "https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuI6fMZg.ttf",
+            "600": "https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuGKYMZg.ttf",
+            "700": "https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuFuYMZg.ttf"
+          }
+        }
+      },
+      "colors": {
+        "background": "#FFF8F9",
+        "text": "#241A1D",
+        "secondary": "#2F2F2F"
+      },
+      "corners": "rounded",
+      "buttons": "pill",
+      "type": {
+        "scale": "medium"
+      },
+      "icons": "outline"
+    },
+    "navigation": {
+      "tabs": [
+        {
+          "id": "home",
+          "title": "Home",
+          "icon": "home"
+        },
+        {
+          "id": "shop",
+          "title": "Shop",
+          "icon": "grid"
+        },
+        {
+          "id": "search",
+          "title": "Search",
+          "icon": "search"
+        },
+        {
+          "id": "wishlist",
+          "title": "Wishlist",
+          "icon": "heart"
+        },
+        {
+          "id": "account",
+          "title": "Account",
+          "icon": "person"
+        }
+      ],
+      "labels": true,
+      "topBar": {
+        "style": "centered_logo",
+        "transparentOnHome": false,
+        "background": "",
+        "foreground": ""
+      },
+      "tabBar": {
+        "background": "",
+        "active": "accent",
+        "inactive": ""
+      },
+      "drawer": {
+        "enabled": false,
+        "menu": ""
+      }
+    },
+    "announcement": {
+      "enabled": true,
+      "messages": [
+        {
+          "text": "New edits every week",
+          "link": ""
+        },
+        {
+          "text": "Free returns within 15 days",
+          "link": ""
+        }
+      ],
+      "background": "accent",
+      "color": "#FFFFFF",
+      "interval": 5,
+      "dismissible": true
+    },
+    "home": {
+      "template": "fashion"
+    },
+    "collection": {
+      "template": "top"
+    }
+  },
+  "screens": {
+    "home": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "slideshow-166",
+          "type": "slideshow",
+          "settings": {
+            "autoplay": true,
+            "interval": 5,
+            "height": "large"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "slide",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/fashion-model-looks-at-camera.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Fashion portrait",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "The season's edit",
+                "text": "Hand-picked by our stylists.",
+                "button_label": "Shop now",
+                "link": "/collections/all"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "slide",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/model-in-gold-fashion.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Model in gold",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Party ready",
+                "text": "Shimmer, satin and sequins.",
+                "button_label": "Shop party",
+                "link": "/collections/all"
+              }
+            }
+          ]
+        },
+        {
+          "id": "collections-167",
+          "type": "collections",
+          "settings": {
+            "heading": "Shop the edits",
+            "style": "circles"
+          }
+        },
+        {
+          "id": "products-168",
+          "type": "products",
+          "settings": {
+            "heading": "Trending now",
+            "style": "carousel",
+            "limit": 8,
+            "show_all": true
+          }
+        },
+        {
+          "id": "image-grid-169",
+          "type": "image_grid",
+          "settings": {
+            "heading": "Shop by style",
+            "columns": "2",
+            "aspect": "portrait"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "tile",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/woman-in-summer-fashion.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Summer outfit",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Dresses",
+                "link": "/collections/all"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "tile",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/hands-on-hips-girls-fashion.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Fashion pose",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Co-ords",
+                "link": "/collections/all"
+              }
+            },
+            {
+              "id": "b3",
+              "type": "tile",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/slow-fashion-coat.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Coat",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Outerwear",
+                "link": "/collections/all"
+              }
+            },
+            {
+              "id": "b4",
+              "type": "tile",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/red-on-red-fashion.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Red outfit",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Occasion",
+                "link": "/collections/all"
+              }
+            }
+          ]
+        },
+        {
+          "id": "banner-170",
+          "type": "banner",
+          "settings": {
+            "image": {
+              "url": "https://burst.shopifycdn.com/photos/woman-dressed-in-white-leans-against-a-wall.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+              "alt": "Woman in white",
+              "width": 0,
+              "height": 0
+            },
+            "heading": "Whites for the weekend",
+            "button_label": "Shop now",
+            "link": "/collections/all",
+            "style": "card",
+            "height": "medium",
+            "text_color": "#FFFFFF",
+            "padding": "small"
+          }
+        },
+        {
+          "id": "products-171",
+          "type": "products",
+          "settings": {
+            "heading": "Just landed",
+            "style": "grid",
+            "limit": 6,
+            "show_all": true
+          }
+        }
+      ]
+    },
+    "product": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "blocks": [
+              {
+                "type": "gallery"
+              },
+              {
+                "type": "title"
+              },
+              {
+                "type": "price"
+              },
+              {
+                "type": "options"
+              },
+              {
+                "type": "purchase"
+              },
+              {
+                "type": "details"
+              },
+              {
+                "type": "reviews"
+              },
+              {
+                "type": "rails"
+              }
+            ]
+          }
+        },
+        {
+          "id": "features-172",
+          "type": "features",
+          "settings": {
+            "layout": "row"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "returns",
+                "heading": "Free returns",
+                "text": "15 days"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "truck",
+                "heading": "Fast delivery",
+                "text": ""
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "collection": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "filters": "top"
+          }
+        }
+      ]
+    },
+    "cart": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {}
+        }
+      ]
+    },
+    "onboarding": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "onboarding-173",
+          "type": "onboarding",
+          "settings": {
+            "enabled": true
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/fashion-model-looks-at-camera.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Fashion portrait",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Welcome to {{ shop.name }}",
+                "text": "Edits picked by our stylists, every week."
+              }
+            },
+            {
+              "id": "b2",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/model-in-gold-fashion.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Model in gold",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Love it? Save it",
+                "text": "Keep a wishlist of everything you like."
+              }
+            },
+            {
+              "id": "b3",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/woman-in-summer-fashion.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Summer outfit",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Free returns",
+                "text": "Within 15 days, from your door.",
+                "button_label": "See the edit"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

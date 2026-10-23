@@ -1,0 +1,453 @@
+{
+  "id": "solitaire",
+  "name": "Solitaire",
+  "vertical": "Fine diamond and gold jewellery",
+  "description": "Deep violet with antique gold and an elegant serif, for fine jewellery that leads with trust.",
+  "plan": "free",
+  "settings": {
+    "brand": {
+      "accent": "#4A2C82"
+    },
+    "appearance": {
+      "mode": "light",
+      "fonts": {
+        "heading": {
+          "family": "Playfair Display",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/playfairdisplay/v40/nuFvD-vYSZviVYUb_rj3ij__anPXJzDwcbmjWBN2PKdFvUDQ.ttf",
+            "700": "https://fonts.gstatic.com/s/playfairdisplay/v40/nuFvD-vYSZviVYUb_rj3ij__anPXJzDwcbmjWBN2PKeiukDQ.ttf"
+          }
+        },
+        "body": {
+          "family": "Lato",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/lato/v25/S6uyw4BMUTPHvxk.ttf",
+            "700": "https://fonts.gstatic.com/s/lato/v25/S6u9w4BMUTPHh6UVew8.ttf"
+          }
+        }
+      },
+      "colors": {
+        "background": "#FAF8FC",
+        "text": "#1E1630",
+        "secondary": "#B8913F"
+      },
+      "corners": "rounded",
+      "buttons": "rounded",
+      "type": {
+        "scale": "medium"
+      },
+      "icons": "outline"
+    },
+    "navigation": {
+      "tabs": [
+        {
+          "id": "home",
+          "title": "Home",
+          "icon": "home"
+        },
+        {
+          "id": "shop",
+          "title": "Shop",
+          "icon": "grid"
+        },
+        {
+          "id": "search",
+          "title": "Search",
+          "icon": "search"
+        },
+        {
+          "id": "wishlist",
+          "title": "Wishlist",
+          "icon": "heart"
+        },
+        {
+          "id": "account",
+          "title": "Account",
+          "icon": "person"
+        }
+      ],
+      "labels": true,
+      "topBar": {
+        "style": "centered_logo",
+        "transparentOnHome": false,
+        "background": "",
+        "foreground": ""
+      },
+      "tabBar": {
+        "background": "",
+        "active": "accent",
+        "inactive": ""
+      },
+      "drawer": {
+        "enabled": false,
+        "menu": ""
+      }
+    },
+    "announcement": {
+      "enabled": true,
+      "messages": [
+        {
+          "text": "Certified diamonds, BIS hallmarked gold",
+          "link": ""
+        },
+        {
+          "text": "Lifetime exchange",
+          "link": ""
+        }
+      ],
+      "background": "accent",
+      "color": "#FFFFFF",
+      "interval": 5,
+      "dismissible": true
+    },
+    "home": {
+      "template": "beauty"
+    },
+    "collection": {
+      "template": "top"
+    }
+  },
+  "screens": {
+    "home": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "slideshow-60",
+          "type": "slideshow",
+          "settings": {
+            "autoplay": true,
+            "interval": 5,
+            "height": "medium"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "slide",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/an-engagment-ring-sits-in-a-blue-box.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Ring in a box",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Forever starts here",
+                "text": "Certified diamonds, set by hand.",
+                "button_label": "Shop rings",
+                "link": "/collections/all"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "slide",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/pretty-gold-necklace.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Gold necklace",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Gold, made modern",
+                "text": "Hallmarked and light enough for every day.",
+                "button_label": "Shop gold",
+                "link": "/collections/all"
+              }
+            }
+          ]
+        },
+        {
+          "id": "collections-61",
+          "type": "collections",
+          "settings": {
+            "heading": "Shop by category",
+            "style": "circles",
+            "padding": "small"
+          }
+        },
+        {
+          "id": "products-62",
+          "type": "products",
+          "settings": {
+            "heading": "Bestsellers",
+            "style": "carousel",
+            "limit": 8,
+            "show_all": true
+          }
+        },
+        {
+          "id": "features-63",
+          "type": "features",
+          "settings": {
+            "heading": "The promise",
+            "layout": "grid",
+            "background": "surface",
+            "padding": "medium"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "check",
+                "heading": "Certified diamonds",
+                "text": "Independent labs"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "star",
+                "heading": "Hallmarked gold",
+                "text": "BIS certified"
+              }
+            },
+            {
+              "id": "b3",
+              "type": "feature",
+              "settings": {
+                "icon": "returns",
+                "heading": "Lifetime exchange",
+                "text": "Full value"
+              }
+            },
+            {
+              "id": "b4",
+              "type": "feature",
+              "settings": {
+                "icon": "truck",
+                "heading": "Insured shipping",
+                "text": "Free"
+              }
+            }
+          ]
+        },
+        {
+          "id": "image-with-text-64",
+          "type": "image_with_text",
+          "settings": {
+            "image": {
+              "url": "https://burst.shopifycdn.com/photos/i-do-with-wedding-rings.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+              "alt": "Wedding rings",
+              "width": 0,
+              "height": 0
+            },
+            "heading": "For the big moments",
+            "text": "<p>Engagement, anniversary and wedding pieces, with free resizing.</p>",
+            "button_label": "Shop gifts",
+            "link": "/collections/all",
+            "image_position": "start",
+            "padding": "medium"
+          }
+        },
+        {
+          "id": "products-65",
+          "type": "products",
+          "settings": {
+            "heading": "New in",
+            "style": "grid",
+            "limit": 6,
+            "show_all": true
+          }
+        },
+        {
+          "id": "rich-text-66",
+          "type": "rich_text",
+          "settings": {
+            "heading": "Our promise",
+            "text": "<p>Every diamond is certified and every gold piece hallmarked. Exchange for the full value, for life.</p>",
+            "alignment": "center",
+            "padding": "large"
+          }
+        }
+      ]
+    },
+    "product": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "blocks": [
+              {
+                "type": "gallery"
+              },
+              {
+                "type": "title"
+              },
+              {
+                "type": "price"
+              },
+              {
+                "type": "options"
+              },
+              {
+                "type": "purchase"
+              },
+              {
+                "type": "details"
+              },
+              {
+                "type": "reviews"
+              },
+              {
+                "type": "rails"
+              }
+            ]
+          }
+        },
+        {
+          "id": "features-67",
+          "type": "features",
+          "settings": {
+            "layout": "grid"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "check",
+                "heading": "Certified",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "returns",
+                "heading": "Lifetime exchange",
+                "text": ""
+              }
+            },
+            {
+              "id": "b3",
+              "type": "feature",
+              "settings": {
+                "icon": "truck",
+                "heading": "Insured delivery",
+                "text": ""
+              }
+            },
+            {
+              "id": "b4",
+              "type": "feature",
+              "settings": {
+                "icon": "clock",
+                "heading": "Free resizing",
+                "text": ""
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "collection": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "filters": "top"
+          }
+        }
+      ]
+    },
+    "cart": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {}
+        },
+        {
+          "id": "features-68",
+          "type": "features",
+          "settings": {
+            "layout": "row"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "truck",
+                "heading": "Free insured shipping",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "lock",
+                "heading": "Secure payment",
+                "text": ""
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "onboarding": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "onboarding-69",
+          "type": "onboarding",
+          "settings": {
+            "enabled": true
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/an-engagment-ring-sits-in-a-blue-box.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Ring in a box",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Welcome to {{ shop.name }}",
+                "text": "Fine jewellery, certified and hallmarked."
+              }
+            },
+            {
+              "id": "b2",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/pretty-gold-necklace.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Gold necklace",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Exchange for life",
+                "text": "Your jewellery keeps its full value with us."
+              }
+            },
+            {
+              "id": "b3",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/i-do-with-wedding-rings.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Wedding rings",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Insured to your door",
+                "text": "Every order ships free and fully insured.",
+                "button_label": "Discover"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

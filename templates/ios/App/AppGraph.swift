@@ -17,9 +17,16 @@ enum AppGraph {
     private static let settingsStore = RemoteSettingsStore(
         file: URL.applicationSupportDirectory.appending(path: "remote-settings.json")
     )
-    /// The merchant's settings as the last launch fetched them (`settingsStore`); nil without a `settingsUrl`. Read before
-    /// any value below: each one that the merchant can set reads it first, and a set value wins over the built-in one.
-    static let remote: RemoteSettings? = settingsUrl.isEmpty ? nil : settingsStore.load()
+    /// The merchant's settings as the last launch fetched them (`settingsStore`, never without a `settingsUrl`), else the
+    /// ones the app was built with (`built-in/settings.json`: the store's or a theme's). Read before any value below: each
+    /// one that the merchant can set reads it first, and a set value wins over the built-in one.
+    static let remote: RemoteSettings? = (settingsUrl.isEmpty ? nil : settingsStore.load()) ?? builtIn("settings").flatMap { RemoteSettings(json: $0) }
+
+    /// A file the CLI wrote into the app's `built-in/` folder (a synchronized folder may copy it flat into the bundle).
+    static func builtIn(_ name: String) -> Data? {
+        (Bundle.main.url(forResource: name, withExtension: "json", subdirectory: "built-in")
+            ?? Bundle.main.url(forResource: name, withExtension: "json")).flatMap { try? Data(contentsOf: $0) }
+    }
     /// The tab bar, the top bar and the drawer: the merchant's, else the built-in five tabs and the template's bar.
     static let navigation = remote?.navigation ?? Navigation()
     /// The strip above the top bar on the tab roots (the merchant's); nil: none.
@@ -83,7 +90,11 @@ enum AppGraph {
     private static let client = Storefront(domain: shopDomain, token: storefrontToken, apiVersion: apiVersion, loadDocument: AppGraph.document)
 
     /// Every Storefront API operation, typed.
-    @MainActor static let storefront = StorefrontAPI(transport: { name, variables in try await AppGraph.client.query(name, variables) })
+    @MainActor static let storefront: StorefrontAPI = {
+        let api = StorefrontAPI(transport: { name, variables in try await AppGraph.client.query(name, variables) })
+        api.builtInScreen = { handle in builtIn("screen-\(handle)").flatMap { String(data: $0, encoding: .utf8) } }
+        return api
+    }()
 
     /// The customer's Customer Account API operations: the signed-in customer's, sent with `auth`'s token; the sample
     /// account's bundled answers while `sampleAccount` is on.

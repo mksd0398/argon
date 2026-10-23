@@ -45,6 +45,9 @@ final class StorefrontAPI {
     }
 
     private let transport: GraphQLTransport
+    /// The template the app was built with for a screen handle (a theme's `built-in/screen-<handle>.json`), shown when the
+    /// store has no `app_screen` of its own.
+    var builtInScreen: (String) -> String? = { _ in nil }
     private var keptShop: Shop? = nil
     private var keptLocalization: Localization? = nil
     private var keptPolicies: ShopPolicies? = nil
@@ -239,9 +242,10 @@ final class StorefrontAPI {
     }
 
     /// The `app_screen` metaobject `handle` (AppScreen: `home`, `product`, ..., or a custom page's handle): its title
-    /// and template. Nil when the store has none by that handle.
+    /// and template; else the one the app was built with (`builtInScreen`). Nil when there is neither.
     func appScreen(_ handle: String) async throws -> AppScreen? {
-        try await run("AppScreen", ["handle": handle], root: "metaobject")
+        if let screen: AppScreen = try await run("AppScreen", ["handle": handle], root: "metaobject") { return screen }
+        return builtInScreen(handle).map { AppScreen(id: "", handle: handle, title: "", template: $0) }
     }
 
     /// The products and collections `ids` (SectionNodes), each collection with its first 24 products: everything a
