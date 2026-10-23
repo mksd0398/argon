@@ -29,7 +29,8 @@ import app.argon.ui.ArgonTheme
 enum class ArgonButtonStyle { Primary, Secondary, Tertiary, Destructive }
 
 /**
- * A native M3 pill button (Button, OutlinedButton or TextButton by [style]), 44/48/56 dp tall by [size].
+ * A native M3 button (Button, OutlinedButton or TextButton by [style]), 44/48/56 dp tall by [size], in the theme's button
+ * shape (a pill unless the theme says otherwise).
  * [isLoading] swaps the icon for a spinner and ignores taps.
  */
 @Composable
@@ -52,6 +53,7 @@ fun ArgonButton(
     val m = modifier.heightIn(min = height).let { if (fullWidth) it.fillMaxWidth() else it }
     val padding = PaddingValues(horizontal = if (size == ArgonSize.S) ArgonTheme.spacing.m else ArgonTheme.spacing.xl)
     val enabled = isEnabled && !isLoading
+    val shape = ArgonTheme.radius.button
     val iconSize = if (size == ArgonSize.L) 20.dp else 17.dp
     val label: @Composable RowScope.() -> Unit = {
         if (isLoading) {
@@ -63,9 +65,10 @@ fun ArgonButton(
         Text(title, style = ArgonTheme.type.label, maxLines = 1)
     }
     when (style) {
-        ArgonButtonStyle.Primary -> Button(action, m, enabled, contentPadding = padding, content = label)
+        ArgonButtonStyle.Primary -> Button(action, m, enabled, shape = shape, contentPadding = padding, content = label)
         ArgonButtonStyle.Destructive -> Button(
             action, m, enabled,
+            shape = shape,
             colors = ButtonDefaults.buttonColors(MaterialTheme.colorScheme.error, MaterialTheme.colorScheme.onError),
             contentPadding = padding,
             content = label,
@@ -73,6 +76,7 @@ fun ArgonButton(
         // secondary and tertiary are ink, like iOS, not the accent
         ArgonButtonStyle.Secondary -> OutlinedButton(
             action, m, enabled,
+            shape = shape,
             colors = ButtonDefaults.outlinedButtonColors(contentColor = ArgonTheme.colors.ink),
             border = BorderStroke(1.dp, ArgonTheme.colors.ink.copy(alpha = if (enabled) 1f else 0.38f)),
             contentPadding = padding,
@@ -80,6 +84,7 @@ fun ArgonButton(
         )
         ArgonButtonStyle.Tertiary -> TextButton(
             action, m, enabled,
+            shape = shape,
             colors = ButtonDefaults.textButtonColors(contentColor = ArgonTheme.colors.ink),
             contentPadding = padding,
             content = label,

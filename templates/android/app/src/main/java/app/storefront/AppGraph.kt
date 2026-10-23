@@ -42,6 +42,7 @@ import app.storefront.data.RemoteSettings
 import app.storefront.data.RemoteSettingsStore
 import app.storefront.data.Storefront
 import app.storefront.data.StorefrontApi
+import app.storefront.data.ThemeLook
 import app.storefront.data.WishlistStore
 import app.storefront.data.firebaseSink
 import app.storefront.data.metaSink
@@ -282,6 +283,9 @@ object AppGraph {
 
     /** Light or dark (the settings', else the device's). */
     val appearance: Appearance by lazy { settings?.appearance ?: Appearance.System }
+
+    /** The theme's background, text, corners and buttons (the settings', else Argon's). */
+    val look: ThemeLook by lazy { settings?.look ?: ThemeLook() }
 
     /** The settings' `appearance.fonts` heading and body, set at launch when their files are on disk; null: Argon's own. */
     internal var headingFont: FontFamily? = null

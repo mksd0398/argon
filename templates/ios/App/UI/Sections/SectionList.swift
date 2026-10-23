@@ -241,14 +241,24 @@ struct SectionList: View {
 struct SectionView: View {
     let section: ScreenSection
     let scope: SectionScope
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         content
+            // on a background the theme's text doesn't read on (under 4.5:1), the other appearance's palette: light text
+            // on a dark section in a light app, and the other way round (contract/theme.js `textOn`)
+            .environment(\.colorScheme, readsOn(section.background) ? scheme : scheme == .dark ? .light : .dark)
             .padding(.vertical, section.padding)
             .frame(maxWidth: .infinity)
             .background { ArgonTheme.color(hex: section.background) }
             // the section last shown: what a crash report names as the one on screen
             .onAppear { CrashReports.setKey("section", "\(section.type) \(section.id)") }
+    }
+
+    private func readsOn(_ background: String?) -> Bool {
+        guard let background else { return true }
+        let ink = scheme == .dark ? ArgonPalette.dark.ink : ArgonPalette.themed(AppGraph.look.argon(accent: nil)).ink
+        return (ArgonTheme.contrastRatio(background, ink) ?? 21) >= 4.5
     }
 
     @ViewBuilder

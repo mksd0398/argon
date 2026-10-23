@@ -45,6 +45,8 @@ data class RemoteSettings(
     val appearance: Appearance? = null,
     /** `appearance.fonts`; null: Argon's own. */
     val fonts: RemoteFonts? = null,
+    /** `appearance.colors`, `corners` and `buttons`; null: Argon's own. */
+    val look: ThemeLook? = null,
     /** `delivery.enabled`: product pages show the delivery date for the customer's pincode ([DeliveryStore]). */
     val delivery: Boolean? = null,
 ) {
@@ -89,6 +91,7 @@ data class RemoteSettings(
                 announcement = Announcement.decode(root.obj("announcement")),
                 appearance = Appearance.decode(root.obj("appearance")),
                 fonts = RemoteFonts.decode(root.obj("appearance")?.obj("fonts")),
+                look = ThemeLook.decode(root.obj("appearance")),
                 delivery = root.obj("delivery")?.bool("enabled"),
             )
         }

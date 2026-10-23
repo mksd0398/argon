@@ -7,21 +7,74 @@ public struct ArgonTheme: Equatable {
     public let colors: ArgonColors
     public let type: ArgonTypography
     public let spacing = ArgonSpacing()
-    public let radius = ArgonRadius()
-    private let accentHex: String?
+    public let radius: ArgonRadius
+    private let look: ArgonLook
     private let dynamicTypeSize: DynamicTypeSize
 
-    /// `accentHex` is the shop's brand colour (`#RRGGBB`); without a readable one the accent is ink.
-    public init(accentHex: String? = nil, dynamicTypeSize: DynamicTypeSize = .large) {
+    /// `look`: the accent (the shop's brand colour, `#RRGGBB`; without a readable one the accent is ink), the light
+    /// appearance's background and text, the corners and the buttons' shape.
+    public init(look: ArgonLook = ArgonLook(), dynamicTypeSize: DynamicTypeSize = .large) {
         ArgonFonts.register()
-        self.accentHex = accentHex
+        self.look = look
         self.dynamicTypeSize = dynamicTypeSize
-        colors = ArgonColors(accentHex: accentHex)
+        colors = ArgonColors(look: look)
+        radius = ArgonRadius(corners: look.corners, buttons: look.buttons)
         type = ArgonTypography(dynamicTypeSize: dynamicTypeSize)
     }
 
+    public init(accentHex: String?, dynamicTypeSize: DynamicTypeSize = .large) {
+        self.init(look: ArgonLook(accentHex: accentHex), dynamicTypeSize: dynamicTypeSize)
+    }
+
     public static func == (a: ArgonTheme, b: ArgonTheme) -> Bool {
-        a.accentHex == b.accentHex && a.dynamicTypeSize == b.dynamicTypeSize
+        a.look == b.look && a.dynamicTypeSize == b.dynamicTypeSize
+    }
+}
+
+/// What a merchant sets of the theme (contract/theme.js): the accent, the light appearance's background and text (nil:
+/// Argon's paper and ink), the corners and the buttons' shape.
+public struct ArgonLook: Equatable, Sendable {
+    public var accentHex: String?
+    public var backgroundHex: String?
+    public var textHex: String?
+    public var corners: ArgonCorners
+    public var buttons: ArgonButtonShape
+
+    public init(
+        accentHex: String? = nil, backgroundHex: String? = nil, textHex: String? = nil,
+        corners: ArgonCorners = .rounded, buttons: ArgonButtonShape = .pill
+    ) {
+        self.accentHex = accentHex
+        self.backgroundHex = backgroundHex
+        self.textHex = textHex
+        self.corners = corners
+        self.buttons = buttons
+    }
+}
+
+/// The theme's corners: s, m and l in points (contract/theme.js CORNERS).
+public enum ArgonCorners: String, CaseIterable, Sendable {
+    case square, rounded, round
+
+    public var points: [CGFloat] {
+        switch self {
+        case .square: return [0, 0, 0]
+        case .rounded: return [4, 8, 16]
+        case .round: return [8, 16, 24]
+        }
+    }
+}
+
+/// The buttons' shape (contract/theme.js BUTTONS): its corner radius.
+public enum ArgonButtonShape: String, CaseIterable, Sendable {
+    case pill, rounded, square
+
+    public var points: CGFloat {
+        switch self {
+        case .pill: return 999
+        case .rounded: return 8
+        case .square: return 0
+        }
     }
 }
 
@@ -46,8 +99,9 @@ public struct ArgonPalette: Sendable {
 public struct ArgonColors {
     public let ink, muted, paper, surface, border, accent, onAccent, sale, success: Color
 
-    init(accentHex: String?) {
-        let light = ArgonPalette.light, dark = ArgonPalette.dark
+    init(look: ArgonLook) {
+        let light = ArgonPalette.themed(look), dark = ArgonPalette.dark
+        let accentHex = look.accentHex
         ink = dynamicColor(light.ink, dark.ink)
         muted = dynamicColor(light.muted, dark.muted)
         paper = dynamicColor(light.paper, dark.paper)
@@ -62,6 +116,23 @@ public struct ArgonColors {
             accent = ink
             onAccent = dynamicColor(ArgonTheme.onAccentHex(light.ink), ArgonTheme.onAccentHex(dark.ink))
         }
+    }
+}
+
+extension ArgonPalette {
+    /// The light palette with `look`'s background and text as paper and ink, and muted, border and surface made from
+    /// them as contract/theme.js `themeTokens` makes them; Argon's own without either.
+    public static func themed(_ look: ArgonLook) -> ArgonPalette {
+        let background = ArgonTheme.rgb(hex: look.backgroundHex) != nil ? look.backgroundHex?.uppercased() : nil
+        let text = ArgonTheme.rgb(hex: look.textHex) != nil ? look.textHex?.uppercased() : nil
+        guard background != nil || text != nil else { return .light }
+        let paper = background ?? ArgonPalette.light.paper, ink = text ?? ArgonPalette.light.ink
+        let surface = (ArgonTheme.luminance(hex: paper) ?? 1) > 0.5
+            ? ArgonTheme.mix("#FFFFFF", paper, 0.7) : ArgonTheme.mix(ink, paper, 0.08)
+        return ArgonPalette(
+            ink: ink, muted: ArgonTheme.mix(ink, paper, 0.62), paper: paper, surface: surface,
+            border: ArgonTheme.mix(ink, paper, 0.14), sale: ArgonPalette.light.sale, success: ArgonPalette.light.success
+        )
     }
 }
 
@@ -81,6 +152,18 @@ extension ArgonTheme {
         let digits = hex.hasPrefix("#") ? String(hex.dropFirst()) : hex
         guard digits.count == 6, let value = UInt32(digits, radix: 16) else { return nil }
         return (Double((value >> 16) & 0xFF) / 255, Double((value >> 8) & 0xFF) / 255, Double(value & 0xFF) / 255)
+    }
+
+    /// `a` at `amount` (0...1) over `b`, each channel rounded, as `#RRGGBB` (contract/theme.js `mix`).
+    public static func mix(_ a: String, _ b: String, _ amount: Double) -> String {
+        guard let x = rgb(hex: a), let y = rgb(hex: b) else { return b }
+        func channel(_ p: Double, _ q: Double) -> Int {
+            let over: Double = p * 255 * amount
+            let under: Double = q * 255 * (1 - amount)
+            return Int((over + under).rounded())
+        }
+        let red = channel(x.red, y.red), green = channel(x.green, y.green), blue = channel(x.blue, y.blue)
+        return String(format: "#%02X%02X%02X", red, green, blue)
     }
 
     /// The colour for `#RRGGBB`; nil when it's absent or unreadable.
@@ -172,9 +255,17 @@ public struct ArgonSpacing {
     public let xxs: CGFloat = 2, xs: CGFloat = 4, s: CGFloat = 8, m: CGFloat = 12, l: CGFloat = 16, xl: CGFloat = 24, xxl: CGFloat = 32
 }
 
-/// Corner radii in points: 4, 8, 16, and pill (fully rounded).
+/// Corner radii in points: s, m and l by the theme's corners (rounded: 4, 8, 16), and pill (fully rounded); `button` is
+/// the buttons' corner radius.
 public struct ArgonRadius {
-    public let s: CGFloat = 4, m: CGFloat = 8, l: CGFloat = 16, pill: CGFloat = 999
+    public let s, m, l: CGFloat
+    public let pill: CGFloat = 999
+    public let button: CGFloat
+
+    public init(corners: ArgonCorners = .rounded, buttons: ArgonButtonShape = .pill) {
+        (s, m, l) = (corners.points[0], corners.points[1], corners.points[2])
+        button = buttons.points
+    }
 }
 
 /// Small, medium and large, for components that come in sizes.
@@ -199,16 +290,21 @@ extension View {
     /// Argon's tokens for this view and everything in it, with the shop's brand colour (`#RRGGBB`) as the accent and the
     /// tint (ink when it's nil or unreadable).
     public func argonTheme(accentHex: String?) -> some View {
-        modifier(ArgonThemeModifier(accentHex: accentHex))
+        modifier(ArgonThemeModifier(look: ArgonLook(accentHex: accentHex)))
+    }
+
+    /// Argon's tokens with the merchant's whole `look` (accent, background, text, corners, buttons).
+    public func argonTheme(look: ArgonLook) -> some View {
+        modifier(ArgonThemeModifier(look: look))
     }
 }
 
 private struct ArgonThemeModifier: ViewModifier {
-    let accentHex: String?
+    let look: ArgonLook
     @Environment(\.dynamicTypeSize) var dynamicTypeSize
 
     func body(content: Content) -> some View {
-        let theme = ArgonTheme(accentHex: accentHex, dynamicTypeSize: dynamicTypeSize)
+        let theme = ArgonTheme(look: look, dynamicTypeSize: dynamicTypeSize)
         return content.environment(\.argonTheme, theme).tint(theme.colors.accent)
     }
 }

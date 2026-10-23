@@ -1,0 +1,216 @@
+[
+  {
+    "appearance": {},
+    "dark": false,
+    "tokens": {
+      "ink": "#17150F",
+      "muted": "#6E6A63",
+      "paper": "#F6F4F0",
+      "surface": "#FFFFFF",
+      "border": "#E2DED6",
+      "sale": "#B23A2E",
+      "success": "#2E7D4F",
+      "accent": "#17150F",
+      "onAccent": "#FFFFFF",
+      "radius": {
+        "s": 4,
+        "m": 8,
+        "l": 16
+      },
+      "button": 999
+    }
+  },
+  {
+    "appearance": {},
+    "dark": true,
+    "tokens": {
+      "ink": "#F6F4F0",
+      "muted": "#A29E96",
+      "paper": "#17150F",
+      "surface": "#221F19",
+      "border": "#3A362F",
+      "sale": "#E8735F",
+      "success": "#6CC08A",
+      "accent": "#F6F4F0",
+      "onAccent": "#000000",
+      "radius": {
+        "s": 4,
+        "m": 8,
+        "l": 16
+      },
+      "button": 999
+    }
+  },
+  {
+    "appearance": {
+      "accent": "#1F6FEB"
+    },
+    "dark": false,
+    "tokens": {
+      "ink": "#17150F",
+      "muted": "#6E6A63",
+      "paper": "#F6F4F0",
+      "surface": "#FFFFFF",
+      "border": "#E2DED6",
+      "sale": "#B23A2E",
+      "success": "#2E7D4F",
+      "accent": "#1F6FEB",
+      "onAccent": "#FFFFFF",
+      "radius": {
+        "s": 4,
+        "m": 8,
+        "l": 16
+      },
+      "button": 999
+    }
+  },
+  {
+    "appearance": {
+      "accent": "#f5d90a",
+      "corners": "square",
+      "buttons": "square"
+    },
+    "dark": false,
+    "tokens": {
+      "ink": "#17150F",
+      "muted": "#6E6A63",
+      "paper": "#F6F4F0",
+      "surface": "#FFFFFF",
+      "border": "#E2DED6",
+      "sale": "#B23A2E",
+      "success": "#2E7D4F",
+      "accent": "#F5D90A",
+      "onAccent": "#000000",
+      "radius": {
+        "s": 0,
+        "m": 0,
+        "l": 0
+      },
+      "button": 0
+    }
+  },
+  {
+    "appearance": {
+      "background": "#F7F3EE",
+      "text": "#2B2118"
+    },
+    "dark": false,
+    "tokens": {
+      "ink": "#2B2118",
+      "muted": "#797169",
+      "paper": "#F7F3EE",
+      "surface": "#FDFBFA",
+      "border": "#DAD6D0",
+      "sale": "#B23A2E",
+      "success": "#2E7D4F",
+      "accent": "#2B2118",
+      "onAccent": "#FFFFFF",
+      "radius": {
+        "s": 4,
+        "m": 8,
+        "l": 16
+      },
+      "button": 999
+    }
+  },
+  {
+    "appearance": {
+      "background": "#F7F3EE",
+      "text": "#2B2118",
+      "accent": "#8A3B12",
+      "corners": "round",
+      "buttons": "rounded"
+    },
+    "dark": true,
+    "tokens": {
+      "ink": "#F6F4F0",
+      "muted": "#A29E96",
+      "paper": "#17150F",
+      "surface": "#221F19",
+      "border": "#3A362F",
+      "sale": "#E8735F",
+      "success": "#6CC08A",
+      "accent": "#8A3B12",
+      "onAccent": "#FFFFFF",
+      "radius": {
+        "s": 8,
+        "m": 16,
+        "l": 24
+      },
+      "button": 8
+    }
+  },
+  {
+    "appearance": {
+      "background": "#101820",
+      "text": "#F2F2F2"
+    },
+    "dark": false,
+    "tokens": {
+      "ink": "#F2F2F2",
+      "muted": "#9C9FA2",
+      "paper": "#101820",
+      "surface": "#222931",
+      "border": "#30373D",
+      "sale": "#B23A2E",
+      "success": "#2E7D4F",
+      "accent": "#F2F2F2",
+      "onAccent": "#000000",
+      "radius": {
+        "s": 4,
+        "m": 8,
+        "l": 16
+      },
+      "button": 999
+    }
+  },
+  {
+    "appearance": {
+      "text": "#003049"
+    },
+    "dark": false,
+    "tokens": {
+      "ink": "#003049",
+      "muted": "#5D7A88",
+      "paper": "#F6F4F0",
+      "surface": "#FCFCFB",
+      "border": "#D4D9D9",
+      "sale": "#B23A2E",
+      "success": "#2E7D4F",
+      "accent": "#003049",
+      "onAccent": "#FFFFFF",
+      "radius": {
+        "s": 4,
+        "m": 8,
+        "l": 16
+      },
+      "button": 999
+    }
+  },
+  {
+    "appearance": {
+      "background": "beige",
+      "accent": "red",
+      "corners": "oval",
+      "buttons": "x"
+    },
+    "dark": false,
+    "tokens": {
+      "ink": "#17150F",
+      "muted": "#6E6A63",
+      "paper": "#F6F4F0",
+      "surface": "#FFFFFF",
+      "border": "#E2DED6",
+      "sale": "#B23A2E",
+      "success": "#2E7D4F",
+      "accent": "#17150F",
+      "onAccent": "#FFFFFF",
+      "radius": {
+        "s": 4,
+        "m": 8,
+        "l": 16
+      },
+      "button": 999
+    }
+  }
+]

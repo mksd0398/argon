@@ -74,7 +74,7 @@ Both apps carry every template; `HOME_TEMPLATE` and `COLLECTION_TEMPLATE` pick t
 - **Collection**: `top` keeps sort and filter chips in a sticky bar under the title; `bottom` puts Sort and Filter in a floating bar. Colour filters and product cards show swatches: Shopify's swatch data where the store has it, else a colour matched from the name.
 - **Product**: variants with swatches, bundles, unit prices, quantity rules and volume pricing, subscriptions, a sticky add-to-cart bar, recommendations, recently viewed, reviews.
 - **Orders and account**: order tracking and payments, a return or exchange request, profile, addresses, company, store credit.
-- **Onboarding**: with `ONBOARDING=true`, three welcome pages over the home template's stock banners, shown once before the tabs. Debug builds can run it again from Account → Show onboarding.
+- **Onboarding**: with `ONBOARDING=true`, welcome pages shown once before the tabs: the store's `onboarding` screen when it has one (pictures or videos, words and button labels, made in Krypton), else three pages over the home template's stock banners. Debug builds can run it again from Account → Show onboarding.
 - **Cart**: with `FREE_SHIPPING_THRESHOLD` set, a bar shows how much more the cart needs for free shipping. The app only shows the message: the free shipping rate itself is set in Shopify admin (Settings → Shipping and delivery), at the same amount. The cart also takes discount codes and shows the savings.
 
 ### Reviews (Judge.me)

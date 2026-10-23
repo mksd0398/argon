@@ -63,16 +63,37 @@ fun onAccentFor(rgb: Int): Int = if (contrastRatio(rgb, BLACK) >= contrastRatio(
 
 internal fun color(rgb: Int) = Color(0xFF000000 or rgb.toLong())
 
-/** The tokens for [dark] or light mode with [accentHex] as the accent (ink when null or malformed). */
-fun argonColors(accentHex: String?, dark: Boolean): ArgonColors {
+/** [a] at [amount] (0..1) over [b], each channel rounded (contract/theme.js `mix`). */
+internal fun mix(a: Int, b: Int, amount: Double): Int = listOf(16, 8, 0).fold(0) { out, shift ->
+    val c = ((a shr shift) and 0xFF) * amount + ((b shr shift) and 0xFF) * (1 - amount)
+    out or (Math.round(c).toInt() shl shift)
+}
+
+/**
+ * The tokens for [dark] or light mode with [accentHex] as the accent (ink when null or malformed). In light mode
+ * [backgroundHex] and [textHex] replace paper and ink, and muted, border and surface are made from them as
+ * contract/theme.js `themeTokens` makes them.
+ */
+fun argonColors(accentHex: String?, dark: Boolean, backgroundHex: String? = null, textHex: String? = null): ArgonColors {
     val p = if (dark) Palette.Dark else Palette.Light
-    val accent = parseHexColor(accentHex) ?: p.ink
+    val background = if (dark) null else parseHexColor(backgroundHex)
+    val text = if (dark) null else parseHexColor(textHex)
+    val paper = background ?: p.paper
+    val ink = text ?: p.ink
+    val own = background != null || text != null
+    val accent = parseHexColor(accentHex) ?: ink
     return ArgonColors(
-        ink = color(p.ink),
-        muted = color(p.muted),
-        paper = color(p.paper),
-        surface = color(p.surface),
-        border = color(p.border),
+        ink = color(ink),
+        muted = color(if (own) mix(ink, paper, 0.62) else p.muted),
+        paper = color(paper),
+        surface = color(
+            when {
+                !own -> p.surface
+                relativeLuminance(paper) > 0.5 -> mix(WHITE, paper, 0.7)
+                else -> mix(ink, paper, 0.08)
+            },
+        ),
+        border = color(if (own) mix(ink, paper, 0.14) else p.border),
         accent = color(accent),
         onAccent = color(onAccentFor(accent)),
         sale = color(p.sale),

@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -43,6 +44,8 @@ import app.argon.ui.components.ArgonDivider
 import app.argon.ui.components.ArgonListItem
 import app.argon.ui.components.ArgonListLeading
 import app.argon.ui.components.ArgonListTrailing
+import app.argon.ui.contrastRatio
+import app.storefront.AppGraph
 import app.storefront.data.CollectionCard
 import app.storefront.data.CrashReports
 import app.storefront.data.ProductCard
@@ -57,6 +60,7 @@ import app.storefront.ui.HtmlText
 import app.storefront.ui.ProductCardRow
 import app.storefront.ui.SectionHeader
 import app.storefront.ui.StoreImage
+import app.storefront.ui.isAppDark
 import app.storefront.ui.home.BannerView
 import app.storefront.ui.home.ProductPairs
 import app.storefront.ui.home.picture
@@ -80,24 +84,38 @@ fun SectionView(section: ScreenSection, env: SectionEnv, modifier: Modifier = Mo
     }
     val background = section.background?.let(::color)
     Box(modifier.fillMaxWidth().then(if (background != null) Modifier.background(background) else Modifier).padding(vertical = section.padding.dp)) {
-        when (val content = section.content) {
-            is SectionContent.Banner -> BannerSection(section, content, env)
-            is SectionContent.Slideshow -> SlideshowSection(section, content, env)
-            is SectionContent.Products -> ProductsSection(section, content, env)
-            is SectionContent.Collections -> CollectionsSection(section, content, env)
-            is SectionContent.RichText -> RichTextSection(section, content, env)
-            is SectionContent.ImageWithText -> ImageWithTextSection(section, content, env)
-            is SectionContent.Video -> VideoSection(content)
-            is SectionContent.Countdown -> CountdownSection(section, content, env)
-            is SectionContent.Spacer -> SpacerSection(content)
-            is SectionContent.Custom -> CustomSection(section, content, env)
-            is SectionContent.Marquee -> MarqueeSection(section, content, env)
-            is SectionContent.Faq -> FaqSection(section, content, env)
-            is SectionContent.Features -> FeaturesSection(section, content, env)
-            is SectionContent.ImageGrid -> ImageGridSection(section, content, env)
-            null -> Unit
+        OnBackground(background) {
+            when (val content = section.content) {
+                is SectionContent.Banner -> BannerSection(section, content, env)
+                is SectionContent.Slideshow -> SlideshowSection(section, content, env)
+                is SectionContent.Products -> ProductsSection(section, content, env)
+                is SectionContent.Collections -> CollectionsSection(section, content, env)
+                is SectionContent.RichText -> RichTextSection(section, content, env)
+                is SectionContent.ImageWithText -> ImageWithTextSection(section, content, env)
+                is SectionContent.Video -> VideoSection(content)
+                is SectionContent.Countdown -> CountdownSection(section, content, env)
+                is SectionContent.Spacer -> SpacerSection(content)
+                is SectionContent.Custom -> CustomSection(section, content, env)
+                is SectionContent.Marquee -> MarqueeSection(section, content, env)
+                is SectionContent.Faq -> FaqSection(section, content, env)
+                is SectionContent.Features -> FeaturesSection(section, content, env)
+                is SectionContent.ImageGrid -> ImageGridSection(section, content, env)
+                null -> Unit
+            }
         }
     }
+}
+
+/**
+ * [content] in the theme, or, on a [background] the theme's text doesn't read on (under 4.5:1), in the other appearance's
+ * palette: light text on a dark section in a light app, and the other way round (contract/theme.js `textOn`).
+ */
+@Composable
+private fun OnBackground(background: Color?, content: @Composable () -> Unit) {
+    val ink = ArgonTheme.colors.ink.toArgb() and 0xFFFFFF
+    if (background == null || contrastRatio(background.toArgb() and 0xFFFFFF, ink) >= 4.5) return content()
+    val look = AppGraph.look
+    ArgonTheme(AppGraph.brand.value?.accent, !isAppDark(), AppGraph.headingFont, AppGraph.bodyFont, corners = look.corners, buttons = look.buttons, content = content)
 }
 
 internal val gutter @Composable get() = Modifier.padding(horizontal = ArgonTheme.spacing.l)
