@@ -27,10 +27,10 @@ class MainActivity : ComponentActivity() {
         val fromHistory = intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
         if (savedInstanceState == null && !fromHistory) AppGraph.takeNotificationLink(intent)
         // Debug builds only: `adb shell am start -n <package>/app.storefront.MainActivity --ez argon_test_crash true`
-        // crashes once the first frame is up, to prove crash reports reach the store's Firebase (they are sent at the
-        // next launch).
+        // crashes three seconds after launch, once a screen and its events are in (the report shows them), to prove crash
+        // reports reach the store's Firebase (they are sent at the next launch).
         if (BuildConfig.DEBUG && intent.getBooleanExtra("argon_test_crash", false)) {
-            window.decorView.post { throw ArgonTestCrash() }
+            window.decorView.postDelayed({ throw ArgonTestCrash() }, 3_000)
         }
     }
 

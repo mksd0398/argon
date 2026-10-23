@@ -37,10 +37,10 @@ enum CrashReports {
         setKey("argon", AppGraph.argonRevision)
         #if DEBUG
         // Debug builds only: launched with `-ArgonTestCrash YES` (Xcode's launch arguments, or `xcrun simctl launch`),
-        // the app crashes a second after launch, to prove crash reports reach the store's Firebase (they are sent at
-        // the next launch).
+        // the app crashes three seconds after launch, once a screen and its events are in (the report shows them), to
+        // prove crash reports reach the store's Firebase (they are sent at the next launch).
         if UserDefaults.standard.bool(forKey: "ArgonTestCrash") {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { fatalError("Argon test crash (debug builds only)") }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { fatalError("Argon test crash (debug builds only)") }
         }
         #endif
     }
