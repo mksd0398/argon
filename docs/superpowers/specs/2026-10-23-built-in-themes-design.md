@@ -33,8 +33,8 @@ and the theme tokens.
   - the v1 home and collection templates, for apps built before screens v2.
 - **`screens`** are app_screen templates that pass `checkTemplate`. They use placeholder content that is safe in
   any store:
-  - Section words are generic, e.g. "New this week" or "Free shipping on prepaid orders". Liquid
-    `{{ shop.name }}` gives the store's own name.
+  - Section words are generic, e.g. "New this week" or "Free shipping on prepaid orders". There is no Liquid in the
+    welcome's words, because the apps draw them as written.
   - Pictures are Burst photos (Shopify's free stock, commercial use allowed, credited in
     `contract/themes/CREDITS.md`), loaded from burst.shopifycdn.com.
   - Products and collections are left unset. Krypton fills them from the store when the theme is applied: each
@@ -56,10 +56,12 @@ and the theme tokens.
    - Apply is live for every app already installed, from the next launch, as any settings change is.
 2. **The build bakes it in.** The Krypton CLI hands Argon the store's saved settings (`--settings-file`) and the
    theme (`--theme=<settings.theme.id>`). Argon writes:
-   - `settings.json` into the app (Android assets, iOS Resources). The app runs with it whenever it has no fetched
+   - `built-in/settings.json` into the app (Android assets, iOS Resources). The app runs with it whenever it has no fetched
      copy yet. This closes the gap where the first launch showed Argon's defaults and the theme only appeared from
      the second launch.
-   - `screens/<handle>.json` for the theme's five screens. The app uses them only when the store has no app_screen
+   - `built-in/fonts/<sha256 of the URL>.ttf`: the settings' Google font files, named the way the apps' font caches
+     name a download. The app copies them into its cache, so the theme's fonts also show from the first launch.
+   - `built-in/screen-<handle>.json` for the theme's five screens. The app uses them only when the store has no app_screen
      with that handle.
    - Run on its own, `npx @mksd0398/argon my-app --theme=loom-story` gives a standalone app with the theme's look
      and screens, and no Krypton involved.

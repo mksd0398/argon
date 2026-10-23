@@ -81,6 +81,8 @@ export function checkTheme(theme) {
     if (JSON.stringify(checked) !== JSON.stringify(template)) fail(`screens.${handle} isn't as checkTemplate keeps it`);
     // demo-safe: nothing from one store
     if (/gid:\/\/shopify\//.test(JSON.stringify(template))) fail(`screens.${handle} names a store's product or collection`);
+    // the apps draw the welcome's words as written (and Krypton copies them into the settings): no Liquid there
+    if (handle === "onboarding" && /\{[{%]/.test(JSON.stringify(template))) fail("screens.onboarding has Liquid, which the welcome doesn't run");
   }
 
   const appearance = { accent: s.brand.accent, ...a.colors, corners: a.corners, buttons: a.buttons, scale: a.type.scale, icons: a.icons };

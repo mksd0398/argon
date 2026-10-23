@@ -1,6 +1,10 @@
 package app.storefront.data
 
+import java.io.File
+import java.nio.file.Files
+import okhttp3.OkHttpClient
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -48,5 +52,19 @@ class FontsTest {
         val f = fonts("""{"body":{"family":"Y","files":{"400":"$gs/a.ttf","bold":"$gs/b.ttf","950":"$gs/c.ttf","450":"$gs/d.ttf","0":"x"}}}""")!!
         assertEquals(mapOf(400 to "$gs/a.ttf"), f.body!!.files)
         assertNull(fonts("""{"body":{"family":"Y","files":{"bold":"$gs/b.ttf"}}}"""))
+    }
+
+    @Test
+    fun aFontTheAppWasBuiltWithIsInTheCacheFromTheFirstLaunch() {
+        val dir = Files.createTempDirectory("fonts").toFile()
+        val ttf = byteArrayOf(0, 1, 0, 0, 9, 9)
+        val asked = mutableListOf<String>()
+        val cache = FontCache(File(dir, "fonts"), OkHttpClient()) { name -> asked += name; if (asked.size == 1) ttf else "<html>".toByteArray() }
+        runCatching { cache.family(RemoteFont("X", mapOf(400 to "$gs/a.ttf", 700 to "$gs/b.ttf"))) }
+        assertEquals(2, asked.size)
+        assertTrue(asked.all { Regex("[0-9a-f]{64}[.]ttf").matches(it) })
+        val written = File(dir, "fonts").listFiles().orEmpty()
+        assertEquals("only a real font is kept", listOf(asked[0]), written.map { it.name })
+        dir.deleteRecursively()
     }
 }

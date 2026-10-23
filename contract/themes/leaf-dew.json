@@ -373,7 +373,7 @@
                   "width": 0,
                   "height": 0
                 },
-                "heading": "Welcome to {{ shop.name }}",
+                "heading": "Welcome",
                 "text": "Natural care, made safe for everyone."
               }
             },

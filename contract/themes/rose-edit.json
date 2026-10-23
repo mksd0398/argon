@@ -378,7 +378,7 @@
                   "width": 0,
                   "height": 0
                 },
-                "heading": "Welcome to {{ shop.name }}",
+                "heading": "Welcome",
                 "text": "Edits picked by our stylists, every week."
               }
             },

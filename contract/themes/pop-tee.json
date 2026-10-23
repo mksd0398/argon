@@ -415,7 +415,7 @@
                   "width": 0,
                   "height": 0
                 },
-                "heading": "Hey, welcome to {{ shop.name }}!",
+                "heading": "Hey, welcome!",
                 "text": "Tees with something to say, dropped every week."
               }
             },

@@ -90,7 +90,7 @@ class StorefrontApp : Application(), SingletonImageLoader.Factory {
         val builtIn = runCatching { assets.open("built-in/settings.json").bufferedReader().use { it.readText() } }.getOrNull()
         AppGraph.settingsStore = RemoteSettingsStore(filesDir, AppGraph.settingsUrl, AppGraph.http, builtIn)
         // The merchant's fonts when an earlier launch downloaded them; the files the newest settings name are fetched for the next.
-        val fonts = FontCache(File(filesDir, "fonts"), AppGraph.http)
+        val fonts = FontCache(File(filesDir, "fonts"), AppGraph.http) { name -> runCatching { assets.open("built-in/fonts/$name").use { it.readBytes() } }.getOrNull() }
         AppGraph.headingFont = fonts.family(AppGraph.settings?.fonts?.heading)
         AppGraph.bodyFont = fonts.family(AppGraph.settings?.fonts?.body)
         AppGraph.scope.launch { fonts.download((AppGraph.settingsStore.refresh() ?: AppGraph.settings)?.fonts) }

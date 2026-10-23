@@ -390,7 +390,7 @@
                   "width": 0,
                   "height": 0
                 },
-                "heading": "Welcome to {{ shop.name }}",
+                "heading": "Welcome",
                 "text": "Fresh drops every Friday. Be first in line."
               }
             },

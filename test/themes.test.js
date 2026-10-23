@@ -48,6 +48,7 @@ test("checkTheme refuses what a theme can't be", () => {
   assert.throws(broken((t) => { t.settings.announcement.color = "background"; t.settings.announcement.background = "surface"; }), /announcement/);
   assert.throws(broken((t) => { t.screens.home.sections[2].settings.collection = "gid://shopify/Collection/1"; }), /names a store's/);
   assert.throws(broken((t) => { delete t.screens.cart; }), /screens are/);
+  assert.throws(broken((t) => { t.screens.onboarding.sections[0].blocks[0].settings.heading = "Hi {{ shop.name }}"; }), /Liquid/);
   assert.throws(broken((t) => { t.settings.appearance.fonts.body.files["400"] = "https://example.com/a.ttf"; }), /Google font/);
 });
 
@@ -82,4 +83,19 @@ test("--theme bakes the theme's settings and five screens into both apps; --sett
   assert.ok(readFileSync(join(cwd, "themed/android/shopify.properties"), "utf8").includes("HOME_TEMPLATE=fashion"));
   assert.ok(!existsSync(join(cwd, "bad")));
   rmSync(cwd, { recursive: true, force: true });
+});
+
+test("fontFiles: the settings' Google font files, named as the apps' caches name them; anything else left out", async () => {
+  const { fontFiles } = await import("../lib/index.js");
+  const { createHash } = await import("node:crypto");
+  const a = "https://fonts.gstatic.com/s/x/a.ttf", b = "https://fonts.gstatic.com/s/x/b.ttf";
+  const settings = { appearance: { fonts: { heading: { family: "X", files: { 400: a } }, body: { family: "Y", files: { 400: a, 700: b, 500: "https://evil.example/c.ttf" } } } } };
+  const asked = [];
+  const fetch = async (url) => { asked.push(url); return new Response(url === a ? new Uint8Array([0, 1, 0, 0, 7]) : "<html>", { status: 200 }); };
+  const log = console.log;
+  console.log = () => {};
+  const files = await fontFiles(settings, fetch).finally(() => { console.log = log; });
+  assert.deepEqual(asked, [a, b], "each Google file once, never another host");
+  assert.deepEqual(Object.keys(files), [`${createHash("sha256").update(a).digest("hex")}.ttf`]);
+  assert.deepEqual(await fontFiles(null, fetch), {});
 });
