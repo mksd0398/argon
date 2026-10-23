@@ -1,3 +1,4 @@
+import ArgonUI
 import XCTest
 @testable import ArgonStorefront
 
@@ -15,5 +16,33 @@ final class ThemeTests: XCTestCase {
         XCTAssertFalse(brandIsLight(nil))
         XCTAssertFalse(brandIsLight("not a colour"))
         XCTAssertFalse(brandIsLight("#FFF"))
+    }
+
+    /// The theme's vectors (contract/fixtures/theme/vectors.json), which contract/theme.js, Android and Krypton's
+    /// previews are tested against too.
+    func testColorsCornersAndButtonsAsTheContractMakesThem() throws {
+        let vectors = try XCTUnwrap(JSONValue(json: contractFixture("theme/vectors.json"))?.array)
+        for vector in vectors {
+            let given = vector["appearance"]?.object ?? [:]
+            let dark = vector["dark"]?.bool ?? false
+            let want = try XCTUnwrap(vector["tokens"]?.object)
+            var appearance: [String: JSONValue] = ["colors": .object(given.filter { ["background", "text"].contains($0.key) })]
+            if let corners = given["corners"] { appearance["corners"] = corners }
+            if let buttons = given["buttons"] { appearance["buttons"] = buttons }
+            let look = try XCTUnwrap(ThemeLook.decode(.object(appearance))).argon(accent: given["accent"]?.string)
+            let p = dark ? ArgonPalette.dark : ArgonPalette.themed(look)
+            let accent = ArgonTheme.rgb(hex: look.accentHex) != nil ? look.accentHex!.uppercased() : p.ink
+            let tokens = ["ink": p.ink, "muted": p.muted, "paper": p.paper, "surface": p.surface, "border": p.border,
+                          "sale": p.sale, "success": p.success, "accent": accent, "onAccent": ArgonTheme.onAccentHex(accent)]
+            for (name, value) in tokens { XCTAssertEqual(value, want[name]?.string, "\(given) dark=\(dark) \(name)") }
+            let radius = ArgonRadius(corners: look.corners, buttons: look.buttons)
+            XCTAssertEqual([radius.s, radius.m, radius.l], ["s", "m", "l"].map { CGFloat(want["radius"]?[$0]?.number ?? -1) }, "\(given)")
+            XCTAssertEqual(radius.button, CGFloat(want["button"]?.number ?? -1), "\(given)")
+        }
+    }
+
+    func testNoAppearanceIsArgonsOwn() {
+        XCTAssertEqual(ThemeLook.decode(.object([:])), ThemeLook())
+        XCTAssertEqual(ArgonPalette.themed(ThemeLook().argon(accent: nil)).paper, ArgonPalette.light.paper)
     }
 }

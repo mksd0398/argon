@@ -1,24 +1,62 @@
+import AVKit
 import ArgonUI
 import SwiftUI
 
-/// The first-launch welcome, shown once before the tabs (`AppGraph.onboarding`): three full-screen pages
-/// (`Onboarding.pages`) to swipe through, each a picture with a heading and a line of text over a bottom shade. "Skip"
-/// (pages 1 and 2) and "Get started" (page 3) end it; so does "Sign in" on page 3, offered when the store has sign-in
-/// set up, which also asks for the Account tab (`onDone`'s `signIn`).
+/// The first-launch welcome, shown once before the tabs (`AppGraph.onboarding`): full-screen pages to swipe through,
+/// each a picture (or a muted, looping video) with a heading and a line of text over a bottom shade. The pages are the
+/// `onboarding` screen's, read live (up to 3 s, on the welcome's dark background meanwhile: there are no cached settings
+/// on a first launch), else `Onboarding.pages` in the settings' words; a screen that turns the welcome off ends it.
+/// "Skip" and the last page's button end it; so does "Sign in" on the last page, offered when the store has sign-in set
+/// up, which also asks for the Account tab (`onDone`'s `signIn`).
 @MainActor
 struct OnboardingView: View {
     let onDone: (_ signIn: Bool) -> Void
     @State private var page: Int? = 0
+    /// The onboarding screen's welcome, once it has answered (or not, in time).
+    @State private var screen: Welcome?? = nil
     @Environment(\.argonTheme) private var theme
 
     var body: some View {
+        Group {
+            if let screen, screen != .off {
+                pages(own: screen)
+            } else {
+                theme.colors.paper.ignoresSafeArea()
+            }
+        }
+        // What sits on a photo uses the dark palette in light and dark mode alike: a dark shade, light text, a light
+        // button. For the whole screen (and while it loads), so the status bar's content is light too.
+        .preferredColorScheme(.dark)
+        .task {
+            let json = await withTaskGroup(of: String?.self) { group in
+                group.addTask { try? await AppGraph.storefront.appScreen("onboarding")?.template }
+                group.addTask {
+                    try? await Task.sleep(for: .seconds(3))
+                    return nil
+                }
+                let first = await group.next() ?? nil
+                group.cancelAll()
+                return first
+            }
+            let welcome = Onboarding.fromScreen(json, template: AppGraph.homeTemplate)
+            screen = .some(welcome)
+            if welcome == .off { onDone(false) }
+        }
+    }
+
+    private func pages(own: Welcome?) -> some View {
         // The shop's own name and words once it answers; the app's name until then, and when it can't be reached.
         let brand = AppGraph.brand.value ?? Brand(name: AppGraph.appName, logo: nil, cover: nil, accent: nil, hosts: [])
-        let pages = Onboarding.pages(brand: brand, template: AppGraph.homeTemplate, words: AppGraph.remote?.pages ?? [])
+        let pages: [OnboardingPage]
+        if case let .pages(list) = own {
+            pages = list
+        } else {
+            pages = Onboarding.pages(brand: brand, template: AppGraph.homeTemplate, words: AppGraph.remote?.pages ?? [])
+        }
         let canSignIn = AppGraph.canSignIn
         let current = page ?? 0
         let last = current == pages.count - 1
-        GeometryReader { proxy in
+        return GeometryReader { proxy in
             let insets = proxy.safeAreaInsets
             // a page is the whole screen, status bar and home indicator included
             let screen = CGSize(
@@ -57,7 +95,7 @@ struct OnboardingView: View {
                 .frame(height: 8)
                 .accessibilityElement()
                 .accessibilityLabel("Page \(current + 1) of \(pages.count)")
-                ArgonButton(title: last ? "Get started" : "Next", fullWidth: true) {
+                ArgonButton(title: pages[current].button ?? (last ? "Get started" : "Next"), fullWidth: true) {
                     if last {
                         onDone(false)
                     } else {
@@ -74,9 +112,6 @@ struct OnboardingView: View {
             .animation(.default, value: last)
         }
         .background(theme.colors.paper)
-        // What sits on a photo uses the dark palette in light and dark mode alike: a dark shade, light text, a light
-        // button. For the whole screen, so the status bar's content is light too.
-        .preferredColorScheme(.dark)
         // the pages keep the app's name when the shop can't be reached
         .task { _ = try? await AppGraph.loadBrand() }
     }
@@ -101,9 +136,11 @@ struct OnboardingView: View {
             endPoint: .bottom
         )
         return StoreImage(url: page.image).overlay {
+            if let video = page.video.flatMap(URL.init(string:)) { WelcomeVideo(url: video) }
+        }.overlay {
             VStack(alignment: .leading, spacing: theme.spacing.s) {
-                Text(page.heading).font(theme.type.display).accessibilityAddTraits(.isHeader)
-                Text(page.text).font(theme.type.body).lineLimit(3)
+                if !page.heading.isEmpty { Text(page.heading).font(theme.type.display).accessibilityAddTraits(.isHeader) }
+                if !page.text.isEmpty { Text(page.text).font(theme.type.body).lineLimit(3) }
             }
             .foregroundStyle(theme.colors.ink)
             .multilineTextAlignment(.leading)
@@ -112,5 +149,30 @@ struct OnboardingView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
             .background(shade)
         }
+    }
+}
+
+/// A welcome page's video, filling the page over its picture: muted, looping, playing while the page is there.
+@MainActor
+private struct WelcomeVideo: View {
+    let url: URL
+    @State private var player: AVQueuePlayer? = nil
+    @State private var looper: AVPlayerLooper? = nil
+
+    var body: some View {
+        VideoPlayer(player: player)
+            .disabled(true)
+            .onAppear {
+                if let player {
+                    player.play()
+                    return
+                }
+                let queue = AVQueuePlayer()
+                queue.isMuted = true
+                looper = AVPlayerLooper(player: queue, templateItem: AVPlayerItem(url: url))
+                player = queue
+                queue.play()
+            }
+            .onDisappear { player?.pause() }
     }
 }

@@ -143,6 +143,33 @@ struct Announcement: Equatable, Sendable {
 }
 
 /// Light or dark: `system` (the device's), `light` or `dark`.
+/// The theme's own look (`appearance`: `colors.background`, `colors.text`, `corners`, `buttons`): nil colours when unset
+/// or not `#RRGGBB`, and Argon's rounded corners and pill buttons when unset or not one of theirs (ArgonCorners,
+/// ArgonButtonShape).
+struct ThemeLook: Equatable, Sendable {
+    var background: String? = nil
+    var text: String? = nil
+    var corners = "rounded"
+    var buttons = "pill"
+
+    static func decode(_ json: JSONValue?) -> ThemeLook? {
+        guard let json = json?.object else { return nil }
+        let hex = { (value: String?) -> String? in
+            guard let value, value.count == 7, value.hasPrefix("#"), UInt32(value.dropFirst(), radix: 16) != nil else { return nil }
+            return value.uppercased()
+        }
+        let colors = json["colors"]?.object
+        let corners = json["corners"]?.string ?? ""
+        let buttons = json["buttons"]?.string ?? ""
+        return ThemeLook(
+            background: hex(colors?["background"]?.string),
+            text: hex(colors?["text"]?.string),
+            corners: ["square", "rounded", "round"].contains(corners) ? corners : "rounded",
+            buttons: ["pill", "rounded", "square"].contains(buttons) ? buttons : "pill"
+        )
+    }
+}
+
 enum Appearance: String, Equatable, Sendable {
     case system, light, dark
 

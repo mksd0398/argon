@@ -70,4 +70,37 @@ final class OnboardingTests: XCTestCase {
         XCTAssertFalse(again.done, "the debug row shows it again")
         XCTAssertFalse(store().done, "and on the launch after that")
     }
+
+    // MARK: The onboarding screen
+
+    private func screen(_ section: String) -> String { #"{"sections":["# + section + "]}" }
+
+    func testTheScreensPagesInOrderAPageWithoutAPictureOverTheStockOneForItsPlace() {
+        let json = screen(#"""
+            {"id":"w","type":"onboarding","settings":{},"blocks":[
+              {"id":"a","type":"page","settings":{"heading":"Fresh","text":"Daily","image":{"url":"https://cdn.shopify.com/a.jpg"},"button_label":"Go on"}},
+              {"id":"b","type":"page","settings":{"video":"https://cdn.shopify.com/v.mp4"}},
+              {"id":"x","type":"slide","settings":{"heading":"not a page"}},
+              {"id":"c","type":"page","settings":{"video":"http://insecure.test/v.mp4"}},
+              {"id":"d","type":"page"}]}
+            """#)
+        XCTAssertEqual(Onboarding.fromScreen(json, template: .fashion, image: stock), .pages([
+            OnboardingPage(image: "https://cdn.shopify.com/a.jpg", heading: "Fresh", text: "Daily", button: "Go on"),
+            OnboardingPage(image: stock(.fashion, 2), heading: "", text: "", video: "https://cdn.shopify.com/v.mp4"),
+            OnboardingPage(image: stock(.fashion, 3), heading: "", text: ""),
+            OnboardingPage(image: stock(.fashion, 1), heading: "", text: ""),
+        ]))
+    }
+
+    func testAScreenThatTurnsTheWelcomeOffOrHidesIt() {
+        let page = #"{"id":"a","type":"page","settings":{"heading":"Hi"}}"#
+        XCTAssertEqual(Onboarding.fromScreen(screen(#"{"id":"w","type":"onboarding","settings":{"enabled":false},"blocks":["# + page + "]}"), template: .fashion), .off)
+        XCTAssertEqual(Onboarding.fromScreen(screen(#"{"id":"w","type":"onboarding","hidden":true,"blocks":["# + page + "]}"), template: .fashion), .off)
+    }
+
+    func testNoScreenNoSectionOrNoPagesIsTheAppsOwnWelcome() {
+        for json in [nil, "not json", screen(""), screen(#"{"id":"b","type":"banner"}"#), screen(#"{"id":"w","type":"onboarding","blocks":[]}"#)] {
+            XCTAssertNil(Onboarding.fromScreen(json, template: .fashion), json ?? "nil")
+        }
+    }
 }

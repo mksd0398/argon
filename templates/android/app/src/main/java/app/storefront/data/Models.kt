@@ -4,10 +4,13 @@ import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonContentPolymorphicSerializer
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
 
 // Storefront API models, decoded from the responses of contract/queries (fragments in contract/fragments.graphql).
 // Property names are the GraphQL field names, except where screens already used another name (@SerialName). Enums stay
@@ -796,8 +799,17 @@ fun Shop.toBrand(configDomain: String) = Brand(
     slogan = brand?.slogan,
 )
 
-/** One page of the first-launch welcome: a full-screen [image] (a URL) with a [heading] and a line of [text] over it. */
-data class OnboardingPage(val image: String, val heading: String, val text: String)
+/**
+ * One page of the first-launch welcome: a full-screen [image] (a URL) with a [heading] and a line of [text] over it;
+ * [video] (an mp4 or HLS URL) plays muted on a loop over the image; [button]: the page's button, null for Next / Get started.
+ */
+data class OnboardingPage(val image: String, val heading: String, val text: String, val video: String? = null, val button: String? = null)
+
+/** What the `onboarding` screen says about the welcome: [Off], or its own [Pages]. */
+sealed interface Welcome {
+    data object Off : Welcome
+    data class Pages(val pages: List<OnboardingPage>) : Welcome
+}
 
 object Onboarding {
     /**
@@ -811,6 +823,32 @@ object Onboarding {
             "Find it fast" to "Search, filter and save what you love.",
             "Checkout in a few taps" to "Track your orders and returns from your account.",
         ).mapIndexed { i, (heading, text) -> OnboardingPage(StockImages.url(template, i + 1), heading, text) }
+    }
+
+    /**
+     * The welcome in the `onboarding` screen's [template] (its JSON): its `onboarding` section's pages, a page without
+     * a picture over [template]'s stock picture for its place; [Welcome.Off] when the section is hidden or not
+     * `enabled`. Null when there is no such section, or it has no pages: the app's own welcome then.
+     */
+    fun fromScreen(json: String?, template: HomeTemplate): Welcome? {
+        val root = runCatching { Json.parseToJsonElement(json.orEmpty()) }.getOrNull() as? JsonObject ?: return null
+        val section = (root["sections"] as? JsonArray).orEmpty().filterIsInstance<JsonObject>()
+            .firstOrNull { (it["type"] as? JsonPrimitive)?.contentOrNull == "onboarding" } ?: return null
+        val settings = SectionSettings(section["settings"] as? JsonObject)
+        if ((section["hidden"] as? JsonPrimitive)?.booleanOrNull == true || !settings.boolean("enabled", true)) return Welcome.Off
+        val pages = (section["blocks"] as? JsonArray).orEmpty().filterIsInstance<JsonObject>()
+            .filter { (it["type"] as? JsonPrimitive)?.contentOrNull == "page" }
+            .mapIndexed { i, block ->
+                val page = SectionSettings(block["settings"] as? JsonObject)
+                OnboardingPage(
+                    image = page.image("image")?.url ?: StockImages.url(template, i % 3 + 1),
+                    heading = page.text("heading").orEmpty(),
+                    text = page.text("text").orEmpty(),
+                    video = page.text("video")?.takeIf { it.startsWith("https://") },
+                    button = page.text("button_label"),
+                )
+            }
+        return if (pages.isEmpty()) null else Welcome.Pages(pages)
     }
 }
 

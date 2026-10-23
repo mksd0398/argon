@@ -17,8 +17,8 @@ test("the app_screen definition: a title and a JSON template, readable by the ap
 
 test("the catalogue matches the spec", () => {
   assert.deepEqual(Object.keys(SECTION_TYPES),
-    ["banner", "slideshow", "products", "collections", "rich_text", "image_with_text", "video", "countdown", "spacer", "custom", "marquee", "faq", "features", "image_grid"]);
-  assert.deepEqual(Object.keys(SYSTEM_SCREENS), ["home", "product", "collection", "search", "cart", "account", "orders", "wishlist"]);
+    ["banner", "slideshow", "products", "collections", "rich_text", "image_with_text", "video", "countdown", "spacer", "custom", "marquee", "faq", "features", "onboarding", "image_grid"]);
+  assert.deepEqual(Object.keys(SYSTEM_SCREENS), ["onboarding", "home", "product", "collection", "search", "cart", "account", "orders", "wishlist"]);
   for (const type of Object.values(SECTION_TYPES)) {
     for (const setting of type.settings) if (setting.type === "choice") assert.ok(setting.choices.length >= 2);
   }
@@ -106,7 +106,7 @@ test("AppScreen's fixture carries the sample home template", () => {
 });
 
 test("detailing: every section takes a background and padding; the four new types; the screen's own look", () => {
-  for (const type of Object.values(SECTION_TYPES)) assert.deepEqual(type.settings.slice(-2).map((x) => x.key), ["background", "padding"]);
+  for (const type of Object.values(SECTION_TYPES)) if (type !== SECTION_TYPES.onboarding) assert.deepEqual(type.settings.slice(-2).map((x) => x.key), ["background", "padding"]);
   assert.deepEqual(one({ id: "a", type: "spacer", settings: { background: "#f5f0e8", padding: "large" } }).settings, { background: "#F5F0E8", padding: "large" });
   fails({ sections: [{ id: "a", type: "banner", settings: { padding: "huge" } }] }, "home", /one of none/);
 
@@ -127,4 +127,26 @@ test("detailing: every section takes a background and padding; the four new type
   fails({ screen: { top_bar: "transparent" }, sections: [] }, "product", /own top bar/);
   fails({ screen: { top_bar: "glass" }, sections: [] }, "home", /one of solid, transparent/);
   fails({ screen: { blur: true }, sections: [] }, "home", /unknown setting/);
+});
+
+test("the onboarding screen: one welcome section of up to 5 pages, which no other screen takes", () => {
+  const page = (id, settings) => ({ id, type: "page", settings });
+  const welcome = { id: "w", type: "onboarding", settings: { enabled: false }, blocks: [
+    page("p1", { heading: "Hi", text: "Fresh every day", button_label: "Next", image: { url: "https://cdn.shopify.com/a.jpg" } }),
+    page("p2", { video: "https://cdn.shopify.com/v.mp4" }),
+  ] };
+  const checked = checkTemplate({ screen: { background: "#101010" }, sections: [welcome] }, "onboarding");
+  assert.equal(checked.sections[0].settings.enabled, false);
+  assert.deepEqual(checked.sections[0].blocks.map((b) => b.id), ["p1", "p2"]);
+  assert.deepEqual(SECTION_TYPES.onboarding.settings.map((x) => x.key), ["enabled"], "no style settings on the welcome");
+  fails({ sections: [welcome] }, "home", /doesn't take Welcome pages/);
+  fails({ sections: [welcome] }, "about", /doesn't take Welcome pages/);
+  fails({ sections: [{ id: "b", type: "banner" }] }, "onboarding", /doesn't take Banner/);
+  fails({ sections: [welcome, { ...welcome, id: "w2" }] }, "onboarding", /has one section/);
+  fails({ screen: { top_bar: "transparent" }, sections: [] }, "onboarding", /keeps its own top bar/);
+  fails({ sections: [{ ...welcome, blocks: [1, 2, 3, 4, 5, 6].map((i) => page("p" + i, {})) }] }, "onboarding", /too many/);
+  fails({ sections: [{ ...welcome, blocks: [page("p", { heading: "x".repeat(61) })] }] }, "onboarding", /longer than 60/);
+  fails({ sections: [{ ...welcome, blocks: [page("p", { button_label: "x".repeat(25) })] }] }, "onboarding", /longer than 24/);
+  fails({ sections: [{ ...welcome, blocks: [page("p", { video: "http://x.test/v.mp4" })] }] }, "onboarding", /https/);
+  assert.deepEqual(checkTemplate({ sections: [] }, "onboarding").sections, []);
 });

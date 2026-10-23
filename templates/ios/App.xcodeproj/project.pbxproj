@@ -37,6 +37,7 @@
 				Fixtures/screens/about.json,
 				Fixtures/screens/home.json,
 				Fixtures/screens/product.json,
+				Fixtures/theme/vectors.json,
 			);
 			target = A7C0DE000000000000000013 /* AppTests */;
 		};

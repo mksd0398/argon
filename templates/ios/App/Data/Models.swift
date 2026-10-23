@@ -1183,11 +1183,20 @@ extension Brand {
     }
 }
 
-/// One page of the first-launch welcome: a full-screen `image` (a URL) with a `heading` and a line of `text` over it.
+/// One page of the first-launch welcome: a full-screen `image` (a URL) with a `heading` and a line of `text` over it;
+/// `video` (an mp4 or HLS URL) plays muted on a loop over the image; `button`: the page's button, nil for Next / Get started.
 struct OnboardingPage: Equatable {
     let image: String?
     let heading: String
     let text: String
+    var video: String? = nil
+    var button: String? = nil
+}
+
+/// What the `onboarding` screen says about the welcome: `off`, or its own `pages`.
+enum Welcome: Equatable {
+    case off
+    case pages([OnboardingPage])
 }
 
 enum Onboarding {
@@ -1211,6 +1220,33 @@ enum Onboarding {
             let set = index < words.count ? words[index] : RemoteSettings.Page()
             return OnboardingPage(image: image(template, index + 1), heading: nonEmpty(set.heading) ?? own.0, text: nonEmpty(set.text) ?? own.1)
         }
+    }
+
+    /// The welcome in the `onboarding` screen's `json` (its template): its `onboarding` section's pages, a page without a
+    /// picture over `template`'s stock picture for its place; `.off` when the section is hidden or not `enabled`. Nil
+    /// when there is no such section, or it has no pages: the app's own welcome then.
+    static func fromScreen(
+        _ json: String?,
+        template: HomeTemplate,
+        image: (HomeTemplate, Int) -> String? = StockImages.url
+    ) -> Welcome? {
+        guard let json, let root = JSONValue(json: json)?.object,
+              let section = (root["sections"]?.array ?? []).compactMap(\.object).first(where: { $0["type"]?.string == "onboarding" })
+        else { return nil }
+        let settings = SectionSettings(section["settings"]?.object ?? [:])
+        if section["hidden"]?.bool == true || !settings.boolean("enabled", true) { return .off }
+        let pages = (section["blocks"]?.array ?? []).compactMap(\.object).filter { $0["type"]?.string == "page" }
+            .enumerated().map { index, block in
+                let page = SectionSettings(block["settings"]?.object ?? [:])
+                return OnboardingPage(
+                    image: page.image("image")?.url ?? image(template, index % 3 + 1),
+                    heading: nonEmpty(page.text("heading")) ?? "",
+                    text: nonEmpty(page.text("text")) ?? "",
+                    video: nonEmpty(page.text("video")).flatMap { $0.lowercased().hasPrefix("https://") ? $0 : nil },
+                    button: nonEmpty(page.text("button_label"))
+                )
+            }
+        return pages.isEmpty ? nil : .pages(pages)
     }
 
     private static func nonEmpty(_ value: String?) -> String? {

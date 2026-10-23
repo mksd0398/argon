@@ -1,5 +1,7 @@
 package app.storefront.data
 
+import app.argon.ui.ArgonButtonShape
+import app.argon.ui.ArgonCorners
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -136,6 +138,28 @@ enum class Appearance(val value: String) {
 
     companion object {
         fun decode(json: JsonObject?): Appearance? = json?.str("mode")?.let { mode -> entries.firstOrNull { it.value == mode.trim().lowercase() } }
+    }
+}
+
+/**
+ * The theme's own look (`appearance`: `colors.background`, `colors.text`, `corners`, `buttons`), as ArgonTheme takes it:
+ * null colours and Argon's corners and pill buttons when unset or not one of theirs.
+ */
+data class ThemeLook(
+    val background: String? = null,
+    val text: String? = null,
+    val corners: ArgonCorners = ArgonCorners.Rounded,
+    val buttons: ArgonButtonShape = ArgonButtonShape.Pill,
+) {
+    companion object {
+        fun decode(json: JsonObject?): ThemeLook? = json?.let {
+            ThemeLook(
+                background = it.obj("colors")?.hex("background"),
+                text = it.obj("colors")?.hex("text"),
+                corners = ArgonCorners.entries.firstOrNull { c -> c.name.lowercase() == it.str("corners") } ?: ArgonCorners.Rounded,
+                buttons = ArgonButtonShape.entries.firstOrNull { b -> b.name.lowercase() == it.str("buttons") } ?: ArgonButtonShape.Pill,
+            )
+        }
     }
 }
 
