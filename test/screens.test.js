@@ -75,6 +75,11 @@ test("main sections: one, on system screens only, where the screen allows", () =
   const collection = checkTemplate({ sections: [{ id: "a", type: "spacer" }, { id: "m", type: "main", settings: { filters: "bottom" } }] }, "collection");
   assert.equal(collection.sections[1].settings.filters, "bottom");
   fails({ sections: [{ id: "m", type: "main", settings: { blocks: [{ type: "gallery" }, { type: "gallery" }] } }] }, "product", /repeated/);
+  // App settings' old fields, now the product's and the cart's own
+  assert.equal(checkTemplate({ sections: [{ id: "m", type: "main", settings: { show_vendor: true } }] }, "product").sections[0].settings.show_vendor, true);
+  assert.equal(checkTemplate({ sections: [{ id: "m", type: "main", settings: { free_shipping_threshold: 999 } }] }, "cart").sections[0].settings.free_shipping_threshold, 999);
+  fails({ sections: [{ id: "m", type: "main", settings: { free_shipping_threshold: -1 } }] }, "cart", /from 0/);
+  fails({ sections: [{ id: "m", type: "main", settings: { show_vendor: true } }] }, "cart", /unknown setting/);
 });
 
 test("links the apps can follow", () => {
