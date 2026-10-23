@@ -157,8 +157,13 @@ extension ArgonTheme {
     /// `a` at `amount` (0...1) over `b`, each channel rounded, as `#RRGGBB` (contract/theme.js `mix`).
     public static func mix(_ a: String, _ b: String, _ amount: Double) -> String {
         guard let x = rgb(hex: a), let y = rgb(hex: b) else { return b }
-        let channel = { (p: Double, q: Double) in Int((p * 255 * amount + q * 255 * (1 - amount)).rounded()) }
-        return String(format: "#%02X%02X%02X", channel(x.red, y.red), channel(x.green, y.green), channel(x.blue, y.blue))
+        func channel(_ p: Double, _ q: Double) -> Int {
+            let over: Double = p * 255 * amount
+            let under: Double = q * 255 * (1 - amount)
+            return Int((over + under).rounded())
+        }
+        let red = channel(x.red, y.red), green = channel(x.green, y.green), blue = channel(x.blue, y.blue)
+        return String(format: "#%02X%02X%02X", red, green, blue)
     }
 
     /// The colour for `#RRGGBB`; nil when it's absent or unreadable.

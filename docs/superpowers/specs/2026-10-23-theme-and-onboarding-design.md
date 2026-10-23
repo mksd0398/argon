@@ -89,8 +89,9 @@ Its template holds exactly one section, type `onboarding` ("Welcome pages"), whi
   image), `heading` (text, up to 60), `text` (text, up to 200), `button_label` (text, up to 24; empty: "Next", and
   "Get started" on the last page).
 
-The screen takes no other section types and no `top_bar`; `screen.background` is what shows behind a page without a
-picture. The builder's phone shows the selected page full-screen with the theme's fonts and button shape.
+The screen takes no other section types and no `top_bar`; a page without a picture or video shows the stock picture
+for its place, as the built-in welcome does, so the builder hides Screen look here. The builder's phone shows the page
+being edited full-screen with the theme's fonts and button shape.
 
 **Apps.** The welcome reads the `onboarding` screen live (it is shown once, and must be the merchant's words that
 very first time, which the cached settings can't be: there are none on a first launch). Up to 3 seconds; meanwhile
