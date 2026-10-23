@@ -175,7 +175,7 @@ jobs:
           xcodebuild -scheme ArgonStorefront -destination "generic/platform=iOS Simulator" ARCHS=arm64 \
             CODE_SIGNING_ALLOWED=NO -skipPackagePluginValidation -skipMacroValidation build
       # The same project's Xcode build, which has Firebase (not Meta or MoEngage: their sinks are off there), as the
-      # Krypton channel builds it: Release, so the Crashlytics phase finds a dSYM (its upload fails on the dummy file)
+      # Krypton channel builds it: Release, so the Crashlytics phase finds a dSYM (it uploads in the background: the dummy file fails nothing)
       - name: Build the Xcode project with Firebase
         if: matrix.xcode == 'latest-stable'
         run: |
