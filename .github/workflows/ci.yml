@@ -95,7 +95,7 @@ jobs:
       fail-fast: false
       # the experimental latest Xcode only on main, after a merge: pull requests build with Xcode 16 alone
       matrix:
-        include: ${{ fromJSON(true && '[{"runner":"macos-15","xcode":"16.x","experimental":false},{"runner":"macos-26","xcode":"latest-stable","experimental":true}]' || '[{"runner":"macos-15","xcode":"16.x","experimental":false}]') }}
+        include: ${{ fromJSON(github.event_name == 'push' && '[{"runner":"macos-15","xcode":"16.x","experimental":false},{"runner":"macos-26","xcode":"latest-stable","experimental":true}]' || '[{"runner":"macos-15","xcode":"16.x","experimental":false}]') }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
