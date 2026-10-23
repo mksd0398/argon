@@ -151,9 +151,16 @@ export const SCREEN_SETTINGS = [
   choice("top_bar", ["solid", "transparent"], undefined), choice("top_bar_tint", ["light", "dark"], "light"), s("background", "color"),
 ];
 
-const MAIN_SETTINGS = {
-  product: [s("blocks", "product_blocks")],
+/**
+ * The settings of a built-in screen's own content (its `main` section). These replaced Krypton's App settings: apps
+ * built before them read the old `settings.collection.template`, `product.showVendor` and
+ * `cart.freeShippingThreshold` from /v1/settings, which Krypton keeps mirrored from these. Unset: the app's own choice.
+ */
+export const MAIN_SETTINGS = {
+  product: [s("blocks", "product_blocks"), s("show_vendor", "boolean", { default: false })],
   collection: [choice("filters", ["top", "bottom"], undefined)],
+  // in the store's currency; 0: no free-shipping progress in the cart
+  cart: [s("free_shipping_threshold", "number", { min: 0, max: 1_000_000_000 })],
 };
 
 // ─── Checking a template (the editor's side) ──────────────────────────────
