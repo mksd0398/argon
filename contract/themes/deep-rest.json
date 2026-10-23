@@ -1,0 +1,537 @@
+{
+  "id": "deep-rest",
+  "name": "Deep Rest",
+  "vertical": "Mattresses and sleep",
+  "description": "Reassuring navy and sea green for mattresses and sleep: trial and warranty up front, answers below.",
+  "plan": "free",
+  "settings": {
+    "brand": {
+      "accent": "#1D4E89"
+    },
+    "appearance": {
+      "mode": "light",
+      "fonts": {
+        "heading": {
+          "family": "Poppins",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/poppins/v24/pxiEyp8kv8JHgFVrFJA.ttf",
+            "700": "https://fonts.gstatic.com/s/poppins/v24/pxiByp8kv8JHgFVrLCz7V1s.ttf"
+          }
+        },
+        "body": {
+          "family": "Inter",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfMZg.ttf",
+            "500": "https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuI6fMZg.ttf",
+            "600": "https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuGKYMZg.ttf",
+            "700": "https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuFuYMZg.ttf"
+          }
+        }
+      },
+      "colors": {
+        "background": "#FFFFFF",
+        "text": "#14213D",
+        "secondary": "#2A9D8F"
+      },
+      "corners": "rounded",
+      "buttons": "rounded",
+      "type": {
+        "scale": "medium"
+      },
+      "icons": "outline"
+    },
+    "navigation": {
+      "tabs": [
+        {
+          "id": "home",
+          "title": "Home",
+          "icon": "home"
+        },
+        {
+          "id": "shop",
+          "title": "Shop",
+          "icon": "grid"
+        },
+        {
+          "id": "search",
+          "title": "Search",
+          "icon": "search"
+        },
+        {
+          "id": "cart",
+          "title": "Bag",
+          "icon": "bag"
+        },
+        {
+          "id": "account",
+          "title": "Account",
+          "icon": "person"
+        }
+      ],
+      "labels": true,
+      "topBar": {
+        "style": "standard",
+        "transparentOnHome": false,
+        "background": "",
+        "foreground": ""
+      },
+      "tabBar": {
+        "background": "",
+        "active": "accent",
+        "inactive": ""
+      },
+      "drawer": {
+        "enabled": false,
+        "menu": ""
+      }
+    },
+    "announcement": {
+      "enabled": true,
+      "messages": [
+        {
+          "text": "100-night free trial",
+          "link": ""
+        },
+        {
+          "text": "No-cost EMI available",
+          "link": ""
+        }
+      ],
+      "background": "accent",
+      "color": "#FFFFFF",
+      "interval": 5,
+      "dismissible": true
+    },
+    "home": {
+      "template": "b2b"
+    },
+    "collection": {
+      "template": "top"
+    }
+  },
+  "screens": {
+    "home": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "banner-111",
+          "type": "banner",
+          "settings": {
+            "image": {
+              "url": "https://burst.shopifycdn.com/photos/bed-with-book-and-flowers.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+              "alt": "Made bed",
+              "width": 0,
+              "height": 0
+            },
+            "heading": "Sleep better tonight",
+            "text": "Mattresses engineered for Indian sleepers.",
+            "button_label": "Shop now",
+            "link": "/collections/all",
+            "style": "hero",
+            "height": "medium",
+            "text_color": "#FFFFFF"
+          }
+        },
+        {
+          "id": "features-112",
+          "type": "features",
+          "settings": {
+            "layout": "grid",
+            "background": "surface",
+            "padding": "medium"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "clock",
+                "heading": "100-night trial",
+                "text": "Risk free"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "check",
+                "heading": "10-year warranty",
+                "text": ""
+              }
+            },
+            {
+              "id": "b3",
+              "type": "feature",
+              "settings": {
+                "icon": "truck",
+                "heading": "Free delivery",
+                "text": "3 to 7 days"
+              }
+            },
+            {
+              "id": "b4",
+              "type": "feature",
+              "settings": {
+                "icon": "tag",
+                "heading": "No-cost EMI",
+                "text": "On cards"
+              }
+            }
+          ]
+        },
+        {
+          "id": "collections-113",
+          "type": "collections",
+          "settings": {
+            "heading": "Shop by category",
+            "style": "circles"
+          }
+        },
+        {
+          "id": "products-114",
+          "type": "products",
+          "settings": {
+            "heading": "Bestsellers",
+            "style": "carousel",
+            "limit": 8,
+            "show_all": true
+          }
+        },
+        {
+          "id": "image-with-text-115",
+          "type": "image_with_text",
+          "settings": {
+            "image": {
+              "url": "https://burst.shopifycdn.com/photos/cozy-reading-in-bed.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+              "alt": "Reading in bed",
+              "width": 0,
+              "height": 0
+            },
+            "heading": "Not sure which one?",
+            "text": "<p>Soft, medium or firm: answer three questions and we'll suggest the right feel.</p>",
+            "button_label": "Find yours",
+            "link": "/collections/all",
+            "image_position": "start",
+            "padding": "medium"
+          }
+        },
+        {
+          "id": "products-116",
+          "type": "products",
+          "settings": {
+            "heading": "New arrivals",
+            "style": "grid",
+            "limit": 4,
+            "show_all": true
+          }
+        },
+        {
+          "id": "faq-117",
+          "type": "faq",
+          "settings": {
+            "heading": "Good to know"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "question",
+              "settings": {
+                "question": "How does the 100-night trial work?",
+                "answer": "<p>Sleep on it for up to 100 nights. If it isn't right, we'll pick it up and refund you.</p>"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "question",
+              "settings": {
+                "question": "How long does delivery take?",
+                "answer": "<p>Most orders arrive in 3 to 7 days. We'll message you a delivery slot.</p>"
+              }
+            },
+            {
+              "id": "b3",
+              "type": "question",
+              "settings": {
+                "question": "What does the warranty cover?",
+                "answer": "<p>Sagging and manufacturing defects, for 10 years.</p>"
+              }
+            },
+            {
+              "id": "b4",
+              "type": "question",
+              "settings": {
+                "question": "Can I pay in instalments?",
+                "answer": "<p>Yes: no-cost EMI on most cards at checkout.</p>"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "product": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "blocks": [
+              {
+                "type": "gallery"
+              },
+              {
+                "type": "title"
+              },
+              {
+                "type": "price"
+              },
+              {
+                "type": "options"
+              },
+              {
+                "type": "purchase"
+              },
+              {
+                "type": "details"
+              },
+              {
+                "type": "reviews"
+              },
+              {
+                "type": "rails"
+              }
+            ]
+          }
+        },
+        {
+          "id": "features-118",
+          "type": "features",
+          "settings": {
+            "layout": "grid"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "clock",
+                "heading": "100-night trial",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "check",
+                "heading": "10-year warranty",
+                "text": ""
+              }
+            },
+            {
+              "id": "b3",
+              "type": "feature",
+              "settings": {
+                "icon": "truck",
+                "heading": "Free delivery",
+                "text": ""
+              }
+            },
+            {
+              "id": "b4",
+              "type": "feature",
+              "settings": {
+                "icon": "tag",
+                "heading": "No-cost EMI",
+                "text": ""
+              }
+            }
+          ]
+        },
+        {
+          "id": "faq-119",
+          "type": "faq",
+          "settings": {
+            "heading": "Good to know"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "question",
+              "settings": {
+                "question": "How does the 100-night trial work?",
+                "answer": "<p>Sleep on it for up to 100 nights. If it isn't right, we'll pick it up and refund you.</p>"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "question",
+              "settings": {
+                "question": "How long does delivery take?",
+                "answer": "<p>Most orders arrive in 3 to 7 days. We'll message you a delivery slot.</p>"
+              }
+            },
+            {
+              "id": "b3",
+              "type": "question",
+              "settings": {
+                "question": "What does the warranty cover?",
+                "answer": "<p>Sagging and manufacturing defects, for 10 years.</p>"
+              }
+            },
+            {
+              "id": "b4",
+              "type": "question",
+              "settings": {
+                "question": "Can I pay in instalments?",
+                "answer": "<p>Yes: no-cost EMI on most cards at checkout.</p>"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "collection": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "features-120",
+          "type": "features",
+          "settings": {
+            "layout": "row"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "clock",
+                "heading": "100 nights",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "check",
+                "heading": "10 years",
+                "text": ""
+              }
+            },
+            {
+              "id": "b3",
+              "type": "feature",
+              "settings": {
+                "icon": "truck",
+                "heading": "Free delivery",
+                "text": ""
+              }
+            }
+          ]
+        },
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "filters": "top"
+          }
+        }
+      ]
+    },
+    "cart": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {}
+        },
+        {
+          "id": "features-121",
+          "type": "features",
+          "settings": {
+            "layout": "row"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "tag",
+                "heading": "No-cost EMI at checkout",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "clock",
+                "heading": "100-night trial",
+                "text": ""
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "onboarding": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "onboarding-122",
+          "type": "onboarding",
+          "settings": {
+            "enabled": true
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/bed-with-book-and-flowers.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Made bed",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Welcome",
+                "text": "Better sleep starts here."
+              }
+            },
+            {
+              "id": "b2",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/cozy-reading-in-bed.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Reading in bed",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Try it for 100 nights",
+                "text": "Not right? We'll pick it up and refund you."
+              }
+            },
+            {
+              "id": "b3",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/yellow-pillow-bedside-table.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Pillow",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Delivered free",
+                "text": "To your door in 3 to 7 days.",
+                "button_label": "Find my mattress"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

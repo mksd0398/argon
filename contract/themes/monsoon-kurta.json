@@ -1,0 +1,441 @@
+{
+  "id": "monsoon-kurta",
+  "name": "Monsoon Kurta",
+  "vertical": "Everyday women's ethnic wear",
+  "description": "Fresh teal and mustard for kurtas, sets and everyday ethnic wear, with shop-by-occasion tiles.",
+  "plan": "free",
+  "settings": {
+    "brand": {
+      "accent": "#1E6F72"
+    },
+    "appearance": {
+      "mode": "",
+      "fonts": {
+        "heading": {
+          "family": "Yeseva One",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/yesevaone/v24/OpNJno4ck8vc-xYpwWWxpio.ttf"
+          }
+        },
+        "body": {
+          "family": "Nunito Sans",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/nunitosans/v19/pe1mMImSLYBIv1o4X1M8ce2xCx3yop4tQpF_MeTm0lfGWVpNn64CL7U8upHZIbMV51Q42ptCp5F5bxqqtQ1yiU4G1ilntA.ttf",
+            "500": "https://fonts.gstatic.com/s/nunitosans/v19/pe1mMImSLYBIv1o4X1M8ce2xCx3yop4tQpF_MeTm0lfGWVpNn64CL7U8upHZIbMV51Q42ptCp5F5bxqqtQ1yiU4G5ClntA.ttf",
+            "600": "https://fonts.gstatic.com/s/nunitosans/v19/pe1mMImSLYBIv1o4X1M8ce2xCx3yop4tQpF_MeTm0lfGWVpNn64CL7U8upHZIbMV51Q42ptCp5F5bxqqtQ1yiU4GCC5ntA.ttf",
+            "700": "https://fonts.gstatic.com/s/nunitosans/v19/pe1mMImSLYBIv1o4X1M8ce2xCx3yop4tQpF_MeTm0lfGWVpNn64CL7U8upHZIbMV51Q42ptCp5F5bxqqtQ1yiU4GMS5ntA.ttf"
+          }
+        }
+      },
+      "colors": {
+        "background": "#FFFFFF",
+        "text": "#1F2324",
+        "secondary": "#D49A2A"
+      },
+      "corners": "rounded",
+      "buttons": "pill",
+      "type": {
+        "scale": "medium"
+      },
+      "icons": "outline"
+    },
+    "navigation": {
+      "tabs": [
+        {
+          "id": "home",
+          "title": "Home",
+          "icon": "home"
+        },
+        {
+          "id": "shop",
+          "title": "Shop",
+          "icon": "grid"
+        },
+        {
+          "id": "wishlist",
+          "title": "Wishlist",
+          "icon": "heart"
+        },
+        {
+          "id": "cart",
+          "title": "Bag",
+          "icon": "bag"
+        },
+        {
+          "id": "account",
+          "title": "Account",
+          "icon": "person"
+        }
+      ],
+      "labels": true,
+      "topBar": {
+        "style": "search",
+        "transparentOnHome": false,
+        "background": "",
+        "foreground": ""
+      },
+      "tabBar": {
+        "background": "",
+        "active": "accent",
+        "inactive": ""
+      },
+      "drawer": {
+        "enabled": false,
+        "menu": ""
+      }
+    },
+    "announcement": {
+      "enabled": true,
+      "messages": [
+        {
+          "text": "Flat 10% off your first order",
+          "link": ""
+        },
+        {
+          "text": "Free shipping above ₹799",
+          "link": ""
+        }
+      ],
+      "background": "secondary",
+      "color": "#1F2324",
+      "interval": 5,
+      "dismissible": true
+    },
+    "home": {
+      "template": "fashion"
+    },
+    "collection": {
+      "template": "top"
+    }
+  },
+  "screens": {
+    "home": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "banner-101",
+          "type": "banner",
+          "settings": {
+            "image": {
+              "url": "https://burst.shopifycdn.com/photos/woman-in-red-in-yellow-field.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+              "alt": "Woman in a field",
+              "width": 0,
+              "height": 0
+            },
+            "heading": "Kurtas for every day",
+            "text": "Breezy cottons, fresh prints.",
+            "button_label": "Shop kurtas",
+            "link": "/collections/all",
+            "style": "hero",
+            "height": "large",
+            "text_color": "#FFFFFF"
+          }
+        },
+        {
+          "id": "collections-102",
+          "type": "collections",
+          "settings": {
+            "heading": "Shop by category",
+            "style": "circles"
+          }
+        },
+        {
+          "id": "image-grid-103",
+          "type": "image_grid",
+          "settings": {
+            "heading": "Shop by occasion",
+            "columns": "2",
+            "aspect": "portrait"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "tile",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/woman-in-flower-blossoms.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Woman among flowers",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Festive",
+                "link": "/collections/all"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "tile",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/confident-young-woman.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Young woman",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Work",
+                "link": "/collections/all"
+              }
+            },
+            {
+              "id": "b3",
+              "type": "tile",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/woman-in-summer-fashion.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Summer outfit",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Casual",
+                "link": "/collections/all"
+              }
+            },
+            {
+              "id": "b4",
+              "type": "tile",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/woman-in-polka-dot-dress.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Polka dot dress",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Weekend",
+                "link": "/collections/all"
+              }
+            }
+          ]
+        },
+        {
+          "id": "products-104",
+          "type": "products",
+          "settings": {
+            "heading": "Just in",
+            "style": "grid",
+            "limit": 6,
+            "show_all": true
+          }
+        },
+        {
+          "id": "banner-105",
+          "type": "banner",
+          "settings": {
+            "heading": "Sets you'll live in",
+            "text": "Kurta, pant and dupatta: done.",
+            "button_label": "Shop sets",
+            "link": "/collections/all",
+            "style": "card",
+            "height": "small",
+            "background": "accent",
+            "text_color": "#FFFFFF",
+            "padding": "small"
+          }
+        },
+        {
+          "id": "products-106",
+          "type": "products",
+          "settings": {
+            "heading": "Bestsellers",
+            "style": "carousel",
+            "limit": 8,
+            "show_all": true
+          }
+        },
+        {
+          "id": "features-107",
+          "type": "features",
+          "settings": {
+            "layout": "row"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "truck",
+                "heading": "Free shipping",
+                "text": "Above ₹799"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "returns",
+                "heading": "Easy returns",
+                "text": "15 days"
+              }
+            },
+            {
+              "id": "b3",
+              "type": "feature",
+              "settings": {
+                "icon": "phone",
+                "heading": "Cash on delivery",
+                "text": ""
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "product": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "blocks": [
+              {
+                "type": "gallery"
+              },
+              {
+                "type": "title"
+              },
+              {
+                "type": "price"
+              },
+              {
+                "type": "options"
+              },
+              {
+                "type": "purchase"
+              },
+              {
+                "type": "bundle"
+              },
+              {
+                "type": "details"
+              },
+              {
+                "type": "reviews"
+              },
+              {
+                "type": "rails"
+              }
+            ]
+          }
+        },
+        {
+          "id": "features-108",
+          "type": "features",
+          "settings": {
+            "layout": "row"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "returns",
+                "heading": "15-day returns",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "phone",
+                "heading": "COD available",
+                "text": ""
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "collection": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "filters": "top"
+          }
+        }
+      ]
+    },
+    "cart": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "banner-109",
+          "type": "banner",
+          "settings": {
+            "heading": "10% off your first order",
+            "text": "Applied at checkout.",
+            "style": "card",
+            "height": "small",
+            "background": "secondary",
+            "text_color": "#1F2324"
+          }
+        },
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {}
+        }
+      ]
+    },
+    "onboarding": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "onboarding-110",
+          "type": "onboarding",
+          "settings": {
+            "enabled": true
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/woman-in-red-in-yellow-field.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Woman in a field",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Welcome",
+                "text": "Everyday ethnic wear you'll love."
+              }
+            },
+            {
+              "id": "b2",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/woman-in-flower-blossoms.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Woman among flowers",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "10% off your first order",
+                "text": "It's applied for you at checkout."
+              }
+            },
+            {
+              "id": "b3",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/woman-in-summer-fashion.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Summer outfit",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Easy returns",
+                "text": "Changed your mind? Return within 15 days.",
+                "button_label": "Shop now"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

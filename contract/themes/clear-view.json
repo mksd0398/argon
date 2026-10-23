@@ -1,0 +1,416 @@
+{
+  "id": "clear-view",
+  "name": "Clear View",
+  "vertical": "Eyewear",
+  "description": "Ink teal with an apricot accent and round, friendly shapes, for eyewear stores: shop by shape, try at home.",
+  "plan": "free",
+  "settings": {
+    "brand": {
+      "accent": "#0E6E7E"
+    },
+    "appearance": {
+      "mode": "",
+      "fonts": {
+        "heading": {
+          "family": "Outfit",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/outfit/v15/QGYyz_MVcBeNP4NjuGObqx1XmO1I4TC1C4E.ttf",
+            "700": "https://fonts.gstatic.com/s/outfit/v15/QGYyz_MVcBeNP4NjuGObqx1XmO1I4deyC4E.ttf"
+          }
+        },
+        "body": {
+          "family": "Inter",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfMZg.ttf",
+            "500": "https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuI6fMZg.ttf",
+            "600": "https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuGKYMZg.ttf",
+            "700": "https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuFuYMZg.ttf"
+          }
+        }
+      },
+      "colors": {
+        "background": "#FFFFFF",
+        "text": "#10243E",
+        "secondary": "#F2A65A"
+      },
+      "corners": "round",
+      "buttons": "pill",
+      "type": {
+        "scale": "medium"
+      },
+      "icons": "outline"
+    },
+    "navigation": {
+      "tabs": [
+        {
+          "id": "home",
+          "title": "Home",
+          "icon": "home"
+        },
+        {
+          "id": "shop",
+          "title": "Shop",
+          "icon": "grid"
+        },
+        {
+          "id": "wishlist",
+          "title": "Wishlist",
+          "icon": "heart"
+        },
+        {
+          "id": "cart",
+          "title": "Bag",
+          "icon": "bag"
+        },
+        {
+          "id": "account",
+          "title": "Account",
+          "icon": "person"
+        }
+      ],
+      "labels": true,
+      "topBar": {
+        "style": "search",
+        "transparentOnHome": false,
+        "background": "",
+        "foreground": ""
+      },
+      "tabBar": {
+        "background": "",
+        "active": "accent",
+        "inactive": ""
+      },
+      "drawer": {
+        "enabled": false,
+        "menu": ""
+      }
+    },
+    "announcement": {
+      "enabled": true,
+      "messages": [
+        {
+          "text": "Buy 1, get 1 free on frames",
+          "link": ""
+        },
+        {
+          "text": "Free eye test at home",
+          "link": ""
+        }
+      ],
+      "background": "secondary",
+      "color": "#10243E",
+      "interval": 5,
+      "dismissible": true
+    },
+    "home": {
+      "template": "beauty"
+    },
+    "collection": {
+      "template": "bottom"
+    }
+  },
+  "screens": {
+    "home": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "banner-192",
+          "type": "banner",
+          "settings": {
+            "image": {
+              "url": "https://burst.shopifycdn.com/photos/woman-glasses-ponytail-blue-wall.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+              "alt": "Woman in glasses",
+              "width": 0,
+              "height": 0
+            },
+            "heading": "See the world clearly",
+            "text": "Frames from ₹999 with lenses included.",
+            "button_label": "Shop eyeglasses",
+            "link": "/collections/all",
+            "style": "hero",
+            "height": "medium",
+            "text_color": "#FFFFFF"
+          }
+        },
+        {
+          "id": "collections-193",
+          "type": "collections",
+          "settings": {
+            "heading": "Shop by shape",
+            "style": "circles"
+          }
+        },
+        {
+          "id": "products-194",
+          "type": "products",
+          "settings": {
+            "heading": "Trending frames",
+            "style": "carousel",
+            "limit": 8,
+            "show_all": true
+          }
+        },
+        {
+          "id": "features-195",
+          "type": "features",
+          "settings": {
+            "layout": "grid",
+            "background": "surface",
+            "padding": "medium"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "check",
+                "heading": "Lenses included",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "returns",
+                "heading": "14-day returns",
+                "text": ""
+              }
+            },
+            {
+              "id": "b3",
+              "type": "feature",
+              "settings": {
+                "icon": "truck",
+                "heading": "Free shipping",
+                "text": ""
+              }
+            },
+            {
+              "id": "b4",
+              "type": "feature",
+              "settings": {
+                "icon": "star",
+                "heading": "1-year warranty",
+                "text": ""
+              }
+            }
+          ]
+        },
+        {
+          "id": "banner-196",
+          "type": "banner",
+          "settings": {
+            "heading": "Buy 1, get 1 free",
+            "text": "On all frames, this week.",
+            "button_label": "Shop the offer",
+            "link": "/collections/all",
+            "style": "card",
+            "height": "small",
+            "background": "secondary",
+            "text_color": "#10243E",
+            "padding": "small"
+          }
+        },
+        {
+          "id": "products-197",
+          "type": "products",
+          "settings": {
+            "heading": "Sunglasses",
+            "style": "grid",
+            "limit": 4,
+            "show_all": true
+          }
+        },
+        {
+          "id": "faq-198",
+          "type": "faq",
+          "settings": {
+            "heading": "Questions"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "question",
+              "settings": {
+                "question": "Are lenses included?",
+                "answer": "<p>Yes: single-vision lenses with anti-glare come with every frame.</p>"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "question",
+              "settings": {
+                "question": "Can I return my glasses?",
+                "answer": "<p>Within 14 days, no questions asked.</p>"
+              }
+            },
+            {
+              "id": "b3",
+              "type": "question",
+              "settings": {
+                "question": "How do I add my prescription?",
+                "answer": "<p>Upload it after checkout, or we'll call to take it down.</p>"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "product": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "blocks": [
+              {
+                "type": "gallery"
+              },
+              {
+                "type": "title"
+              },
+              {
+                "type": "price"
+              },
+              {
+                "type": "options"
+              },
+              {
+                "type": "purchase"
+              },
+              {
+                "type": "details"
+              },
+              {
+                "type": "reviews"
+              },
+              {
+                "type": "rails"
+              }
+            ]
+          }
+        },
+        {
+          "id": "features-199",
+          "type": "features",
+          "settings": {
+            "layout": "row"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "check",
+                "heading": "Lenses included",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "returns",
+                "heading": "14-day returns",
+                "text": ""
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "collection": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "filters": "bottom"
+          }
+        }
+      ]
+    },
+    "cart": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "banner-200",
+          "type": "banner",
+          "settings": {
+            "heading": "Buy 1, get 1 free",
+            "text": "Add a second frame: it's on us.",
+            "style": "card",
+            "height": "small",
+            "background": "secondary",
+            "text_color": "#10243E"
+          }
+        },
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {}
+        }
+      ]
+    },
+    "onboarding": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "onboarding-201",
+          "type": "onboarding",
+          "settings": {
+            "enabled": true
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/woman-glasses-ponytail-blue-wall.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Woman in glasses",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Welcome",
+                "text": "Eyeglasses and sunglasses, with lenses included."
+              }
+            },
+            {
+              "id": "b2",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/variety-of-watches-lined-up-in-rows.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Accessories in rows",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Find your shape",
+                "text": "Round, square, cat-eye: browse by shape."
+              }
+            },
+            {
+              "id": "b3",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/woman-models-against-blue-sky.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Woman against sky",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Easy returns",
+                "text": "Not quite right? Return within 14 days.",
+                "button_label": "Find my frames"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

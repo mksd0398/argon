@@ -1,0 +1,414 @@
+{
+  "id": "leaf-dew",
+  "name": "Leaf & Dew",
+  "vertical": "Natural skin, hair and baby care",
+  "description": "Sage green and honey with a soft serif, for natural, toxin-free personal care that shops by concern.",
+  "plan": "free",
+  "settings": {
+    "brand": {
+      "accent": "#3F7D4E"
+    },
+    "appearance": {
+      "mode": "",
+      "fonts": {
+        "heading": {
+          "family": "DM Serif Display",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/dmserifdisplay/v17/-nFnOHM81r4j6k0gjAW3mujVU2B2K_c.ttf"
+          }
+        },
+        "body": {
+          "family": "DM Sans",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/dmsans/v17/rP2tp2ywxg089UriI5-g4vlH9VoD8CmcqZG40F9JadbnoEwAopxhTg.ttf",
+            "500": "https://fonts.gstatic.com/s/dmsans/v17/rP2tp2ywxg089UriI5-g4vlH9VoD8CmcqZG40F9JadbnoEwAkJxhTg.ttf",
+            "600": "https://fonts.gstatic.com/s/dmsans/v17/rP2tp2ywxg089UriI5-g4vlH9VoD8CmcqZG40F9JadbnoEwAfJthTg.ttf",
+            "700": "https://fonts.gstatic.com/s/dmsans/v17/rP2tp2ywxg089UriI5-g4vlH9VoD8CmcqZG40F9JadbnoEwARZthTg.ttf"
+          }
+        }
+      },
+      "colors": {
+        "background": "#F5F8F1",
+        "text": "#1F2A1F",
+        "secondary": "#E9A23B"
+      },
+      "corners": "round",
+      "buttons": "pill",
+      "type": {
+        "scale": "medium"
+      },
+      "icons": "outline"
+    },
+    "navigation": {
+      "tabs": [
+        {
+          "id": "home",
+          "title": "Home",
+          "icon": "home"
+        },
+        {
+          "id": "shop",
+          "title": "Shop",
+          "icon": "grid"
+        },
+        {
+          "id": "wishlist",
+          "title": "Wishlist",
+          "icon": "heart"
+        },
+        {
+          "id": "cart",
+          "title": "Bag",
+          "icon": "bag"
+        },
+        {
+          "id": "account",
+          "title": "Account",
+          "icon": "person"
+        }
+      ],
+      "labels": true,
+      "topBar": {
+        "style": "search",
+        "transparentOnHome": false,
+        "background": "",
+        "foreground": ""
+      },
+      "tabBar": {
+        "background": "",
+        "active": "accent",
+        "inactive": ""
+      },
+      "drawer": {
+        "enabled": false,
+        "menu": ""
+      }
+    },
+    "announcement": {
+      "enabled": true,
+      "messages": [
+        {
+          "text": "Toxin-free, made safe",
+          "link": ""
+        },
+        {
+          "text": "Free shipping above ₹399",
+          "link": ""
+        }
+      ],
+      "background": "accent",
+      "color": "#FFFFFF",
+      "interval": 5,
+      "dismissible": true
+    },
+    "home": {
+      "template": "beauty"
+    },
+    "collection": {
+      "template": "top"
+    }
+  },
+  "screens": {
+    "home": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "slideshow-157",
+          "type": "slideshow",
+          "settings": {
+            "autoplay": true,
+            "interval": 4,
+            "height": "medium"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "slide",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/purifying-face-mask.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Face mask",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Goodness of nature",
+                "text": "Toxin-free skincare for every skin.",
+                "button_label": "Shop skin",
+                "link": "/collections/all"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "slide",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/beauty-products-and-flower.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Products with flowers",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Gentle on you",
+                "text": "Made with plant actives.",
+                "button_label": "Explore",
+                "link": "/collections/all"
+              }
+            }
+          ]
+        },
+        {
+          "id": "collections-158",
+          "type": "collections",
+          "settings": {
+            "heading": "Shop by concern",
+            "style": "circles",
+            "padding": "small"
+          }
+        },
+        {
+          "id": "products-159",
+          "type": "products",
+          "settings": {
+            "heading": "Bestsellers",
+            "style": "carousel",
+            "limit": 8,
+            "show_all": true
+          }
+        },
+        {
+          "id": "banner-160",
+          "type": "banner",
+          "settings": {
+            "image": {
+              "url": "https://burst.shopifycdn.com/photos/woman-holds-a-jade-face-massager-to-her-face.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+              "alt": "Face massager",
+              "width": 0,
+              "height": 0
+            },
+            "heading": "Build your routine",
+            "text": "Any 3 for ₹999.",
+            "button_label": "Shop the offer",
+            "link": "/collections/all",
+            "style": "card",
+            "height": "small",
+            "text_color": "#FFFFFF",
+            "padding": "small"
+          }
+        },
+        {
+          "id": "products-161",
+          "type": "products",
+          "settings": {
+            "heading": "New launches",
+            "style": "grid",
+            "limit": 6,
+            "show_all": true
+          }
+        },
+        {
+          "id": "features-162",
+          "type": "features",
+          "settings": {
+            "layout": "row",
+            "padding": "small"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "leaf",
+                "heading": "Plant based",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "check",
+                "heading": "Dermat tested",
+                "text": ""
+              }
+            },
+            {
+              "id": "b3",
+              "type": "feature",
+              "settings": {
+                "icon": "heart",
+                "heading": "Safe for all",
+                "text": ""
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "product": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "blocks": [
+              {
+                "type": "gallery"
+              },
+              {
+                "type": "title"
+              },
+              {
+                "type": "price"
+              },
+              {
+                "type": "options"
+              },
+              {
+                "type": "purchase"
+              },
+              {
+                "type": "bundle"
+              },
+              {
+                "type": "details"
+              },
+              {
+                "type": "reviews"
+              },
+              {
+                "type": "rails"
+              }
+            ]
+          }
+        },
+        {
+          "id": "features-163",
+          "type": "features",
+          "settings": {
+            "layout": "row"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "leaf",
+                "heading": "Toxin-free",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "check",
+                "heading": "Dermat tested",
+                "text": ""
+              }
+            },
+            {
+              "id": "b3",
+              "type": "feature",
+              "settings": {
+                "icon": "heart",
+                "heading": "Cruelty-free",
+                "text": ""
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "collection": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "filters": "top"
+          }
+        }
+      ]
+    },
+    "cart": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "banner-164",
+          "type": "banner",
+          "settings": {
+            "heading": "Any 3 for ₹999",
+            "text": "Applied at checkout.",
+            "style": "card",
+            "height": "small",
+            "background": "secondary",
+            "text_color": "#1F2A1F"
+          }
+        },
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {}
+        }
+      ]
+    },
+    "onboarding": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "onboarding-165",
+          "type": "onboarding",
+          "settings": {
+            "enabled": true
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/purifying-face-mask.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Face mask",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Welcome",
+                "text": "Natural care, made safe for everyone."
+              }
+            },
+            {
+              "id": "b2",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/beauty-products-and-flower.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Products with flowers",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Shop by concern",
+                "text": "Acne, dullness, hair fall: find what works for you."
+              }
+            },
+            {
+              "id": "b3",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/bowl-of-flowers-on-stone.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Flowers",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Free shipping above ₹399",
+                "text": "And easy returns.",
+                "button_label": "Begin your routine"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

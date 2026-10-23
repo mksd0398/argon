@@ -75,3 +75,4 @@ date,project,task,start_time,end_time,status
 2026-10-23,create-shopify-app-storefront,"Firebase (Analytics, Crashlytics + dSYM phase, Messaging with push, -ObjC) in the generated Xcode project, not only Package.swift; tests, README, CI Xcode build of the analytics fixture",21:32,21:54,done
 2026-10-23,create-shopify-app-storefront,"Meta and MoEngage packages in the generated Xcode project too (withSdks over ANALYTICS, replacing withFirebase); tests, README, CI Xcode build of the analytics fixture with all three SDKs",22:36,22:56,done
 2026-10-24,create-shopify-app-storefront,"One design system: colours by name in every colour setting (contract, Android, iOS), secondary colour, type scale, outlined/filled icons (filled Material Symbols bundled)",22:30,23:59,done
+2026-10-23,create-shopify-app-storefront,"Design-system audit and 20 built-in themes (contract/themes, --theme)",23:10,,pending

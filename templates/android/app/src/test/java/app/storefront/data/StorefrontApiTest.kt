@@ -476,4 +476,16 @@ class StorefrontApiTest {
         val e = assertThrows(ArgonApiError.Http::class.java) { runBlocking { StorefrontApi({ _, _ -> throw http }).shop() } }
         assertSame(http, e)
     }
+
+    @Test
+    fun aScreenTheStoreDoesNotHaveIsTheOneTheAppWasBuiltWith() = runBlocking {
+        val none = JsonObject(mapOf("metaobject" to kotlinx.serialization.json.JsonNull))
+        val built = """{"version":2,"sections":[]}"""
+        val api = StorefrontApi({ _, _ -> none }, builtInScreen = { if (it == "home") built else null })
+        assertEquals(built, api.appScreen("home")?.template)
+        assertNull(api.appScreen("cart"))
+        // the store's own screen wins
+        assertEquals("home", StorefrontApi({ name, _ -> fixture(name) }, builtInScreen = { built }).appScreen("home")?.handle)
+        assertFalse(StorefrontApi({ name, _ -> fixture(name) }, builtInScreen = { built }).appScreen("home")?.id.isNullOrEmpty())
+    }
 }

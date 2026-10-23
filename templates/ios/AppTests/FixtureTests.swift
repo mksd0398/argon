@@ -446,6 +446,22 @@ final class FixtureTests: XCTestCase {
     }
 
     @MainActor
+    func testAScreenTheStoreDoesNotHaveIsTheOneTheAppWasBuiltWith() async throws {
+        let built = #"{"version":2,"sections":[]}"#
+        let none = StubServer(reply: { _, _ in #"{"data":{"metaobject":null}}"# }).storefront()
+        none.builtInScreen = { $0 == "home" ? built : nil }
+        let home = try await none.appScreen("home")
+        XCTAssertEqual(home?.template, built)
+        let cart = try await none.appScreen("cart")
+        XCTAssertNil(cart)
+        // the store's own screen wins
+        let own = StubServer().storefront()
+        own.builtInScreen = { _ in built }
+        let screen = try await own.appScreen("home")
+        XCTAssertEqual(screen?.title, "Home")
+    }
+
+    @MainActor
     func testSectionNodes() async throws {
         let server = StubServer()
         let api = server.storefront()

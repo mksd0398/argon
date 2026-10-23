@@ -52,13 +52,20 @@ data class RemoteFonts(val heading: RemoteFont? = null, val body: RemoteFont? = 
  * The merchant's font files in [dir], one per URL (named by its hash). [family] only reads what is there, so a launch
  * uses a font only when an earlier one downloaded all of it: never a swap mid-session. Failures keep Argon's font.
  */
-class FontCache(private val dir: File, private val http: OkHttpClient) {
+class FontCache(private val dir: File, private val http: OkHttpClient, private val builtIn: (String) -> ByteArray? = { null }) {
     private val log = Logger.getLogger("Fonts")
 
     private fun file(url: String) = File(dir, MessageDigest.getInstance("SHA-256").digest(url.toByteArray()).joinToString("") { "%02x".format(it) } + ".ttf")
 
-    /** [font] as a family when every one of its files is on disk; else null. */
+    /**
+     * [font] as a family when every one of its files is on disk; else null. A file the app was built with ([builtIn], by
+     * its file name: the CLI's `assets/built-in/fonts/`) is put there first, so a built-in font shows from the first launch.
+     */
     fun family(font: RemoteFont?): FontFamily? {
+        for (target in font?.files?.values.orEmpty().map(::file).filterNot { it.exists() }) {
+            val bytes = builtIn(target.name)?.takeIf(::isFont) ?: continue
+            runCatching { dir.mkdirs(); target.writeBytes(bytes) }
+        }
         val files = font?.files?.mapValues { file(it.value) } ?: return null
         if (!files.values.all { it.exists() }) return null
         return FontFamily(files.map { (weight, file) -> Font(file, FontWeight(weight)) })

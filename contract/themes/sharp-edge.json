@@ -1,0 +1,378 @@
+{
+  "id": "sharp-edge",
+  "name": "Sharp Edge",
+  "vertical": "Men's grooming",
+  "description": "Charcoal and copper with condensed caps, for men's grooming brands that sell routines and kits.",
+  "plan": "free",
+  "settings": {
+    "brand": {
+      "accent": "#A3561F"
+    },
+    "appearance": {
+      "mode": "",
+      "fonts": {
+        "heading": {
+          "family": "Barlow Condensed",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/barlowcondensed/v13/HTx3L3I-JCGChYJ8VI-L6OO_au7B2xY.ttf",
+            "700": "https://fonts.gstatic.com/s/barlowcondensed/v13/HTxwL3I-JCGChYJ8VI-L6OO_au7B46r2_3E.ttf"
+          }
+        },
+        "body": {
+          "family": "Barlow",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/barlow/v13/7cHpv4kjgoGqM7EPCw.ttf",
+            "500": "https://fonts.gstatic.com/s/barlow/v13/7cHqv4kjgoGqM7E3_-gc4A.ttf",
+            "600": "https://fonts.gstatic.com/s/barlow/v13/7cHqv4kjgoGqM7E30-8c4A.ttf",
+            "700": "https://fonts.gstatic.com/s/barlow/v13/7cHqv4kjgoGqM7E3t-4c4A.ttf"
+          }
+        }
+      },
+      "colors": {
+        "background": "#F4F2EE",
+        "text": "#1B1E23",
+        "secondary": "#1B2A41"
+      },
+      "corners": "square",
+      "buttons": "square",
+      "type": {
+        "scale": "medium"
+      },
+      "icons": "filled"
+    },
+    "navigation": {
+      "tabs": [
+        {
+          "id": "home",
+          "title": "Home",
+          "icon": "home"
+        },
+        {
+          "id": "shop",
+          "title": "Shop",
+          "icon": "grid"
+        },
+        {
+          "id": "search",
+          "title": "Search",
+          "icon": "search"
+        },
+        {
+          "id": "cart",
+          "title": "Bag",
+          "icon": "bag"
+        },
+        {
+          "id": "account",
+          "title": "Account",
+          "icon": "person"
+        }
+      ],
+      "labels": true,
+      "topBar": {
+        "style": "centered_logo",
+        "transparentOnHome": false,
+        "background": "secondary",
+        "foreground": "#FFFFFF"
+      },
+      "tabBar": {
+        "background": "secondary",
+        "active": "#E8A06A",
+        "inactive": "#A9B0BA"
+      },
+      "drawer": {
+        "enabled": false,
+        "menu": ""
+      }
+    },
+    "announcement": {
+      "enabled": true,
+      "messages": [
+        {
+          "text": "Free razor with your first kit",
+          "link": ""
+        },
+        {
+          "text": "Free shipping above ₹499",
+          "link": ""
+        }
+      ],
+      "background": "accent",
+      "color": "#FFFFFF",
+      "interval": 5,
+      "dismissible": true
+    },
+    "home": {
+      "template": "beauty"
+    },
+    "collection": {
+      "template": "top"
+    }
+  },
+  "screens": {
+    "home": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "banner-174",
+          "type": "banner",
+          "settings": {
+            "image": {
+              "url": "https://burst.shopifycdn.com/photos/portrait-of-a-man-with-a-full-beard-looking-left.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+              "alt": "Bearded man",
+              "width": 0,
+              "height": 0
+            },
+            "heading": "GROOMING, SORTED",
+            "text": "Shave, beard and skin: the full routine.",
+            "button_label": "Build your kit",
+            "link": "/collections/all",
+            "style": "hero",
+            "height": "medium",
+            "text_color": "#FFFFFF"
+          }
+        },
+        {
+          "id": "collections-175",
+          "type": "collections",
+          "settings": {
+            "heading": "Shop by routine",
+            "style": "grid"
+          }
+        },
+        {
+          "id": "products-176",
+          "type": "products",
+          "settings": {
+            "heading": "Bestsellers",
+            "style": "carousel",
+            "limit": 8,
+            "show_all": true
+          }
+        },
+        {
+          "id": "image-with-text-177",
+          "type": "image_with_text",
+          "settings": {
+            "image": {
+              "url": "https://burst.shopifycdn.com/photos/beard-oil-and-balm.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+              "alt": "Beard oil and balm",
+              "width": 0,
+              "height": 0
+            },
+            "heading": "The beard kit",
+            "text": "<p>Oil, balm and a comb: everything for a softer, fuller beard.</p>",
+            "button_label": "Shop kits",
+            "link": "/collections/all",
+            "image_position": "end",
+            "background": "secondary",
+            "padding": "medium"
+          }
+        },
+        {
+          "id": "products-178",
+          "type": "products",
+          "settings": {
+            "heading": "New arrivals",
+            "style": "grid",
+            "limit": 4,
+            "show_all": true
+          }
+        },
+        {
+          "id": "features-179",
+          "type": "features",
+          "settings": {
+            "layout": "row"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "check",
+                "heading": "Dermat tested",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "leaf",
+                "heading": "No harsh chemicals",
+                "text": ""
+              }
+            },
+            {
+              "id": "b3",
+              "type": "feature",
+              "settings": {
+                "icon": "truck",
+                "heading": "Free shipping",
+                "text": "Above ₹499"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "product": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "blocks": [
+              {
+                "type": "gallery"
+              },
+              {
+                "type": "title"
+              },
+              {
+                "type": "price"
+              },
+              {
+                "type": "options"
+              },
+              {
+                "type": "purchase"
+              },
+              {
+                "type": "bundle"
+              },
+              {
+                "type": "details"
+              },
+              {
+                "type": "reviews"
+              },
+              {
+                "type": "rails"
+              }
+            ]
+          }
+        },
+        {
+          "id": "features-180",
+          "type": "features",
+          "settings": {
+            "layout": "row"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "check",
+                "heading": "Dermat tested",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "returns",
+                "heading": "Easy returns",
+                "text": ""
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "collection": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "filters": "top"
+          }
+        }
+      ]
+    },
+    "cart": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "banner-181",
+          "type": "banner",
+          "settings": {
+            "heading": "Free razor with your first kit",
+            "style": "card",
+            "height": "small",
+            "background": "accent",
+            "text_color": "#FFFFFF"
+          }
+        },
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {}
+        }
+      ]
+    },
+    "onboarding": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "onboarding-182",
+          "type": "onboarding",
+          "settings": {
+            "enabled": true
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/portrait-of-a-man-with-a-full-beard-looking-left.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Bearded man",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Welcome",
+                "text": "Grooming that does the job."
+              }
+            },
+            {
+              "id": "b2",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/beard-oil-and-balm.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Beard oil and balm",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Build your routine",
+                "text": "Kits for shave, beard and skin."
+              }
+            },
+            {
+              "id": "b3",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/hair-scissors-and-razor.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Razor and scissors",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Free razor",
+                "text": "With your first kit.",
+                "button_label": "Get started"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

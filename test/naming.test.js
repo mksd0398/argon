@@ -28,7 +28,7 @@ test("parseArgs: --flag=value, defaults and missing value", () => {
     bundleId: "com.x.y", home: undefined, collection: undefined, judgemeToken: undefined,
     firebaseAndroid: undefined, firebaseIos: undefined, metaAppId: undefined, metaClientToken: undefined,
     moengageWorkspaceId: undefined, moengageDataCenter: undefined, settingsUrl: undefined, customerRedirectUri: undefined,
-    checkout: undefined, login: undefined, gokwikMerchantId: undefined, gokwikEnvironment: undefined,
+    checkout: undefined, login: undefined, gokwikMerchantId: undefined, gokwikEnvironment: undefined, theme: undefined, settingsFile: undefined,
     server: false, push: false, skipContent: false, yes: false, help: false,
   });
   assert.throws(() => parseArgs(["--store"]), /Missing value for --store/);

@@ -86,9 +86,11 @@ class StorefrontApp : Application(), SingletonImageLoader.Factory {
         CrashReports.setKey("app_version", "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
         CrashReports.setKey("argon", BuildConfig.ARGON_REVISION)
         // First: the per-store values read the cached settings. The fetch only refreshes that cache, for the next launch.
-        AppGraph.settingsStore = RemoteSettingsStore(filesDir, AppGraph.settingsUrl, AppGraph.http)
+        // Before the first fetch: the settings the app was built with (assets/built-in/settings.json, the store's or a theme's)
+        val builtIn = runCatching { assets.open("built-in/settings.json").bufferedReader().use { it.readText() } }.getOrNull()
+        AppGraph.settingsStore = RemoteSettingsStore(filesDir, AppGraph.settingsUrl, AppGraph.http, builtIn)
         // The merchant's fonts when an earlier launch downloaded them; the files the newest settings name are fetched for the next.
-        val fonts = FontCache(File(filesDir, "fonts"), AppGraph.http)
+        val fonts = FontCache(File(filesDir, "fonts"), AppGraph.http) { name -> runCatching { assets.open("built-in/fonts/$name").use { it.readBytes() } }.getOrNull() }
         AppGraph.headingFont = fonts.family(AppGraph.settings?.fonts?.heading)
         AppGraph.bodyFont = fonts.family(AppGraph.settings?.fonts?.body)
         AppGraph.scope.launch { fonts.download((AppGraph.settingsStore.refresh() ?: AppGraph.settings)?.fonts) }
@@ -350,7 +352,7 @@ object AppGraph {
     /** Every Storefront API call, typed; in the device's country and language where the shop sells in them. */
     val storefront: StorefrontApi by lazy {
         val client = Storefront(domain = shopDomain, token = storefrontToken, apiVersion = apiVersion, loadDocument = ::document, http = http)
-        StorefrontApi(client::query, Locale.getDefault())
+        StorefrontApi(client::query, Locale.getDefault(), builtInScreen = { handle -> runCatching { asset("built-in/screen-$handle.json") }.getOrNull() })
     }
 
     private val liveAccount by lazy { CustomerAccountApi(auth::customerQuery) }

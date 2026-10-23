@@ -160,4 +160,14 @@ class RemoteSettingsTest {
         assertNotNull(store().current)
         assertNull(store(url = "").current)
     }
+
+    @Test
+    fun theBuiltInSettingsRunUntilAFetchIsCached() = runBlocking {
+        val builtIn = """{ "home": { "template": "beauty" } }"""
+        assertEquals(HomeTemplate.Beauty, RemoteSettingsStore(tmp.root, "", http, builtIn).current?.homeTemplate)
+        val first = RemoteSettingsStore(tmp.root, "https://settings.test/v1/settings/shop.test", http, builtIn)
+        assertEquals("the first launch", HomeTemplate.Beauty, first.current?.homeTemplate)
+        first.refresh()
+        assertEquals(HomeTemplate.Grocery, RemoteSettingsStore(tmp.root, "https://settings.test/v1/settings/shop.test", http, builtIn).current?.homeTemplate)
+    }
 }

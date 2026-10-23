@@ -1,0 +1,416 @@
+{
+  "id": "studio",
+  "name": "Studio",
+  "vertical": "Any store",
+  "description": "A calm, neutral starting point that suits any catalogue: clean type, soft corners, your products up front.",
+  "plan": "free",
+  "settings": {
+    "brand": {
+      "accent": "#2F5BD3"
+    },
+    "appearance": {
+      "mode": "",
+      "fonts": {
+        "heading": {
+          "family": "Inter",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfMZg.ttf",
+            "700": "https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuFuYMZg.ttf"
+          }
+        },
+        "body": {
+          "family": "Inter",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfMZg.ttf",
+            "500": "https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuI6fMZg.ttf",
+            "600": "https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuGKYMZg.ttf",
+            "700": "https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuFuYMZg.ttf"
+          }
+        }
+      },
+      "colors": {
+        "background": "#FAFAF7",
+        "text": "#16181D",
+        "secondary": "#E8B04B"
+      },
+      "corners": "rounded",
+      "buttons": "pill",
+      "type": {
+        "scale": "medium"
+      },
+      "icons": "outline"
+    },
+    "navigation": {
+      "tabs": [
+        {
+          "id": "home",
+          "title": "Home",
+          "icon": "home"
+        },
+        {
+          "id": "shop",
+          "title": "Shop",
+          "icon": "grid"
+        },
+        {
+          "id": "search",
+          "title": "Search",
+          "icon": "search"
+        },
+        {
+          "id": "wishlist",
+          "title": "Wishlist",
+          "icon": "heart"
+        },
+        {
+          "id": "account",
+          "title": "Account",
+          "icon": "person"
+        }
+      ],
+      "labels": true,
+      "topBar": {
+        "style": "standard",
+        "transparentOnHome": false,
+        "background": "",
+        "foreground": ""
+      },
+      "tabBar": {
+        "background": "",
+        "active": "",
+        "inactive": ""
+      },
+      "drawer": {
+        "enabled": false,
+        "menu": ""
+      }
+    },
+    "announcement": {
+      "enabled": true,
+      "messages": [
+        {
+          "text": "Free shipping on prepaid orders",
+          "link": ""
+        },
+        {
+          "text": "Easy 7-day returns",
+          "link": ""
+        }
+      ],
+      "background": "text",
+      "color": "background",
+      "interval": 5,
+      "dismissible": true
+    },
+    "home": {
+      "template": "fashion"
+    },
+    "collection": {
+      "template": "top"
+    }
+  },
+  "screens": {
+    "home": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "slideshow-1",
+          "type": "slideshow",
+          "settings": {
+            "autoplay": true,
+            "interval": 5,
+            "height": "large"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "slide",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/woman-in-summer-fashion.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Summer outfit",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "New season, new favourites",
+                "text": "Fresh arrivals picked for you.",
+                "button_label": "Shop now",
+                "link": "/collections/all"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "slide",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/folded-clothes.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Folded clothes",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Everyday essentials",
+                "text": "The pieces you reach for most.",
+                "button_label": "Explore",
+                "link": "/collections/all"
+              }
+            }
+          ]
+        },
+        {
+          "id": "collections-2",
+          "type": "collections",
+          "settings": {
+            "heading": "Shop by category",
+            "style": "circles"
+          }
+        },
+        {
+          "id": "products-3",
+          "type": "products",
+          "settings": {
+            "heading": "New this week",
+            "style": "carousel",
+            "limit": 8,
+            "show_all": true
+          }
+        },
+        {
+          "id": "features-4",
+          "type": "features",
+          "settings": {
+            "layout": "row"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "truck",
+                "heading": "Free shipping",
+                "text": "On prepaid orders"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "returns",
+                "heading": "Easy returns",
+                "text": "Within 7 days"
+              }
+            },
+            {
+              "id": "b3",
+              "type": "feature",
+              "settings": {
+                "icon": "lock",
+                "heading": "Secure checkout",
+                "text": "UPI, cards and COD"
+              }
+            }
+          ]
+        },
+        {
+          "id": "banner-5",
+          "type": "banner",
+          "settings": {
+            "image": {
+              "url": "https://burst.shopifycdn.com/photos/woman-shopping-for-clothes.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+              "alt": "Shopping",
+              "width": 0,
+              "height": 0
+            },
+            "heading": "The edit",
+            "text": "Our favourites, in one place.",
+            "button_label": "Browse",
+            "link": "/collections/all",
+            "style": "card",
+            "height": "medium",
+            "text_color": "#FFFFFF",
+            "padding": "small"
+          }
+        },
+        {
+          "id": "products-6",
+          "type": "products",
+          "settings": {
+            "heading": "Best sellers",
+            "style": "grid",
+            "limit": 6,
+            "show_all": true
+          }
+        }
+      ]
+    },
+    "product": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "blocks": [
+              {
+                "type": "gallery"
+              },
+              {
+                "type": "title"
+              },
+              {
+                "type": "price"
+              },
+              {
+                "type": "options"
+              },
+              {
+                "type": "purchase"
+              },
+              {
+                "type": "details"
+              },
+              {
+                "type": "reviews"
+              },
+              {
+                "type": "rails"
+              }
+            ]
+          }
+        },
+        {
+          "id": "features-7",
+          "type": "features",
+          "settings": {
+            "layout": "row"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "truck",
+                "heading": "Free shipping",
+                "text": "On prepaid orders"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "returns",
+                "heading": "7-day returns",
+                "text": "No questions asked"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "collection": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "filters": "top"
+          }
+        }
+      ]
+    },
+    "cart": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {}
+        },
+        {
+          "id": "features-8",
+          "type": "features",
+          "settings": {
+            "layout": "row"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "lock",
+                "heading": "Secure payments",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "truck",
+                "heading": "Fast delivery",
+                "text": ""
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "onboarding": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "onboarding-9",
+          "type": "onboarding",
+          "settings": {
+            "enabled": true
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/woman-in-summer-fashion.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Summer outfit",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Welcome",
+                "text": "New arrivals every week, picked for you."
+              }
+            },
+            {
+              "id": "b2",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/folded-clothes.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Folded clothes",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Save what you love",
+                "text": "Tap the heart to keep a wishlist on this phone."
+              }
+            },
+            {
+              "id": "b3",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/woman-shopping-for-clothes.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Shopping",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Checkout in seconds",
+                "text": "Pay by UPI, card or cash on delivery.",
+                "button_label": "Start shopping"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

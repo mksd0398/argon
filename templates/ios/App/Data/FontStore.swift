@@ -17,7 +17,7 @@ struct FontStore: Sendable {
     func register(_ font: MerchantFont) -> [Int: String]? {
         var names: [Int: String] = [:]
         for (weight, url) in font.files {
-            guard let data = try? Data(contentsOf: file(url)), let cgFont = Self.font(data),
+            guard let data = (try? Data(contentsOf: file(url))) ?? builtIn(url), let cgFont = Self.font(data),
                   let name = cgFont.postScriptName as String? else { return nil }
             var error: Unmanaged<CFError>?
             // fails as "already registered" for a second call; the check below decides
@@ -37,6 +37,13 @@ struct FontStore: Sendable {
                   (response as? HTTPURLResponse)?.statusCode == 200, Self.font(body) != nil else { continue }
             try? body.write(to: file(url), options: .atomic)
         }
+    }
+
+    /// The file the app was built with for `url` (the CLI's `built-in/fonts/<hash>.ttf`): a built-in font from the first launch.
+    func builtIn(_ url: String) -> Data? {
+        let name = file(url).deletingPathExtension().lastPathComponent
+        return (Bundle.main.url(forResource: name, withExtension: "ttf", subdirectory: "built-in/fonts")
+            ?? Bundle.main.url(forResource: name, withExtension: "ttf")).flatMap { try? Data(contentsOf: $0) }
     }
 
     private static func font(_ data: Data) -> CGFont? {

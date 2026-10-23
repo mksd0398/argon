@@ -88,9 +88,14 @@ data class CartSelectedDeliveryOptionInput(val deliveryGroupId: String, val deli
  * returns the response's `data` ([Storefront.query] in the app, canned responses in tests). Lists come [PAGE_SIZE] at a
  * time. Calls run in [context], picked on first use from [locale] (null: the shop's default), and for [buyer]. `shop`,
  * `localization`, `policies` and `menu` are kept for the session. Every failure is an [ArgonApiError]; a cart mutation's
- * `userErrors` are thrown, its `warnings` come back on the cart.
+ * `userErrors` are thrown, its `warnings` come back on the cart. [builtInScreen]: the template the app was built with for
+ * a screen handle (a theme's, `assets/built-in/screen-<handle>.json`), shown when the store has no `app_screen` of its own.
  */
-class StorefrontApi(private val execute: suspend (String, JsonObject) -> JsonObject, private val locale: Locale? = null) {
+class StorefrontApi(
+    private val execute: suspend (String, JsonObject) -> JsonObject,
+    private val locale: Locale? = null,
+    private val builtInScreen: (String) -> String? = { null },
+) {
     private val cache = ConcurrentHashMap<String, Any>()
     private val contextLock = Mutex()
 
@@ -253,9 +258,13 @@ class StorefrontApi(private val execute: suspend (String, JsonObject) -> JsonObj
 
     // Screens v2
 
-    /** The `app_screen` metaobject [handle] (a screen: `home`, `product`, ..., or a custom page's); null when there is none. */
+    /**
+     * The `app_screen` metaobject [handle] (a screen: `home`, `product`, ..., or a custom page's), else the one the app was
+     * built with ([builtInScreen]); null when there is neither.
+     */
     suspend fun appScreen(handle: String): AppScreen? =
         run<AppScreenNode?>("AppScreen", vars("handle" to handle), "metaobject")?.let { AppScreen(it.id, it.handle ?: handle, it.title?.value.orEmpty(), it.template?.value, it.updatedAt) }
+            ?: builtInScreen(handle)?.let { AppScreen("", handle, "", it) }
 
     /**
      * The products and collections with these GIDs (a screen's sections, [sectionNodeIds]), by id; ids that are neither

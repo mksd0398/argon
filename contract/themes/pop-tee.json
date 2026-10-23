@@ -1,0 +1,456 @@
+{
+  "id": "pop-tee",
+  "name": "Pop Tee",
+  "vertical": "Graphic tees and youth casual",
+  "description": "Sunny, playful and loud for graphic tees and casualwear: chunky type, pill buttons, fits in a grid.",
+  "plan": "free",
+  "settings": {
+    "brand": {
+      "accent": "#FFB627"
+    },
+    "appearance": {
+      "mode": "",
+      "fonts": {
+        "heading": {
+          "family": "Archivo Black",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/archivoblack/v23/HTxqL289NzCGg4MzN6KJ7eW6OYs.ttf"
+          }
+        },
+        "body": {
+          "family": "Nunito",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/nunito/v32/XRXI3I6Li01BKofiOc5wtlZ2di8HDLshRTM.ttf",
+            "500": "https://fonts.gstatic.com/s/nunito/v32/XRXI3I6Li01BKofiOc5wtlZ2di8HDIkhRTM.ttf",
+            "600": "https://fonts.gstatic.com/s/nunito/v32/XRXI3I6Li01BKofiOc5wtlZ2di8HDGUmRTM.ttf",
+            "700": "https://fonts.gstatic.com/s/nunito/v32/XRXI3I6Li01BKofiOc5wtlZ2di8HDFwmRTM.ttf"
+          }
+        }
+      },
+      "colors": {
+        "background": "#FFFDF4",
+        "text": "#1D1D1B",
+        "secondary": "#2D6CDF"
+      },
+      "corners": "rounded",
+      "buttons": "pill",
+      "type": {
+        "scale": "large"
+      },
+      "icons": "filled"
+    },
+    "navigation": {
+      "tabs": [
+        {
+          "id": "home",
+          "title": "Home",
+          "icon": "home"
+        },
+        {
+          "id": "shop",
+          "title": "Shop",
+          "icon": "grid"
+        },
+        {
+          "id": "wishlist",
+          "title": "Wishlist",
+          "icon": "heart"
+        },
+        {
+          "id": "cart",
+          "title": "Bag",
+          "icon": "bag"
+        },
+        {
+          "id": "account",
+          "title": "Account",
+          "icon": "person"
+        }
+      ],
+      "labels": true,
+      "topBar": {
+        "style": "search",
+        "transparentOnHome": false,
+        "background": "",
+        "foreground": ""
+      },
+      "tabBar": {
+        "background": "",
+        "active": "secondary",
+        "inactive": ""
+      },
+      "drawer": {
+        "enabled": false,
+        "menu": ""
+      }
+    },
+    "announcement": {
+      "enabled": true,
+      "messages": [
+        {
+          "text": "Buy 3 tees, pay for 2",
+          "link": ""
+        },
+        {
+          "text": "COD available across India",
+          "link": ""
+        }
+      ],
+      "background": "secondary",
+      "color": "#FFFFFF",
+      "interval": 5,
+      "dismissible": true
+    },
+    "home": {
+      "template": "fashion"
+    },
+    "collection": {
+      "template": "top"
+    }
+  },
+  "screens": {
+    "home": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "slideshow-30",
+          "type": "slideshow",
+          "settings": {
+            "autoplay": true,
+            "interval": 4,
+            "height": "medium"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "slide",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/blank-colored-t-shirts.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Colourful tees",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Tees that talk",
+                "text": "New prints every week.",
+                "button_label": "Shop now",
+                "link": "/collections/all"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "slide",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/cobalt-blue-t-shirt.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Blue tee",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "3 for 2",
+                "text": "Mix and match any tees.",
+                "button_label": "Grab yours",
+                "link": "/collections/all"
+              }
+            }
+          ]
+        },
+        {
+          "id": "collections-31",
+          "type": "collections",
+          "settings": {
+            "heading": "Shop by vibe",
+            "style": "circles"
+          }
+        },
+        {
+          "id": "marquee-32",
+          "type": "marquee",
+          "settings": {
+            "text": "BUY 3 PAY FOR 2  •  NEW PRINTS WEEKLY  •  COD AVAILABLE  •",
+            "speed": "medium",
+            "background": "accent",
+            "text_color": "#1D1D1B"
+          }
+        },
+        {
+          "id": "products-33",
+          "type": "products",
+          "settings": {
+            "heading": "Fresh prints",
+            "style": "grid",
+            "limit": 6,
+            "show_all": true
+          }
+        },
+        {
+          "id": "image-grid-34",
+          "type": "image_grid",
+          "settings": {
+            "heading": "Pick your fit",
+            "columns": "3",
+            "aspect": "square"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "tile",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/womens-tshirts.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Women's tees",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Women",
+                "link": "/collections/all"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "tile",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/tshirts.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Men's tees",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Men",
+                "link": "/collections/all"
+              }
+            },
+            {
+              "id": "b3",
+              "type": "tile",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/set-of-custom-enamel-pins.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Pins",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Add-ons",
+                "link": "/collections/all"
+              }
+            }
+          ]
+        },
+        {
+          "id": "products-35",
+          "type": "products",
+          "settings": {
+            "heading": "Crowd favourites",
+            "style": "carousel",
+            "limit": 8,
+            "show_all": true
+          }
+        },
+        {
+          "id": "features-36",
+          "type": "features",
+          "settings": {
+            "layout": "row"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "truck",
+                "heading": "Free shipping",
+                "text": "Above ₹499"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "returns",
+                "heading": "Easy returns",
+                "text": "30 days"
+              }
+            },
+            {
+              "id": "b3",
+              "type": "feature",
+              "settings": {
+                "icon": "phone",
+                "heading": "Cash on delivery",
+                "text": "Pan India"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "product": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "blocks": [
+              {
+                "type": "gallery"
+              },
+              {
+                "type": "title"
+              },
+              {
+                "type": "price"
+              },
+              {
+                "type": "options"
+              },
+              {
+                "type": "purchase"
+              },
+              {
+                "type": "bundle"
+              },
+              {
+                "type": "details"
+              },
+              {
+                "type": "reviews"
+              },
+              {
+                "type": "rails"
+              }
+            ]
+          }
+        },
+        {
+          "id": "features-37",
+          "type": "features",
+          "settings": {
+            "layout": "row"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "returns",
+                "heading": "30-day returns",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "phone",
+                "heading": "COD available",
+                "text": ""
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "collection": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "marquee-38",
+          "type": "marquee",
+          "settings": {
+            "text": "BUY 3 PAY FOR 2  •",
+            "speed": "slow",
+            "background": "accent",
+            "text_color": "#1D1D1B"
+          }
+        },
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "filters": "top"
+          }
+        }
+      ]
+    },
+    "cart": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "banner-39",
+          "type": "banner",
+          "settings": {
+            "heading": "Add one more tee",
+            "text": "Buy 3, pay for 2: applied at checkout.",
+            "style": "card",
+            "height": "small",
+            "background": "accent",
+            "text_color": "#1D1D1B"
+          }
+        },
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {}
+        }
+      ]
+    },
+    "onboarding": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "onboarding-40",
+          "type": "onboarding",
+          "settings": {
+            "enabled": true
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/blank-colored-t-shirts.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Colourful tees",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Hey, welcome!",
+                "text": "Tees with something to say, dropped every week."
+              }
+            },
+            {
+              "id": "b2",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/womens-tshirts.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Women's tees",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Buy 3, pay for 2",
+                "text": "Mix any tees. The deal applies at checkout."
+              }
+            },
+            {
+              "id": "b3",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/set-of-custom-enamel-pins.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Pins",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Pay your way",
+                "text": "UPI, cards or cash on delivery.",
+                "button_label": "Show me tees"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

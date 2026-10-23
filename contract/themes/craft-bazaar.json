@@ -1,0 +1,437 @@
+{
+  "id": "craft-bazaar",
+  "name": "Craft Bazaar",
+  "vertical": "Artisanal ethnic wear and home",
+  "description": "Oatmeal paper with indigo and madder red, for craft-led ethnic wear, home and lifestyle stores.",
+  "plan": "free",
+  "settings": {
+    "brand": {
+      "accent": "#2E4C7D"
+    },
+    "appearance": {
+      "mode": "light",
+      "fonts": {
+        "heading": {
+          "family": "Libre Baskerville",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/librebaskerville/v24/kmKUZrc3Hgbbcjq75U4uslyuy4kn0olVQ-LglH6T17uj8Q4SCQ.ttf",
+            "700": "https://fonts.gstatic.com/s/librebaskerville/v24/kmKUZrc3Hgbbcjq75U4uslyuy4kn0olVQ-LglH6T17ujFgkSCQ.ttf"
+          }
+        },
+        "body": {
+          "family": "Source Sans 3",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/sourcesans3/v20/nwpBtKy2OAdR1K-IwhWudF-R9QMylBJAV3Bo8Ky461EN.ttf",
+            "500": "https://fonts.gstatic.com/s/sourcesans3/v20/nwpBtKy2OAdR1K-IwhWudF-R9QMylBJAV3Bo8KyK61EN.ttf",
+            "600": "https://fonts.gstatic.com/s/sourcesans3/v20/nwpBtKy2OAdR1K-IwhWudF-R9QMylBJAV3Bo8Kxm7FEN.ttf",
+            "700": "https://fonts.gstatic.com/s/sourcesans3/v20/nwpBtKy2OAdR1K-IwhWudF-R9QMylBJAV3Bo8Kxf7FEN.ttf"
+          }
+        }
+      },
+      "colors": {
+        "background": "#F6F1E7",
+        "text": "#262019",
+        "secondary": "#B2452F"
+      },
+      "corners": "rounded",
+      "buttons": "square",
+      "type": {
+        "scale": "medium"
+      },
+      "icons": "outline"
+    },
+    "navigation": {
+      "tabs": [
+        {
+          "id": "home",
+          "title": "Home",
+          "icon": "home"
+        },
+        {
+          "id": "shop",
+          "title": "Shop",
+          "icon": "grid"
+        },
+        {
+          "id": "wishlist",
+          "title": "Wishlist",
+          "icon": "heart"
+        },
+        {
+          "id": "cart",
+          "title": "Bag",
+          "icon": "bag"
+        },
+        {
+          "id": "account",
+          "title": "Account",
+          "icon": "person"
+        }
+      ],
+      "labels": true,
+      "topBar": {
+        "style": "search",
+        "transparentOnHome": false,
+        "background": "",
+        "foreground": ""
+      },
+      "tabBar": {
+        "background": "",
+        "active": "",
+        "inactive": ""
+      },
+      "drawer": {
+        "enabled": false,
+        "menu": ""
+      }
+    },
+    "announcement": {
+      "enabled": true,
+      "messages": [
+        {
+          "text": "Handcrafted across 20 states",
+          "link": ""
+        },
+        {
+          "text": "Easy 15-day returns",
+          "link": ""
+        }
+      ],
+      "background": "accent",
+      "color": "#FFFFFF",
+      "interval": 5,
+      "dismissible": true
+    },
+    "home": {
+      "template": "fashion"
+    },
+    "collection": {
+      "template": "top"
+    }
+  },
+  "screens": {
+    "home": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "slideshow-92",
+          "type": "slideshow",
+          "settings": {
+            "autoplay": true,
+            "interval": 6,
+            "height": "medium"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "slide",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/south-asian-family-portrait.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Family portrait",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Crafted for the season",
+                "text": "Block prints, weaves and embroidery.",
+                "button_label": "Shop now",
+                "link": "/collections/all"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "slide",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/autumn-home-decor.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Home decor",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Bring craft home",
+                "text": "Textiles and decor made by hand.",
+                "button_label": "Shop home",
+                "link": "/collections/all"
+              }
+            }
+          ]
+        },
+        {
+          "id": "collections-93",
+          "type": "collections",
+          "settings": {
+            "heading": "Explore crafts",
+            "style": "circles"
+          }
+        },
+        {
+          "id": "products-94",
+          "type": "products",
+          "settings": {
+            "heading": "New arrivals",
+            "style": "grid",
+            "limit": 6,
+            "show_all": true
+          }
+        },
+        {
+          "id": "image-grid-95",
+          "type": "image_grid",
+          "settings": {
+            "heading": "Shop by room",
+            "columns": "2",
+            "aspect": "landscape"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "tile",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/cozy-livingroom-with-window.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Living room",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Living",
+                "link": "/collections/all"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "tile",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/bed-with-book-and-flowers.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Bedroom",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Bedroom",
+                "link": "/collections/all"
+              }
+            }
+          ]
+        },
+        {
+          "id": "rich-text-96",
+          "type": "rich_text",
+          "settings": {
+            "heading": "Made by hand, in India",
+            "text": "<p>We partner with artisan communities to keep traditional crafts alive and fairly paid.</p>",
+            "alignment": "center",
+            "background": "accent",
+            "padding": "large"
+          }
+        },
+        {
+          "id": "products-97",
+          "type": "products",
+          "settings": {
+            "heading": "Loved by many",
+            "style": "carousel",
+            "limit": 8,
+            "show_all": true
+          }
+        },
+        {
+          "id": "features-98",
+          "type": "features",
+          "settings": {
+            "layout": "row"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "heart",
+                "heading": "Artisan made",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "leaf",
+                "heading": "Natural fabrics",
+                "text": ""
+              }
+            },
+            {
+              "id": "b3",
+              "type": "feature",
+              "settings": {
+                "icon": "returns",
+                "heading": "15-day returns",
+                "text": ""
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "product": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "blocks": [
+              {
+                "type": "gallery"
+              },
+              {
+                "type": "title"
+              },
+              {
+                "type": "price"
+              },
+              {
+                "type": "options"
+              },
+              {
+                "type": "purchase"
+              },
+              {
+                "type": "details"
+              },
+              {
+                "type": "reviews"
+              },
+              {
+                "type": "rails"
+              }
+            ]
+          }
+        },
+        {
+          "id": "features-99",
+          "type": "features",
+          "settings": {
+            "layout": "grid"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "heart",
+                "heading": "Handcrafted",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "leaf",
+                "heading": "Natural dyes",
+                "text": ""
+              }
+            },
+            {
+              "id": "b3",
+              "type": "feature",
+              "settings": {
+                "icon": "returns",
+                "heading": "15-day returns",
+                "text": ""
+              }
+            },
+            {
+              "id": "b4",
+              "type": "feature",
+              "settings": {
+                "icon": "truck",
+                "heading": "Free shipping",
+                "text": "Above ₹999"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "collection": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "filters": "top"
+          }
+        }
+      ]
+    },
+    "cart": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {}
+        }
+      ]
+    },
+    "onboarding": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "onboarding-100",
+          "type": "onboarding",
+          "settings": {
+            "enabled": true
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/south-asian-family-portrait.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Family portrait",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Welcome",
+                "text": "Crafts from across India, for you and your home."
+              }
+            },
+            {
+              "id": "b2",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/autumn-home-decor.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Home decor",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Made by hand",
+                "text": "Every piece supports an artisan community."
+              }
+            },
+            {
+              "id": "b3",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/cozy-livingroom-with-window.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Living room",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Shop your way",
+                "text": "UPI, cards or cash on delivery.",
+                "button_label": "Start"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,455 @@
+{
+  "id": "silver-bloom",
+  "name": "Silver Bloom",
+  "vertical": "Everyday silver jewellery",
+  "description": "Soft blush, rose accents and airy serif headings for everyday and gifting jewellery.",
+  "plan": "free",
+  "settings": {
+    "brand": {
+      "accent": "#A8566A"
+    },
+    "appearance": {
+      "mode": "",
+      "fonts": {
+        "heading": {
+          "family": "Cormorant Garamond",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/cormorantgaramond/v21/co3umX5slCNuHLi8bLeY9MK7whWMhyjypVO7abI26QOD_v86GnM.ttf",
+            "700": "https://fonts.gstatic.com/s/cormorantgaramond/v21/co3umX5slCNuHLi8bLeY9MK7whWMhyjypVO7abI26QOD_hg9GnM.ttf"
+          }
+        },
+        "body": {
+          "family": "Jost",
+          "files": {
+            "400": "https://fonts.gstatic.com/s/jost/v20/92zPtBhPNqw79Ij1E865zBUv7myjJQVG.ttf",
+            "500": "https://fonts.gstatic.com/s/jost/v20/92zPtBhPNqw79Ij1E865zBUv7myRJQVG.ttf",
+            "600": "https://fonts.gstatic.com/s/jost/v20/92zPtBhPNqw79Ij1E865zBUv7mx9IgVG.ttf",
+            "700": "https://fonts.gstatic.com/s/jost/v20/92zPtBhPNqw79Ij1E865zBUv7mxEIgVG.ttf"
+          }
+        }
+      },
+      "colors": {
+        "background": "#FBF5F2",
+        "text": "#2B2326",
+        "secondary": "#6F8796"
+      },
+      "corners": "round",
+      "buttons": "pill",
+      "type": {
+        "scale": "medium"
+      },
+      "icons": "outline"
+    },
+    "navigation": {
+      "tabs": [
+        {
+          "id": "home",
+          "title": "Home",
+          "icon": "home"
+        },
+        {
+          "id": "shop",
+          "title": "Shop",
+          "icon": "grid"
+        },
+        {
+          "id": "search",
+          "title": "Search",
+          "icon": "search"
+        },
+        {
+          "id": "wishlist",
+          "title": "Wishlist",
+          "icon": "heart"
+        },
+        {
+          "id": "account",
+          "title": "Account",
+          "icon": "person"
+        }
+      ],
+      "labels": true,
+      "topBar": {
+        "style": "centered_logo",
+        "transparentOnHome": false,
+        "background": "",
+        "foreground": ""
+      },
+      "tabBar": {
+        "background": "",
+        "active": "",
+        "inactive": ""
+      },
+      "drawer": {
+        "enabled": false,
+        "menu": ""
+      }
+    },
+    "announcement": {
+      "enabled": true,
+      "messages": [
+        {
+          "text": "Free gift wrap on every order",
+          "link": ""
+        },
+        {
+          "text": "Lifetime plating on silver",
+          "link": ""
+        }
+      ],
+      "background": "accent",
+      "color": "#FFFFFF",
+      "interval": 5,
+      "dismissible": true
+    },
+    "home": {
+      "template": "beauty"
+    },
+    "collection": {
+      "template": "top"
+    }
+  },
+  "screens": {
+    "home": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "slideshow-50",
+          "type": "slideshow",
+          "settings": {
+            "autoplay": true,
+            "interval": 5,
+            "height": "medium"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "slide",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/dainty-gold-necklace.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Dainty necklace",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Little things, every day",
+                "text": "Fine silver for every mood.",
+                "button_label": "Shop now",
+                "link": "/collections/all"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "slide",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/stacked-bracelets-set.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Stacked bracelets",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Stack it up",
+                "text": "Bracelets made to layer.",
+                "button_label": "Explore",
+                "link": "/collections/all"
+              }
+            }
+          ]
+        },
+        {
+          "id": "collections-51",
+          "type": "collections",
+          "settings": {
+            "heading": "Shop by category",
+            "style": "circles",
+            "padding": "small"
+          }
+        },
+        {
+          "id": "products-52",
+          "type": "products",
+          "settings": {
+            "heading": "Bestsellers",
+            "style": "carousel",
+            "limit": 8,
+            "show_all": true
+          }
+        },
+        {
+          "id": "features-53",
+          "type": "features",
+          "settings": {
+            "heading": "The promise",
+            "layout": "grid",
+            "background": "surface",
+            "padding": "medium"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "check",
+                "heading": "925 silver",
+                "text": "Certified"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "gift",
+                "heading": "Free gift wrap",
+                "text": "With a note"
+              }
+            },
+            {
+              "id": "b3",
+              "type": "feature",
+              "settings": {
+                "icon": "returns",
+                "heading": "30-day returns",
+                "text": "Hassle-free"
+              }
+            },
+            {
+              "id": "b4",
+              "type": "feature",
+              "settings": {
+                "icon": "star",
+                "heading": "Lifetime plating",
+                "text": "On request"
+              }
+            }
+          ]
+        },
+        {
+          "id": "image-with-text-54",
+          "type": "image_with_text",
+          "settings": {
+            "image": {
+              "url": "https://burst.shopifycdn.com/photos/necklace-earrings-set.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+              "alt": "Necklace and earrings set",
+              "width": 0,
+              "height": 0
+            },
+            "heading": "Gifts they'll keep forever",
+            "text": "<p>Wrapped by hand, with a note from you.</p>",
+            "button_label": "Shop gifts",
+            "link": "/collections/all",
+            "image_position": "start",
+            "padding": "medium"
+          }
+        },
+        {
+          "id": "products-55",
+          "type": "products",
+          "settings": {
+            "heading": "New in",
+            "style": "grid",
+            "limit": 6,
+            "show_all": true
+          }
+        },
+        {
+          "id": "rich-text-56",
+          "type": "rich_text",
+          "settings": {
+            "heading": "Made to be worn",
+            "text": "<p>925 silver, hypoallergenic and made to last. Every piece comes with a certificate of authenticity.</p>",
+            "alignment": "center",
+            "padding": "large"
+          }
+        }
+      ]
+    },
+    "product": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "blocks": [
+              {
+                "type": "gallery"
+              },
+              {
+                "type": "title"
+              },
+              {
+                "type": "price"
+              },
+              {
+                "type": "options"
+              },
+              {
+                "type": "purchase"
+              },
+              {
+                "type": "details"
+              },
+              {
+                "type": "reviews"
+              },
+              {
+                "type": "rails"
+              }
+            ]
+          }
+        },
+        {
+          "id": "features-57",
+          "type": "features",
+          "settings": {
+            "layout": "grid"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "check",
+                "heading": "Certified 925 silver",
+                "text": ""
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "gift",
+                "heading": "Gift-ready box",
+                "text": ""
+              }
+            },
+            {
+              "id": "b3",
+              "type": "feature",
+              "settings": {
+                "icon": "returns",
+                "heading": "30-day returns",
+                "text": ""
+              }
+            },
+            {
+              "id": "b4",
+              "type": "feature",
+              "settings": {
+                "icon": "star",
+                "heading": "Lifetime plating",
+                "text": ""
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "collection": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {
+            "filters": "top"
+          }
+        }
+      ]
+    },
+    "cart": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "main",
+          "type": "main",
+          "settings": {}
+        },
+        {
+          "id": "features-58",
+          "type": "features",
+          "settings": {
+            "layout": "row"
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "feature",
+              "settings": {
+                "icon": "gift",
+                "heading": "Free gift wrap",
+                "text": "Add a note at checkout"
+              }
+            },
+            {
+              "id": "b2",
+              "type": "feature",
+              "settings": {
+                "icon": "lock",
+                "heading": "Secure payment",
+                "text": ""
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "onboarding": {
+      "version": 2,
+      "sections": [
+        {
+          "id": "onboarding-59",
+          "type": "onboarding",
+          "settings": {
+            "enabled": true
+          },
+          "blocks": [
+            {
+              "id": "b1",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/dainty-gold-necklace.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Dainty necklace",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Welcome",
+                "text": "Fine jewellery for every day."
+              }
+            },
+            {
+              "id": "b2",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/necklace-earrings-set.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Necklace and earrings set",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Gifting, made easy",
+                "text": "Free gift wrap and a handwritten note."
+              }
+            },
+            {
+              "id": "b3",
+              "type": "page",
+              "settings": {
+                "image": {
+                  "url": "https://burst.shopifycdn.com/photos/stacked-bracelets-set.jpg?width=1200&format=pjpg&exif=0&iptc=0",
+                  "alt": "Stacked bracelets",
+                  "width": 0,
+                  "height": 0
+                },
+                "heading": "Save your favourites",
+                "text": "Build a wishlist and come back anytime.",
+                "button_label": "Start browsing"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

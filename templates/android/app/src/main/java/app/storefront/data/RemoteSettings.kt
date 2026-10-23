@@ -108,7 +108,7 @@ data class RemoteSettings(
  * read once when the store is made, so the whole session runs with one set of settings. [refresh] fetches [url] and
  * caches what it gets: fetched values apply at the next launch, never in the middle of a session.
  */
-class RemoteSettingsStore(dir: File, private val url: String, http: OkHttpClient) {
+class RemoteSettingsStore(dir: File, private val url: String, http: OkHttpClient, builtIn: String? = null) {
     private val file = File(dir, "remote-settings.json")
     private val temp = File(dir, "remote-settings.json.tmp")
 
@@ -117,13 +117,16 @@ class RemoteSettingsStore(dir: File, private val url: String, http: OkHttpClient
 
     private val log = Logger.getLogger("RemoteSettings")
 
-    /** The settings this launch runs with; null without a [url] (a stale copy is ignored), when nothing was cached, or when the copy can't be read. */
+    /**
+     * The settings this launch runs with: the cached copy (never without a [url]: a stale copy is ignored), else the ones the
+     * app was built with ([builtIn], the CLI's `assets/built-in/settings.json`); null when there are neither.
+     */
     val current: RemoteSettings? = try {
         if (url.isNotBlank() && file.exists()) RemoteSettings.decode(file.readText()) else null
     } catch (e: Exception) {
         log.warning("cached settings unreadable (${e.javaClass.name})")
         null
-    }
+    } ?: builtIn?.let(RemoteSettings::decode)
 
     /**
      * Fetches [url] (nothing when it is empty) and, on HTTP 200 with a JSON object, replaces the cached copy in one step
