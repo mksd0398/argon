@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import prompts from "prompts";
-import { run, scaffold, writeAppIcon, configText, xtoolFiles, packageSwift, firebaseConfig, ANALYTICS } from "../lib/index.js";
+import { run, scaffold, writeAppIcon, configText, xtoolFiles, packageSwift, withFirebase, firebaseConfig, ANALYTICS } from "../lib/index.js";
 import { loadContract } from "../lib/contract.js";
 import { decodePng, encodePng } from "../lib/png.js";
 
@@ -390,7 +390,7 @@ test("every analytics flag: keys in both config files, Firebase's files, the iOS
       "- Google Analytics (Android app 1:1234:android:1abc, iOS app 1:1234:ios:def): nothing more to set up; the apps report the purchase themselves",
       "- Meta: deploy server/",
       "- MoEngage: nothing more to set up; push and in-app messages are not included",
-      "- iOS built with Xcode: add each provider's Swift package to the App target",
+      "- iOS built with Xcode: add the Meta and MoEngage Swift package to the App target",
     ]) assert.ok(out.includes(line), line);
   }, { files });
 });
@@ -519,6 +519,35 @@ test("packageSwift: each SDK's package and product go in below Checkout Kit's, i
   // the generated README names the same packages, for adding them in Xcode
   const readme = readFileSync(new URL("../templates/shared/README.md", import.meta.url), "utf8");
   for (const { ios } of ANALYTICS) assert.ok(readme.includes(`| \`${ios.url}\`, ${ios.from} or later | \`${ios.product}\` |`), ios.url);
+});
+
+// in LF, whatever the checkout's line endings: the CRLF case is tested on its own
+const TEMPLATE_PROJECT = lines(readFileSync(new URL("../templates/ios/App.xcodeproj/project.pbxproj", import.meta.url), "utf8")).join("\n");
+
+test("withFirebase: the Xcode project's App target gets Firebase's package, products, -ObjC and the Crashlytics phase", () => {
+  const project = withFirebase(TEMPLATE_PROJECT);
+  const { url, from } = ANALYTICS.find((a) => a.value === "firebase").ios;
+  assert.ok(project.includes(`repositoryURL = "${url}";\n\t\t\trequirement = {\n\t\t\t\tkind = upToNextMajorVersion;\n\t\t\t\tminimumVersion = ${from};`));
+  // each product: a dependency of the App target and a file of its Frameworks phase, none for the tests
+  const target = (name) => project.slice(project.indexOf(`/* ${name} */ = {\n\t\t\tisa = PBXNativeTarget;`)).split("\n\t\t};")[0];
+  for (const product of ["FirebaseAnalytics", "FirebaseCrashlytics"]) {
+    assert.ok(project.includes(`productName = ${product};`), product);
+    assert.ok(target("App").includes(` /* ${product} */,`), product);
+    assert.ok(!target("AppTests").includes(product), product);
+    assert.equal(project.split(` /* ${product} in Frameworks */`).length - 1, 2, "the build file and its place in the Frameworks phase");
+  }
+  assert.ok(!project.includes("FirebaseMessaging"), "Messaging only with push");
+  assert.ok(withFirebase(TEMPLATE_PROJECT, { push: true }).includes("productName = FirebaseMessaging;"));
+  // the dSYM upload runs last, after the app's resources
+  assert.match(target("App"), /\/\* Resources \*\/,\n\t\t\t\t\w{24} \/\* Crashlytics \*\/,\n\t\t\t\);/);
+  assert.ok(project.includes('shellScript = "\\"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\\"\\n";'));
+  assert.equal(project.split('OTHER_LDFLAGS = "$(inherited) -ObjC";').length - 1, 2, "the app target's Debug and Release, not the tests");
+  assert.equal(project.split("ENABLE_USER_SCRIPT_SANDBOXING = NO;").length - 1, 2);
+  // every object it refers to is defined once
+  for (const id of new Set(project.match(/F12EBA5E\w{16}/g))) assert.equal(project.match(new RegExp(`${id}[^\\n]*= \\{`, "g")).length, 1, id);
+  // the template's line endings, and a template that lost a line this builds on is an error
+  assert.ok(!/[^\r]\n/.test(withFirebase(lines(TEMPLATE_PROJECT).join("\r\n"))), "every line still ends in CRLF");
+  assert.throws(() => withFirebase(TEMPLATE_PROJECT.replaceAll("ShopifyCheckoutSheetKit", "CheckoutKit")), /App\.xcodeproj no longer has/);
 });
 
 const withLogos = (files, primary = []) => ({
@@ -692,6 +721,7 @@ test("push: Firebase Messaging, the iOS push entitlement and the devices URL, on
     const project = readFileSync(join(dir, "ios/App.xcodeproj/project.pbxproj"), "utf8");
     assert.equal(project.match(/CODE_SIGN_ENTITLEMENTS = App\/App\.entitlements;/g).length, 2, "the app target's Debug and Release, not the tests");
     assert.match(readFileSync(join(dir, "ios/Package.swift"), "utf8"), /\.product\(name: "FirebaseMessaging", package: "firebase-ios-sdk"\)/);
+    assert.match(project, /productName = FirebaseMessaging;/, "in the Xcode project too");
     assert.match(readFileSync(join(dir, "ios/xtool.yml"), "utf8"), /\nentitlementsPath: App\/App\.entitlements\n/);
     assert.match(readFileSync(join(dir, "ios/Package.swift"), "utf8"), /"GoogleService-Info\.plist", "App\.entitlements"/, "not one of the target's sources");
 
@@ -700,6 +730,8 @@ test("push: Firebase Messaging, the iOS push entitlement and the devices URL, on
     assert.ok(readFileSync(join(plain, "android/shopify.properties"), "utf8").split("\n").includes("PUSH=false"));
     assert.ok(!existsSync(join(plain, "ios/App/App.entitlements")));
     assert.ok(!readFileSync(join(plain, "ios/Package.swift"), "utf8").includes("FirebaseMessaging"));
+    const plainProject = readFileSync(join(plain, "ios/App.xcodeproj/project.pbxproj"), "utf8");
+    assert.ok(plainProject.includes("productName = FirebaseCrashlytics;") && !plainProject.includes("FirebaseMessaging"));
     assert.ok(!readFileSync(join(plain, "ios/xtool.yml"), "utf8").includes("entitlementsPath"));
   } finally {
     rmSync(cwd, { recursive: true, force: true });
