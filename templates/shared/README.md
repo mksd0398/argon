@@ -135,6 +135,21 @@ MoEngage push notifications and in-app messages are not included: they need FCM 
 
 The Account screen has a **Share usage data** switch under Privacy, on by default. While it is off, the apps report nothing and each provider's SDK is switched off as well (they collect on their own otherwise). In Meta's Events Manager leave the "Automatic event logging for the Facebook SDK" toggle untouched: set there, it overrides the shopper's choice. It is one switch: a store that sells in the EU needs a prompt before the first event, and the apps don't show iOS's tracking prompt (ATT), so Meta gets no advertising id on iOS.
 
+### Crash reports (Crashlytics)
+
+With the Firebase files, the apps also report crashes to Firebase Crashlytics (Firebase console → Crashlytics). Each report carries the keys `shop`, `app_version`, `argon` (the Argon commit the app was built from), `screen` and `section` (the last ones shown), and the analytics events before it as breadcrumbs (only while the shopper shares usage data). A crash report has no customer data. Liquid that fails to render and section data the app can't read are sent as non-fatal reports, so a broken template shows up there too.
+
+- **Android**: nothing to do. The Crashlytics Gradle plugin comes with `google-services.json`, and uploads the R8 mapping of a minified release build.
+- **iOS with Xcode**: add the `FirebaseCrashlytics` product of the Firebase package too, and a Run Script build phase after the others for the dSYMs: `"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run"`, with the input files `${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}` and `$(SRCROOT)/$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)`. Set Debug Information Format to "DWARF with dSYM File" for Release.
+- **iOS with xtool**: `ios/Package.swift` has `FirebaseCrashlytics` already. Upload a build's dSYMs yourself: `upload-symbols -gsp App/GoogleService-Info.plist -p ios <the .dSYM>` (the tool is in the firebase-ios-sdk checkout, under `Crashlytics/`).
+
+To check it works, crash a debug build on purpose; the report arrives when the app is opened again:
+
+- Android: `adb shell am start -n <BUNDLE_ID>/app.storefront.MainActivity --ez argon_test_crash true`
+- iOS: launch with the argument `-ArgonTestCrash YES` (Xcode: Product → Scheme → Edit Scheme → Arguments), without the debugger attached.
+
+Release builds ignore both.
+
 ### Purchases from a server (`server/`)
 
 Argon writes this folder when Google Analytics or Meta is configured (or with `--server`). The keys that let a server report a sale, Google Analytics' API secrets and Meta's access token, must never be inside an app, so one small Cloudflare Worker holds them, and you deploy it to your own account.

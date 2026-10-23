@@ -36,6 +36,8 @@
 	<string>$(MOENGAGE_DATA_CENTER)</string>
 	<key>ServerPurchase</key>
 	<string>$(SERVER_PURCHASE)</string>
+	<key>ArgonRevision</key>
+	<string>$(ARGON_REVISION)</string>
 	<key>SettingsUrl</key>
 	<string>$(SETTINGS_URL)</string>
 	<key>CustomerRedirectUri</key>

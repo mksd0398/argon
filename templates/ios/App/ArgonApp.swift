@@ -40,6 +40,7 @@ private final class Launch: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
+        CrashReports.start()
         _ = AppGraph.analytics
         AppGraph.refreshSettings()
         if let push = AppGraph.push {

@@ -62,6 +62,9 @@ enum AppGraph {
     static let moEngageDataCenter = info("MoengageDataCenter").trimmingCharacters(in: .whitespaces)
     /// Whether the store's server reports the purchase to Google Analytics, and the app leaves it out (`SERVER_PURCHASE`,
     /// false unless it is `true`): Google Analytics would count one from each.
+    /// The Argon commit (or version) the app was built from (`ARGON_REVISION`): crash reports name it.
+    static let argonRevision = info("ArgonRevision")
+
     static let serverPurchase = info("ServerPurchase").trimmingCharacters(in: .whitespaces).lowercased() == "true"
     /// Whether "Checkout" and "Buy now" open GoKwik's checkout (`CHECKOUT=gokwik`) instead of Shopify's.
     static let goKwikCheckout = info("Checkout").trimmingCharacters(in: .whitespaces).lowercased() == "gokwik"
@@ -132,6 +135,8 @@ enum AppGraph {
     @MainActor static let analytics = Analytics(
         sinks: [
             logSink(),
+            // the breadcrumbs of a crash report
+            CrashReports.backend != nil ? CrashSink() as AnalyticsSink : nil,
             firebaseSink(),
             metaSink(),
             moEngageSink(),

@@ -80,6 +80,8 @@ private suspend fun <T> quietly(what: String, load: suspend () -> T): T? = try {
     throw e
 } catch (e: Exception) {
     log.warning("$what not loaded: ${e.message}")
+    // a network failure is not a bug; anything else (a response the app can't read) is reported
+    if (e !is java.io.IOException) app.storefront.data.CrashReports.record(e, "load $what")
     null
 }
 

@@ -48,6 +48,7 @@ import app.argon.ui.gallery.ArgonGallery
 import app.storefront.AppGraph
 import app.storefront.BuildConfig
 import app.storefront.data.AnalyticsEvent
+import app.storefront.data.CrashReports
 import app.storefront.data.Links
 import app.storefront.data.Route
 import kotlinx.coroutines.channels.BufferOverflow
@@ -253,6 +254,7 @@ private fun AppNav(startTab: AppTab? = null) {
             if (entry != shown && route != null) {
                 shown = entry
                 AppGraph.analytics.track(AnalyticsEvent.ScreenView(screenName(route)))
+                CrashReports.setKey("screen", route)
             }
         }
         nav.addOnDestinationChangedListener(listener)

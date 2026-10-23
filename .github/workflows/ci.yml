@@ -76,6 +76,12 @@ jobs:
       - name: Test and build
         working-directory: demo/android
         run: ./gradlew testDebugUnitTest assembleDebug
+      # The demo has no Firebase, so src/firebase (analytics, push, crash reports) and the Crashlytics plugin are built
+      # only here: a project with a dummy google-services.json for com.mockshop.analytics. Nothing is run or sent.
+      - name: Build with Firebase
+        run: |
+          node bin/create.js analytics --demo --yes --firebase-android=test/fixtures/google-services.json
+          cd analytics/android && ./gradlew assembleDebug
 
   ios:
     name: ios (Xcode ${{ matrix.xcode }})
