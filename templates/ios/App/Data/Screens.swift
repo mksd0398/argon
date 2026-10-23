@@ -142,15 +142,11 @@ struct SectionSettings: Equatable, Sendable {
 
     func boolean(_ key: String, _ fallback: Bool) -> Bool { values[key]?.bool ?? fallback }
 
-    /// `color`: `#RRGGBB`, upper-cased.
+    /// `color`: `#RRGGBB` (upper-cased) or one of the theme's colours by name (`colorNames`).
     func color(_ key: String, _ fallback: String) -> String { hex(key) ?? fallback }
 
-    /// `color` without a default: `#RRGGBB`, upper-cased; nil when missing or not a colour.
-    func hex(_ key: String) -> String? {
-        guard let hex = values[key]?.string, hex.count == 7, hex.first == "#",
-              hex.dropFirst().allSatisfy({ $0.isHexDigit }) else { return nil }
-        return hex.uppercased()
-    }
+    /// `color` without a default: `#RRGGBB` (upper-cased) or a theme colour's name; nil when missing or neither.
+    func hex(_ key: String) -> String? { colorValue(values[key]?.string) }
 
     /// `choice`: one of `choices`, else `fallback`.
     func choice(_ key: String, _ choices: [String], _ fallback: String) -> String {
@@ -163,6 +159,17 @@ struct SectionSettings: Equatable, Sendable {
 }
 
 /// `number` clamped to `range`, as an Int; nil when it isn't finite.
+/// The theme's colours by name (contract/theme.js COLOR_NAMES): what a colour setting may say instead of a hex.
+let colorNames: Set<String> = ["accent", "secondary", "background", "surface", "text", "muted", "border", "sale"]
+
+/// `value` as a colour setting keeps it: `#RRGGBB` (upper-cased) or a name in `colorNames`; nil otherwise.
+func colorValue(_ value: String?) -> String? {
+    guard let value else { return nil }
+    if colorNames.contains(value) { return value }
+    guard value.count == 7, value.first == "#", value.dropFirst().allSatisfy({ $0.isHexDigit }) else { return nil }
+    return value.uppercased()
+}
+
 func boundedInt(_ number: Double, _ range: ClosedRange<Int>) -> Int? {
     guard number.isFinite else { return nil }
     return Int(min(max(number, Double(range.lowerBound)), Double(range.upperBound)))
@@ -224,10 +231,10 @@ struct ScreenSection: Equatable, Sendable {
         }
     }
 
-    /// Every type's style: its `background` (`#RRGGBB`; nil: none, but a marquee's strip is #111111 without one) and
+    /// Every type's style: its `background` (`#RRGGBB` or a theme colour's name; nil: none, but a marquee's strip is `text` without one) and
     /// its `padding`, the points of room above and below inside that colour (`none` 0, `small` 12, `medium` 24,
     /// `large` 40).
-    var background: String? { settings.hex("background") ?? (type == "marquee" ? "#111111" : nil) }
+    var background: String? { settings.hex("background") ?? (type == "marquee" ? "text" : nil) }
 
     var padding: Double {
         switch settings.choice("padding", ["none", "small", "medium", "large"], "none") {

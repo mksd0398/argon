@@ -4,8 +4,9 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 import kotlin.math.pow
 
-/** The colour tokens. [accent] is the shop's brand colour (ink when it has none); [onAccent] is text on it; text on
- *  [sale] (badges, destructive buttons) uses [paper]. */
+/** The colour tokens. [accent] is the shop's brand colour (ink when it has none); [onAccent] is text on it; [secondary]
+ *  the second brand colour (ink unless set), [onSecondary] text on it; text on [sale] (badges, destructive buttons)
+ *  uses [paper]. */
 @Immutable
 data class ArgonColors(
     val ink: Color,
@@ -17,6 +18,8 @@ data class ArgonColors(
     val onAccent: Color,
     val sale: Color,
     val success: Color,
+    val secondary: Color = ink,
+    val onSecondary: Color = paper,
 )
 
 /** Token values as 0xRRGGBB, the same as iOS's ArgonPalette. Dark swaps paper and ink and keeps surfaces close to paper. */
@@ -74,7 +77,7 @@ internal fun mix(a: Int, b: Int, amount: Double): Int = listOf(16, 8, 0).fold(0)
  * [backgroundHex] and [textHex] replace paper and ink, and muted, border and surface are made from them as
  * contract/theme.js `themeTokens` makes them.
  */
-fun argonColors(accentHex: String?, dark: Boolean, backgroundHex: String? = null, textHex: String? = null): ArgonColors {
+fun argonColors(accentHex: String?, dark: Boolean, backgroundHex: String? = null, textHex: String? = null, secondaryHex: String? = null): ArgonColors {
     val p = if (dark) Palette.Dark else Palette.Light
     val background = if (dark) null else parseHexColor(backgroundHex)
     val text = if (dark) null else parseHexColor(textHex)
@@ -96,6 +99,8 @@ fun argonColors(accentHex: String?, dark: Boolean, backgroundHex: String? = null
         border = color(if (own) mix(ink, paper, 0.14) else p.border),
         accent = color(accent),
         onAccent = color(onAccentFor(accent)),
+        secondary = color(parseHexColor(secondaryHex) ?: ink),
+        onSecondary = color(onAccentFor(parseHexColor(secondaryHex) ?: ink)),
         sale = color(p.sale),
         success = color(p.success),
     )

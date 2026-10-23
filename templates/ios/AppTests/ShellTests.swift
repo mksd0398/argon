@@ -138,7 +138,7 @@ final class ShellTests: XCTestCase {
         XCTAssertNil(announcement(#"{"messages": [{"text": "  "}, {"link": "/cart"}]}"#), "no message has words")
         XCTAssertEqual(
             announcement(#"{"messages": [{"text": "Hi", "link": ""}, "x"], "background": "red", "color": 3, "interval": 60}"#),
-            Announcement(messages: [AnnouncementMessage(text: "Hi")], background: "#111111", color: "#FFFFFF", interval: 15, dismissible: true)
+            Announcement(messages: [AnnouncementMessage(text: "Hi")], background: "text", color: "background", interval: 15, dismissible: true)
         )
         XCTAssertEqual(announcement(#"{"messages": [{"text": "Hi"}], "interval": 1}"#)?.interval, 3)
     }

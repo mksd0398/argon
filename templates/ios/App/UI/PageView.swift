@@ -82,7 +82,7 @@ struct CustomScreenView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(ArgonTheme.color(hex: look.background) ?? theme.colors.paper)
+        .background(theme.colors.resolve(look.background) ?? theme.colors.paper)
         .argonTopBar(
             variant: underBar ? .overlay : .standard, title: screen?.title ?? "", leading: back,
             solid: barSolid, darkOverPicture: look.tint == "dark"

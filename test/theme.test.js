@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { contrast, textOn, themeTokens } from "../contract/theme.js";
+import { contrast, resolveColor, textOn, themeTokens } from "../contract/theme.js";
 
 const vectors = JSON.parse(readFileSync(new URL("../contract/fixtures/theme/vectors.json", import.meta.url), "utf8"));
 
@@ -23,4 +23,12 @@ test("derived text reads: muted on paper and the accent's text at least 3:1 and 
   }
   assert.equal(textOn("#111111", "#17150F"), "#FFFFFF");
   assert.equal(textOn("#F5F0E8", "#17150F"), "#17150F");
+});
+
+test("a colour by name follows the theme; a hex stays itself", () => {
+  const t = themeTokens({ accent: "#8A3B12", background: "#F7F3EE", text: "#2B2118", secondary: "#2A9D8F" });
+  assert.deepEqual(["accent", "secondary", "background", "text", "#abcdef", "nope", undefined].map((v) => resolveColor(v, t)),
+    ["#8A3B12", "#2A9D8F", "#F7F3EE", "#2B2118", "#ABCDEF", null, null]);
+  assert.equal(themeTokens({}).secondary, themeTokens({}).ink, "secondary is text until set");
+  assert.deepEqual([themeTokens({ scale: "large" }).scale, themeTokens({ icons: "filled" }).icons, themeTokens({}).icons], [1.12, "filled", "outline"]);
 });

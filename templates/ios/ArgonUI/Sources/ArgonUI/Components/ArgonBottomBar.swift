@@ -52,7 +52,7 @@ public struct ArgonBottomBar<Content: View>: View {
             ForEach(items) { item in
                 content(item)
                     .tabItem {
-                        let icon = item.image ?? Image(systemName: item.icon.systemName)
+                        let icon = item.image ?? Image(systemName: item.icon.systemName(theme.icons))
                         if showLabels {
                             Label { Text(item.title) } icon: { icon }
                         } else {

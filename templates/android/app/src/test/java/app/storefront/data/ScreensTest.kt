@@ -260,9 +260,9 @@ class ScreensTest {
         assertEquals("the new types are kept", listOf("m", "m2", "f", "ft", "g", "g2"), t.sections.map { it.id })
 
         val marquee = t.section("m").content as SectionContent.Marquee
-        assertEquals(SectionContent.Marquee("Free shipping {{ shop.name }}", "/collections/all", 90, "#FFFFFF"), marquee)
+        assertEquals(SectionContent.Marquee("Free shipping {{ shop.name }}", "/collections/all", 90, "background"), marquee)
         val plain = t.section("m2").content as SectionContent.Marquee
-        assertEquals(60 to "#FFFFFF", plain.speed to plain.textColor)
+        assertEquals("the theme inverted unless set", 60 to "background", plain.speed to plain.textColor)
 
         val faq = t.section("f").content as SectionContent.Faq
         assertEquals("FAQ", faq.heading)
@@ -282,5 +282,20 @@ class ScreensTest {
         val defaults = t.section("g2").content as SectionContent.ImageGrid
         assertEquals(2 to 1f, defaults.columns to defaults.ratio)
         assertTrue(defaults.tiles.isEmpty())
+    }
+
+    @Test
+    fun aColourSettingTakesTheThemesColoursByNameOrAHex() {
+        val t = ScreenTemplate.decode(
+            """{"screen":{"background":"surface"},"sections":[
+              {"id":"a","type":"spacer","settings":{"background":"accent"}},
+              {"id":"b","type":"spacer","settings":{"background":"#abcdef"}},
+              {"id":"c","type":"spacer","settings":{"background":"Accent"}},
+              {"id":"m","type":"marquee","settings":{"text_color":"secondary"}}]}""",
+        )!!
+        assertEquals("surface", t.screen.background)
+        assertEquals(listOf("accent", "#ABCDEF", null), t.sections.take(3).map { it.background })
+        assertEquals("secondary", (t.section("m").content as SectionContent.Marquee).textColor)
+        assertEquals(COLOR_NAMES, setOf("accent", "secondary", "background", "surface", "text", "muted", "border", "sale"))
     }
 }

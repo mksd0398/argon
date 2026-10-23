@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -41,6 +42,7 @@ import app.storefront.data.SectionContent
 import app.storefront.ui.HtmlText
 import app.storefront.ui.SectionHeader
 import app.storefront.ui.StoreImage
+import app.storefront.ui.toColor
 
 // The scrolling text, FAQ, features and image grid sections (screens v2, "Detailing"). A tap on a question or a tile
 // reports its block, as slides do; features link nowhere.
@@ -60,7 +62,7 @@ internal fun MarqueeSection(section: ScreenSection, content: SectionContent.Marq
     val text = env.text(content.text, section) ?: return
     val route = env.route(env.text(content.link, section))
     // the strip is the section's background, else near black
-    val strip = color(section.background ?: "#111111") ?: Color.Black
+    val strip = (section.background ?: "text").toColor()
     Text(
         marqueeLine(text),
         Modifier.fillMaxWidth().background(strip)
@@ -69,7 +71,7 @@ internal fun MarqueeSection(section: ScreenSection, content: SectionContent.Marq
             .padding(vertical = ArgonTheme.spacing.m)
             .basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 0, initialDelayMillis = 0, spacing = MarqueeSpacing(0.dp), velocity = content.speed.dp),
         style = ArgonTheme.type.label,
-        color = color(content.textColor) ?: Color.White,
+        color = content.textColor.toColor().takeOrElse { ArgonTheme.colors.paper },
         maxLines = 1,
         softWrap = false,
     )

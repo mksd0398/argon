@@ -45,7 +45,8 @@ extension ThemeLook {
     func argon(accent: String?) -> ArgonLook {
         ArgonLook(
             accentHex: accent, backgroundHex: background, textHex: text,
-            corners: ArgonCorners(rawValue: corners) ?? .rounded, buttons: ArgonButtonShape(rawValue: buttons) ?? .pill
+            corners: ArgonCorners(rawValue: corners) ?? .rounded, buttons: ArgonButtonShape(rawValue: buttons) ?? .pill,
+            secondaryHex: secondary, scale: scale, icons: ArgonIconStyle(rawValue: icons) ?? .outline
         )
     }
 }

@@ -123,7 +123,7 @@ struct HomeView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(ArgonTheme.color(hex: look?.background) ?? theme.colors.paper)
+        .background(theme.colors.resolve(look?.background) ?? theme.colors.paper)
         // the store's own home lies under the bar when its look or the settings say so; the fashion page always does
         .modifier(HomeTopBar(
             template: template,
@@ -242,7 +242,7 @@ private struct SearchField: View {
     var body: some View {
         let t = clear.map { min(max($0.solid, 0), 1) } ?? 1
         let darkContent = clear?.darkContent ?? false
-        let colors = overlayBarColors(solid: t, dark: colorScheme == .dark, darkContent: darkContent, bar: barColors)
+        let colors = overlayBarColors(solid: t, dark: colorScheme == .dark, darkContent: darkContent, bar: barColors, look: theme.look)
         let ink = colors.content.color
         // over the picture the field's text and icon are the bar's content colour; once solid, the field's own muted
         let fieldInk = t < 0.5 ? ink : theme.colors.muted

@@ -176,7 +176,7 @@ final class ScreensTests: XCTestCase {
         ]}
         """))
         XCTAssertEqual(decoded.sections.map { $0.padding }, [12, 24, 40, 0, 0, 0])
-        XCTAssertEqual(decoded.sections.map { $0.background }, ["#FFEEDD", nil, nil, nil, "#111111", "#336699"])
+        XCTAssertEqual(decoded.sections.map { $0.background }, ["#FFEEDD", nil, nil, nil, "text", "#336699"])
     }
 
     func testAPageWithoutABodyOpensOnTheWeb() {

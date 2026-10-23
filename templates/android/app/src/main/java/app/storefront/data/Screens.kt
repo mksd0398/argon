@@ -134,6 +134,17 @@ data class SectionBlock(val id: String, val type: String, val settings: SectionS
 private val GID = Regex("""^gid://shopify/(Product|Collection)/\d+$""")
 private val COLOR = Regex("^#[0-9a-fA-F]{6}$")
 
+/** The theme's colours by name (contract/theme.js COLOR_NAMES): what a colour setting may say instead of a hex. */
+val COLOR_NAMES = setOf("accent", "secondary", "background", "surface", "text", "muted", "border", "sale")
+
+/** [value] as a colour setting keeps it: `#RRGGBB` (upper case) or a name in [COLOR_NAMES]; null otherwise. */
+fun colorValue(value: String?): String? = when {
+    value == null -> null
+    COLOR.matches(value) -> value.uppercase()
+    value in COLOR_NAMES -> value
+    else -> null
+}
+
 /**
  * A section's (or block's) settings, read value by value: each reader gives the setting's default when it is missing or
  * isn't a right value for its type (the same lenient decoding as RemoteSettings).
@@ -166,7 +177,8 @@ class SectionSettings(val json: JsonObject? = null) {
     fun boolean(key: String, default: Boolean): Boolean = this[key]?.boolean ?: default
 
     /** A `color` as `#RRGGBB` (upper case); [default] otherwise. */
-    fun color(key: String, default: String): String = this[key]?.string?.takeIf { COLOR.matches(it) }?.uppercase() ?: default
+    /** A `color`: `#RRGGBB` (upper case) or one of the theme's colours by name ([COLOR_NAMES]); [default] otherwise. */
+    fun color(key: String, default: String): String = colorValue(this[key]?.string) ?: default
 
     /** A `choice`: one of [choices]; [default] otherwise. */
     fun choice(key: String, choices: List<String>, default: String): String = this[key]?.string?.takeIf { it in choices } ?: default
@@ -277,7 +289,7 @@ val ScreenSection.content: SectionContent?
             )
             "marquee" -> SectionContent.Marquee(
                 text("text"), link("link"), when (choice("speed", listOf("slow", "medium", "fast"), "medium")) { "slow" -> 30; "fast" -> 90; else -> 60 },
-                color("text_color", "#FFFFFF"),
+                color("text_color", "background"),
             )
             "faq" -> SectionContent.Faq(
                 text("heading"),
