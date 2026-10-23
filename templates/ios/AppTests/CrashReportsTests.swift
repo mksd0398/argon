@@ -14,6 +14,7 @@ final class CrashReportsTests: XCTestCase {
         CrashReports.backend = nil
     }
 
+    @MainActor
     func testBrokenLiquidIsANonFatalAndStillRenders() {
         let recorded = Recorded()
         CrashReports.backend = recorded
@@ -21,6 +22,7 @@ final class CrashReportsTests: XCTestCase {
         XCTAssertEqual(recorded.errors, ["liquid: a {% if x %}b"])
     }
 
+    @MainActor
     func testBreadcrumbsComeFromTheAnalyticsEvents() {
         let recorded = Recorded()
         CrashReports.backend = recorded
