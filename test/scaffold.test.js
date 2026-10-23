@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import prompts from "prompts";
-import { run, scaffold, writeAppIcon, configText, xtoolFiles, packageSwift, withFirebase, firebaseConfig, ANALYTICS } from "../lib/index.js";
+import { run, scaffold, writeAppIcon, configText, xtoolFiles, packageSwift, withSdks, firebaseConfig, ANALYTICS } from "../lib/index.js";
 import { loadContract } from "../lib/contract.js";
 import { decodePng, encodePng } from "../lib/png.js";
 
@@ -390,8 +390,11 @@ test("every analytics flag: keys in both config files, Firebase's files, the iOS
       "- Google Analytics (Android app 1:1234:android:1abc, iOS app 1:1234:ios:def): nothing more to set up; the apps report the purchase themselves",
       "- Meta: deploy server/",
       "- MoEngage: nothing more to set up; push and in-app messages are not included",
-      "- iOS built with Xcode: add the Meta and MoEngage Swift package to the App target",
     ]) assert.ok(out.includes(line), line);
+    // the Xcode project has the three SDKs too: nothing to add by hand
+    assert.ok(!out.includes("iOS built with Xcode"));
+    const project = readFileSync(join(dir, "ios/App.xcodeproj/project.pbxproj"), "utf8");
+    for (const product of ["FirebaseAnalytics", "FirebaseCrashlytics", "FacebookCore", '"MoEngage-iOS-SDK"']) assert.ok(project.includes(`productName = ${product};`), product);
   }, { files });
 });
 
@@ -524,8 +527,8 @@ test("packageSwift: each SDK's package and product go in below Checkout Kit's, i
 // in LF, whatever the checkout's line endings: the CRLF case is tested on its own
 const TEMPLATE_PROJECT = lines(readFileSync(new URL("../templates/ios/App.xcodeproj/project.pbxproj", import.meta.url), "utf8")).join("\n");
 
-test("withFirebase: the Xcode project's App target gets Firebase's package, products, -ObjC and the Crashlytics phase", () => {
-  const project = withFirebase(TEMPLATE_PROJECT);
+test("withSdks: the Xcode project's App target gets Firebase's package, products, -ObjC and the Crashlytics phase", () => {
+  const project = withSdks(TEMPLATE_PROJECT, ["firebase"]);
   const { url, from } = ANALYTICS.find((a) => a.value === "firebase").ios;
   assert.ok(project.includes(`repositoryURL = "${url}";\n\t\t\trequirement = {\n\t\t\t\tkind = upToNextMajorVersion;\n\t\t\t\tminimumVersion = ${from};`));
   // each product: a dependency of the App target and a file of its Frameworks phase, none for the tests
@@ -537,7 +540,7 @@ test("withFirebase: the Xcode project's App target gets Firebase's package, prod
     assert.equal(project.split(` /* ${product} in Frameworks */`).length - 1, 2, "the build file and its place in the Frameworks phase");
   }
   assert.ok(!project.includes("FirebaseMessaging"), "Messaging only with push");
-  assert.ok(withFirebase(TEMPLATE_PROJECT, { push: true }).includes("productName = FirebaseMessaging;"));
+  assert.ok(withSdks(TEMPLATE_PROJECT, ["firebase"], { push: true }).includes("productName = FirebaseMessaging;"));
   // the dSYM upload runs last, after the app's resources
   assert.match(target("App"), /\/\* Resources \*\/,\n\t\t\t\t\w{24} \/\* Crashlytics \*\/,\n\t\t\t\);/);
   assert.ok(project.includes('shellScript = "\\"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\\"\\n";'));
@@ -546,8 +549,25 @@ test("withFirebase: the Xcode project's App target gets Firebase's package, prod
   // every object it refers to is defined once
   for (const id of new Set(project.match(/F12EBA5E\w{16}/g))) assert.equal(project.match(new RegExp(`${id}[^\\n]*= \\{`, "g")).length, 1, id);
   // the template's line endings, and a template that lost a line this builds on is an error
-  assert.ok(!/[^\r]\n/.test(withFirebase(lines(TEMPLATE_PROJECT).join("\r\n"))), "every line still ends in CRLF");
-  assert.throws(() => withFirebase(TEMPLATE_PROJECT.replaceAll("ShopifyCheckoutSheetKit", "CheckoutKit")), /App\.xcodeproj no longer has/);
+  assert.ok(!/[^\r]\n/.test(withSdks(lines(TEMPLATE_PROJECT).join("\r\n"), ["firebase", "meta", "moengage"])), "every line still ends in CRLF");
+  assert.throws(() => withSdks(TEMPLATE_PROJECT.replaceAll("ShopifyCheckoutSheetKit", "CheckoutKit"), ["meta"]), /App\.xcodeproj no longer has/);
+});
+
+test("withSdks: Meta and MoEngage get their package and product on the App target, without Firebase's extras", () => {
+  assert.equal(withSdks(TEMPLATE_PROJECT, []), TEMPLATE_PROJECT);
+  const project = withSdks(TEMPLATE_PROJECT, ["moengage", "meta"]);
+  for (const { value, ios } of ANALYTICS.filter((a) => a.value !== "firebase")) {
+    const name = ios.url.split("/").pop();
+    assert.ok(project.includes(`/* XCRemoteSwiftPackageReference "${name}" */ = {\n\t\t\tisa = XCRemoteSwiftPackageReference;\n\t\t\trepositoryURL = "${ios.url}";\n\t\t\trequirement = {\n\t\t\t\tkind = upToNextMajorVersion;\n\t\t\t\tminimumVersion = ${ios.from};`), value);
+    assert.ok(project.includes(`/* XCRemoteSwiftPackageReference "${name}" */,`), `${value}: one of the project's packages`);
+    assert.equal(project.split(` /* ${ios.product} in Frameworks */`).length - 1, 2, value);
+  }
+  assert.ok(project.includes("productName = FacebookCore;") && project.includes('productName = "MoEngage-iOS-SDK";'), "quoted when it has a dash");
+  assert.ok(!project.includes("firebase") && !project.includes("-ObjC") && !project.includes("Crashlytics"));
+  // all three: every object defined once
+  const all = withSdks(TEMPLATE_PROJECT, ["firebase", "meta", "moengage"], { push: true });
+  for (const id of new Set(all.match(/F12EBA5E\w{16}/g))) assert.equal(all.match(new RegExp(`${id}[^\\n]*= \\{`, "g")).length, 1, id);
+  assert.equal(new Set(all.match(/F12EBA5E\w{16} \/\* [^*]+ \*\/ = \{/g)).size, 1 + 3 + 5 * 2, "the Crashlytics phase, 3 packages, 5 products and their build files");
 });
 
 const withLogos = (files, primary = []) => ({
