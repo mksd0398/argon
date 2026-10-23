@@ -4,6 +4,12 @@
 
 export const CORNERS = { square: [0, 0, 0], rounded: [4, 8, 16], round: [8, 16, 24] };
 export const BUTTONS = { pill: 999, rounded: 8, square: 0 };
+/** The type scale: every text role's size times this (2026-10-24-design-system-design.md). */
+export const TYPE_SCALES = { small: 0.9, medium: 1, large: 1.12 };
+export const ICON_STYLES = ["outline", "filled"];
+/** The theme's colours by name: what any colour setting may say instead of a #RRGGBB. */
+export const COLOR_NAMES = ["accent", "secondary", "background", "surface", "text", "muted", "border", "sale"];
+const TOKEN_OF = { accent: "accent", secondary: "secondary", background: "paper", surface: "surface", text: "ink", muted: "muted", border: "border", sale: "sale" };
 
 /** Argon's own palettes, as ArgonPalette / Palette have them. */
 export const PALETTES = {
@@ -36,9 +42,17 @@ export const onColor = (color) => (contrast(color, "#000000") >= contrast(color,
 /** The text colour for something drawn on `background`: `text` when it reads at 4.5:1 or better, else black or white. */
 export const textOn = (background, text) => (contrast(background, text) >= 4.5 ? text : onColor(background));
 
+/** A colour setting's value (a name or #RRGGBB) as #RRGGBB in `tokens`; null when it's neither. */
+export function resolveColor(value, tokens) {
+  if (typeof value !== "string") return null;
+  if (HEX.test(value)) return value.toUpperCase();
+  return TOKEN_OF[value] ? tokens[TOKEN_OF[value]] : null;
+}
+
 /**
- * Every token for `appearance` (`{ accent, background, text, corners, buttons }`, as the settings have them: "" or
- * missing is as built) in light or `dark` appearance. Background and text are the light appearance's only.
+ * Every token for `appearance` (`{ accent, secondary, background, text, corners, buttons, scale, icons }`, as the
+ * settings have them: "" or missing is as built) in light or `dark` appearance. Background and text are the light
+ * appearance's only; accent and secondary are both appearances'.
  */
 export function themeTokens(appearance = {}, dark = false) {
   const p = { ...PALETTES[dark ? "dark" : "light"] };
@@ -53,5 +67,10 @@ export function themeTokens(appearance = {}, dark = false) {
   }
   const accent = HEX.test(appearance.accent ?? "") ? appearance.accent.toUpperCase() : p.ink;
   const [s, m, l] = CORNERS[appearance.corners] ?? CORNERS.rounded;
-  return { ...p, accent, onAccent: onColor(accent), radius: { s, m, l }, button: BUTTONS[appearance.buttons] ?? BUTTONS.pill };
+  const secondary = HEX.test(appearance.secondary ?? "") ? appearance.secondary.toUpperCase() : p.ink;
+  return {
+    ...p, accent, onAccent: onColor(accent), secondary, onSecondary: onColor(secondary), radius: { s, m, l },
+    button: BUTTONS[appearance.buttons] ?? BUTTONS.pill, scale: TYPE_SCALES[appearance.scale] ?? 1,
+    icons: ICON_STYLES.includes(appearance.icons) ? appearance.icons : "outline",
+  };
 }

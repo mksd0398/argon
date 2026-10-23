@@ -14,7 +14,7 @@ func marqueeSpeed(_ speed: String) -> Double {
 }
 
 /// `marquee`: one line of text running from end to start without end, repeated to fill the strip (whose colour is the
-/// section's background, #111111 without one: `ScreenSection.background`). The whole strip follows `link`. Still with
+/// section's background, the theme's `text` without one: `ScreenSection.background`). The whole strip follows `link`. Still with
 /// Reduce Motion.
 @MainActor
 struct MarqueeSection: View {
@@ -32,7 +32,7 @@ struct MarqueeSection: View {
             let speed = marqueeSpeed(settings.choice("speed", ["slow", "medium", "fast"], "medium"))
             let item = Text(text)
                 .font(theme.type.label)
-                .foregroundStyle(ArgonTheme.color(hex: settings.color("text_color", "#FFFFFF")) ?? .white)
+                .foregroundStyle(theme.colors.resolve(settings.color("text_color", "background")) ?? theme.colors.paper)
                 .lineLimit(1)
                 .fixedSize()
                 .padding(.trailing, theme.spacing.xxl)

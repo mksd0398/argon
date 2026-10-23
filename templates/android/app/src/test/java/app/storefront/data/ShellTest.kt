@@ -97,7 +97,7 @@ class ShellTest {
 
         val a = RemoteSettings.decode("""{"announcement":{"messages":[{"text":" "},{"text":"Hi","link":""},7],"background":"black","interval":99}}""")!!.announcement!!
         assertEquals(listOf(AnnouncementMessage("Hi")), a.messages)
-        assertEquals("#111111", a.background)
+        assertEquals("the theme inverted unless set", "text" to "background", a.background to a.color)
         assertEquals(15, a.interval)
         assertTrue(a.dismissible)
         assertNull("off", RemoteSettings.decode("""{"announcement":{"enabled":false,"messages":[{"text":"Hi"}]}}""")!!.announcement)

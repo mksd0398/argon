@@ -8,7 +8,7 @@ public struct ArgonTheme: Equatable {
     public let type: ArgonTypography
     public let spacing = ArgonSpacing()
     public let radius: ArgonRadius
-    private let look: ArgonLook
+    public let look: ArgonLook
     private let dynamicTypeSize: DynamicTypeSize
 
     /// `look`: the accent (the shop's brand colour, `#RRGGBB`; without a readable one the accent is ink), the light
@@ -19,8 +19,11 @@ public struct ArgonTheme: Equatable {
         self.dynamicTypeSize = dynamicTypeSize
         colors = ArgonColors(look: look)
         radius = ArgonRadius(corners: look.corners, buttons: look.buttons)
-        type = ArgonTypography(dynamicTypeSize: dynamicTypeSize)
+        type = ArgonTypography(dynamicTypeSize: dynamicTypeSize, scale: look.scale)
     }
+
+    /// The theme's icon style: every `ArgonIcon` outlined or filled.
+    public var icons: ArgonIconStyle { look.icons }
 
     public init(accentHex: String?, dynamicTypeSize: DynamicTypeSize = .large) {
         self.init(look: ArgonLook(accentHex: accentHex), dynamicTypeSize: dynamicTypeSize)
@@ -31,25 +34,64 @@ public struct ArgonTheme: Equatable {
     }
 }
 
-/// What a merchant sets of the theme (contract/theme.js): the accent, the light appearance's background and text (nil:
-/// Argon's paper and ink), the corners and the buttons' shape.
+/// What a merchant sets of the theme (contract/theme.js): the accent and the second brand colour, the light
+/// appearance's background and text (nil: Argon's paper and ink), the corners, the buttons' shape, the type scale and
+/// the icon style.
 public struct ArgonLook: Equatable, Sendable {
     public var accentHex: String?
     public var backgroundHex: String?
     public var textHex: String?
     public var corners: ArgonCorners
     public var buttons: ArgonButtonShape
+    public var secondaryHex: String?
+    public var scale: Double
+    public var icons: ArgonIconStyle
 
     public init(
         accentHex: String? = nil, backgroundHex: String? = nil, textHex: String? = nil,
-        corners: ArgonCorners = .rounded, buttons: ArgonButtonShape = .pill
+        corners: ArgonCorners = .rounded, buttons: ArgonButtonShape = .pill,
+        secondaryHex: String? = nil, scale: Double = 1, icons: ArgonIconStyle = .outline
     ) {
         self.accentHex = accentHex
         self.backgroundHex = backgroundHex
         self.textHex = textHex
         self.corners = corners
         self.buttons = buttons
+        self.secondaryHex = secondaryHex
+        self.scale = scale
+        self.icons = icons
     }
+
+    /// The theme's colour `value` (one of its colours by name, contract/theme.js COLOR_NAMES, or `#RRGGBB`) as
+    /// `#RRGGBB` in light or `dark` appearance; nil when it's neither.
+    public func hex(_ value: String?, dark: Bool) -> String? {
+        guard let value else { return nil }
+        let p = dark ? ArgonPalette.dark : ArgonPalette.themed(self)
+        let accent = ArgonTheme.rgb(hex: accentHex) != nil ? accentHex!.uppercased() : p.ink
+        let secondary = ArgonTheme.rgb(hex: secondaryHex) != nil ? secondaryHex!.uppercased() : p.ink
+        switch value {
+        case "accent": return accent
+        case "secondary": return secondary
+        case "background": return p.paper
+        case "surface": return p.surface
+        case "text": return p.ink
+        case "muted": return p.muted
+        case "border": return p.border
+        case "sale": return p.sale
+        default: return value.count == 7 && ArgonTheme.rgb(hex: value) != nil ? value.uppercased() : nil
+        }
+    }
+
+    /// `value` (a colour by name or `#RRGGBB`) as a colour that follows light and dark; nil when it's neither.
+    public func color(_ value: String?) -> Color? {
+        guard let light = hex(value, dark: false), let dark = hex(value, dark: true) else { return nil }
+        return dynamicColor(light, dark)
+    }
+}
+
+/// The theme's icons: Argon's SF Symbols as drawn, or each one's filled form.
+public enum ArgonIconStyle: String, CaseIterable, Sendable {
+    case outline, filled
 }
 
 /// The theme's corners: s, m and l in points (contract/theme.js CORNERS).
@@ -98,8 +140,16 @@ public struct ArgonPalette: Sendable {
 /// The colour tokens. Each follows the light/dark appearance where it's drawn. Text on `sale` uses `paper`.
 public struct ArgonColors {
     public let ink, muted, paper, surface, border, accent, onAccent, sale, success: Color
+    /// The second brand colour (ink unless set) and text on it.
+    public let secondary, onSecondary: Color
+    private let look: ArgonLook
+
+    /// A colour setting (one of the theme's colours by name, or `#RRGGBB`) in this theme; nil when it's neither.
+    public func resolve(_ value: String?) -> Color? { look.color(value) }
 
     init(look: ArgonLook) {
+        self.look = look
+        let secondaryHex = ArgonTheme.rgb(hex: look.secondaryHex) != nil ? look.secondaryHex : nil
         let light = ArgonPalette.themed(look), dark = ArgonPalette.dark
         let accentHex = look.accentHex
         ink = dynamicColor(light.ink, dark.ink)
@@ -115,6 +165,13 @@ public struct ArgonColors {
         } else {
             accent = ink
             onAccent = dynamicColor(ArgonTheme.onAccentHex(light.ink), ArgonTheme.onAccentHex(dark.ink))
+        }
+        if let hex = secondaryHex {
+            secondary = dynamicColor(hex, hex)
+            onSecondary = dynamicColor(ArgonTheme.onAccentHex(hex), ArgonTheme.onAccentHex(hex))
+        } else {
+            secondary = ink
+            onSecondary = dynamicColor(ArgonTheme.onAccentHex(light.ink), ArgonTheme.onAccentHex(dark.ink))
         }
     }
 }
@@ -207,13 +264,15 @@ extension ArgonTheme {
 public struct ArgonTypography {
     public let display, title, headline, body, label, caption: Font
 
-    init(dynamicTypeSize: DynamicTypeSize) {
-        display = Self.make(serif: true, size: 40, weight: 400, style: .largeTitle, dynamicTypeSize)
-        title = Self.make(serif: true, size: 28, weight: 400, style: .title, dynamicTypeSize)
-        headline = Self.make(serif: false, size: 17, weight: 600, style: .headline, dynamicTypeSize)
-        body = Self.make(serif: false, size: 16, weight: 400, style: .body, dynamicTypeSize)
-        label = Self.make(serif: false, size: 14, weight: 500, style: .subheadline, dynamicTypeSize)
-        caption = Self.make(serif: false, size: 12, weight: 400, style: .caption, dynamicTypeSize)
+    /// `scale`: the theme's type scale, times every role's size.
+    init(dynamicTypeSize: DynamicTypeSize, scale: Double = 1) {
+        let k = CGFloat(scale)
+        display = Self.make(serif: true, size: 40 * k, weight: 400, style: .largeTitle, dynamicTypeSize)
+        title = Self.make(serif: true, size: 28 * k, weight: 400, style: .title, dynamicTypeSize)
+        headline = Self.make(serif: false, size: 17 * k, weight: 600, style: .headline, dynamicTypeSize)
+        body = Self.make(serif: false, size: 16 * k, weight: 400, style: .body, dynamicTypeSize)
+        label = Self.make(serif: false, size: 14 * k, weight: 500, style: .subheadline, dynamicTypeSize)
+        caption = Self.make(serif: false, size: 12 * k, weight: 400, style: .caption, dynamicTypeSize)
     }
 
     /// Hanken Grotesk at a fixed size (badges, avatars: text sized to its shape, not to Dynamic Type).

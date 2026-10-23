@@ -333,6 +333,8 @@ private struct ToastView: View {
 
 @MainActor
 struct Tabs: View {
+    @Environment(\.argonTheme) private var theme
+
     var body: some View {
         // The bar's tabs: the settings', else the built-in five. The Cart tab shows how many items are in the cart (no
         // badge at 0).
@@ -346,7 +348,7 @@ struct Tabs: View {
             onSelect: { AppGraph.tabs.select($0) },
             showLabels: navigation.labels,
             // the settings' colour for the selected tab, else the accent (the bar's own colours: `applyBarColors`)
-            activeColor: ArgonTheme.color(hex: navigation.tabBarActive)
+            activeColor: theme.colors.resolve(navigation.tabBarActive)
         ) { item in
             // each root reports itself from inside its stack: a screen pushed over it hides it, and closing that shows it again
             TabStack(id: item.id, root: TabRoot(id: item.id))

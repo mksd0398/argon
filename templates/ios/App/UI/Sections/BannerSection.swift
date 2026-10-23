@@ -27,7 +27,7 @@ struct SectionBanner: View {
     @Environment(\.argonTheme) private var theme
 
     var body: some View {
-        let color = ArgonTheme.color(hex: textColor) ?? .white
+        let color = theme.colors.resolve(textColor) ?? .white
         Color.clear
             .aspectRatio(ratio, contentMode: .fit)
             .overlay { StoreImage(image: image) }

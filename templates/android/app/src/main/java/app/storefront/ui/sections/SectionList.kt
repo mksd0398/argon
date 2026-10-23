@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -40,6 +41,7 @@ import app.storefront.data.SectionNodes
 import app.storefront.data.Shop
 import app.storefront.data.content
 import app.storefront.data.sectionNodeIds
+import app.storefront.ui.toColor
 import java.util.logging.Logger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
@@ -203,7 +205,7 @@ fun rememberSectionEnv(
 
 /** The screen's background behind its sections (the template's `screen.background`): the theme's while they load, or without one. */
 @Composable
-fun screenBackground(sections: ScreenSections?): Color = sections?.template?.screen?.background?.let(::color) ?: MaterialTheme.colorScheme.background
+fun screenBackground(sections: ScreenSections?): Color = sections?.template?.screen?.background.toColor().takeOrElse { MaterialTheme.colorScheme.background }
 
 /**
  * The section runs edge to edge: a hero banner (the default style), a slideshow, a marquee, a video, or any section with

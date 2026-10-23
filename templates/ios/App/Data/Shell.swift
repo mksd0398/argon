@@ -114,11 +114,12 @@ struct AnnouncementMessage: Equatable, Sendable {
 }
 
 /// The strip above the top bar on every tab root: `messages` rotating every `interval` seconds (3-15), on `background`
-/// in `color` (`#RRGGBB`), closable for the session when `dismissible`.
+/// in `color` (`#RRGGBB` or a theme colour's name; the theme inverted unless set), closable for the session when
+/// `dismissible`.
 struct Announcement: Equatable, Sendable {
     let messages: [AnnouncementMessage]
-    var background = "#111111"
-    var color = "#FFFFFF"
+    var background = "text"
+    var color = "background"
     var interval = 5
     var dismissible = true
 
@@ -134,8 +135,8 @@ struct Announcement: Equatable, Sendable {
         let settings = SectionSettings(map)
         return Announcement(
             messages: messages,
-            background: settings.color("background", "#111111"),
-            color: settings.color("color", "#FFFFFF"),
+            background: settings.color("background", "text"),
+            color: settings.color("color", "background"),
             interval: Int(settings.number("interval", 5, 3...15)),
             dismissible: settings.boolean("dismissible", true)
         )
@@ -143,14 +144,17 @@ struct Announcement: Equatable, Sendable {
 }
 
 /// Light or dark: `system` (the device's), `light` or `dark`.
-/// The theme's own look (`appearance`: `colors.background`, `colors.text`, `corners`, `buttons`): nil colours when unset
-/// or not `#RRGGBB`, and Argon's rounded corners and pill buttons when unset or not one of theirs (ArgonCorners,
-/// ArgonButtonShape).
+/// The theme's own look (`appearance`: `colors.background`, `colors.text`, `colors.secondary`, `corners`, `buttons`,
+/// `type.scale`, `icons`): nil colours when unset or not `#RRGGBB`, and Argon's rounded corners, pill buttons, sizes and
+/// outlined icons when unset or not one of theirs (contract/theme.js).
 struct ThemeLook: Equatable, Sendable {
     var background: String? = nil
     var text: String? = nil
     var corners = "rounded"
     var buttons = "pill"
+    var secondary: String? = nil
+    var scale = 1.0
+    var icons = "outline"
 
     static func decode(_ json: JSONValue?) -> ThemeLook? {
         guard let json = json?.object else { return nil }
@@ -165,7 +169,10 @@ struct ThemeLook: Equatable, Sendable {
             background: hex(colors?["background"]?.string),
             text: hex(colors?["text"]?.string),
             corners: ["square", "rounded", "round"].contains(corners) ? corners : "rounded",
-            buttons: ["pill", "rounded", "square"].contains(buttons) ? buttons : "pill"
+            buttons: ["pill", "rounded", "square"].contains(buttons) ? buttons : "pill",
+            secondary: hex(colors?["secondary"]?.string),
+            scale: ["small": 0.9, "medium": 1, "large": 1.12][json["type"]?["scale"]?.string ?? ""] ?? 1,
+            icons: json["icons"]?.string == "filled" ? "filled" : "outline"
         )
     }
 }

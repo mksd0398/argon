@@ -63,7 +63,7 @@ fun ArgonBottomBar(
 @Composable
 private fun TabIcon(item: ArgonBottomBarItem, description: String?) {
     if (item.iconUrl == null) return ArgonIcon(item.icon, contentDescription = description)
-    val fallback = painterResource(item.icon.drawable)
+    val fallback = painterResource(if (LocalArgonIconStyle.current == ArgonIconStyle.Filled) item.icon.filled else item.icon.drawable)
     AsyncImage(
         item.iconUrl,
         contentDescription = description,
