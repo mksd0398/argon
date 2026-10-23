@@ -27,6 +27,8 @@ import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.argon.ui.components.ArgonIconStyle
+import app.argon.ui.components.LocalArgonIconStyle
 
 /** Text roles. Display and title use Instrument Serif, the rest Hanken Grotesk; all in sp, so they follow font scale. */
 @Immutable
@@ -88,7 +90,8 @@ object ArgonTheme {
  * Argon's tokens for [content], also mapped onto Material 3 (colour scheme, typography, shapes), so native
  * controls follow them: primary is the accent. [accentHex] is the shop's `#RRGGBB` brand colour; ink when absent.
  * [headingFont] replaces the serif (display, title), [bodyFont] the sans (the other roles); null keeps Argon's.
- * [backgroundHex] and [textHex] replace paper and ink in light mode ([argonColors]); [corners] and [buttons] shape it.
+ * [backgroundHex] and [textHex] replace paper and ink in light mode, [secondaryHex] is the second brand colour
+ * ([argonColors]); [corners] and [buttons] shape it, [scale] sizes every text role and [icons] draws every icon.
  */
 @Composable
 fun ArgonTheme(
@@ -100,18 +103,27 @@ fun ArgonTheme(
     textHex: String? = null,
     corners: ArgonCorners = ArgonCorners.Rounded,
     buttons: ArgonButtonShape = ArgonButtonShape.Pill,
+    secondaryHex: String? = null,
+    scale: Float = 1f,
+    icons: ArgonIconStyle = ArgonIconStyle.Outline,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
-    val type = remember(context, headingFont, bodyFont) {
+    val type = remember(context, headingFont, bodyFont, scale) {
         argonType(
             serif = headingFont ?: family(context, R.font.instrument_serif_regular) { FontFamily(Font(R.font.instrument_serif_regular)) },
             sans = bodyFont ?: family(context, R.font.hanken_grotesk) { FontFamily(listOf(400, 500, 600, 700).map(::hanken)) },
+            scale = scale,
         )
     }
-    val colors = remember(accentHex, darkTheme, backgroundHex, textHex) { argonColors(accentHex, darkTheme, backgroundHex, textHex) }
+    val colors = remember(accentHex, darkTheme, backgroundHex, textHex, secondaryHex) { argonColors(accentHex, darkTheme, backgroundHex, textHex, secondaryHex) }
     val radius = remember(corners, buttons) { ArgonRadius(corners, buttons) }
-    CompositionLocalProvider(LocalArgonColors provides colors, LocalArgonType provides type, LocalArgonRadius provides radius) {
+    CompositionLocalProvider(
+        LocalArgonColors provides colors,
+        LocalArgonType provides type,
+        LocalArgonRadius provides radius,
+        LocalArgonIconStyle provides icons,
+    ) {
         MaterialTheme(colorScheme = colors.material(darkTheme), typography = type.material(), shapes = radius.material(), content = content)
     }
 }
@@ -125,14 +137,14 @@ private fun hanken(weight: Int) =
 private fun family(context: Context, @FontRes res: Int, bundled: () -> FontFamily): FontFamily =
     runCatching { context.resources.getFont(res) }.fold({ bundled() }, { FontFamily.Default })
 
-// Sizes and weights as on iOS; line heights are the fonts' own.
-internal fun argonType(serif: FontFamily, sans: FontFamily) = ArgonType(
-    display = TextStyle(fontFamily = serif, fontSize = 40.sp),
-    title = TextStyle(fontFamily = serif, fontSize = 28.sp),
-    headline = TextStyle(fontFamily = sans, fontWeight = FontWeight.SemiBold, fontSize = 17.sp),
-    body = TextStyle(fontFamily = sans, fontWeight = FontWeight.Normal, fontSize = 16.sp),
-    label = TextStyle(fontFamily = sans, fontWeight = FontWeight.Medium, fontSize = 14.sp),
-    caption = TextStyle(fontFamily = sans, fontWeight = FontWeight.Normal, fontSize = 12.sp),
+// Sizes and weights as on iOS, times the theme's [scale]; line heights are the fonts' own.
+internal fun argonType(serif: FontFamily, sans: FontFamily, scale: Float = 1f) = ArgonType(
+    display = TextStyle(fontFamily = serif, fontSize = 40.sp * scale),
+    title = TextStyle(fontFamily = serif, fontSize = 28.sp * scale),
+    headline = TextStyle(fontFamily = sans, fontWeight = FontWeight.SemiBold, fontSize = 17.sp * scale),
+    body = TextStyle(fontFamily = sans, fontWeight = FontWeight.Normal, fontSize = 16.sp * scale),
+    label = TextStyle(fontFamily = sans, fontWeight = FontWeight.Medium, fontSize = 14.sp * scale),
+    caption = TextStyle(fontFamily = sans, fontWeight = FontWeight.Normal, fontSize = 12.sp * scale),
 )
 
 private fun ArgonColors.material(dark: Boolean): ColorScheme {

@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.semantics.Role
@@ -64,6 +65,7 @@ import app.storefront.ui.isAppDark
 import app.storefront.ui.home.BannerView
 import app.storefront.ui.home.ProductPairs
 import app.storefront.ui.home.picture
+import app.storefront.ui.toColor
 import java.time.Duration
 import java.time.Instant
 import kotlinx.coroutines.delay
@@ -82,7 +84,7 @@ fun SectionView(section: ScreenSection, env: SectionEnv, modifier: Modifier = Mo
         // the section last shown: what a crash report names as the one on screen
         CrashReports.setKey("section", "${section.type} ${section.id}")
     }
-    val background = section.background?.let(::color)
+    val background = section.background.toColor().takeIf { it.isSpecified }
     Box(modifier.fillMaxWidth().then(if (background != null) Modifier.background(background) else Modifier).padding(vertical = section.padding.dp)) {
         OnBackground(background) {
             when (val content = section.content) {
@@ -150,7 +152,7 @@ private fun BannerSection(section: ScreenSection, content: SectionContent.Banner
         ratio = bannerRatio(content.height),
         modifier = if (card) gutter else Modifier,
         shape = if (card) ArgonTheme.radius.l else RectangleShape,
-        textColor = color(content.textColor),
+        textColor = content.textColor.toColor().takeIf { it.isSpecified },
     )
 }
 

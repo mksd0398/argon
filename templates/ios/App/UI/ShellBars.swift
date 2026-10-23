@@ -20,7 +20,7 @@ struct AnnouncementBar: View {
         let messages = announcement.messages
         let message = messages[index % messages.count]
         let route = Links.resolve(message.link, hosts: AppGraph.brand.value?.hosts ?? [AppGraph.shopDomain])
-        let ink = ArgonTheme.color(hex: announcement.color) ?? theme.colors.paper
+        let ink = theme.colors.resolve(announcement.color) ?? theme.colors.paper
         HStack(spacing: 0) {
             Text(message.text)
                 .font(theme.type.label)
@@ -43,7 +43,7 @@ struct AnnouncementBar: View {
             }
         }
         .frame(minHeight: 36)
-        .background { (ArgonTheme.color(hex: announcement.background) ?? theme.colors.ink).ignoresSafeArea(edges: .top) }
+        .background { (theme.colors.resolve(announcement.background) ?? theme.colors.ink).ignoresSafeArea(edges: .top) }
         .animation(.easeInOut(duration: 0.3), value: index)
         .task(id: messages.count) {
             guard messages.count > 1 else { return }
@@ -115,8 +115,14 @@ extension Appearance {
 /// colours the bars are left as the system draws them; with some, clear at the scroll edge where no background is given.
 @MainActor
 func applyBarColors(_ navigation: Navigation) {
-    func color(_ hex: String?) -> UIColor? {
-        ArgonTheme.rgb(hex: hex).map { UIColor(red: $0.red, green: $0.green, blue: $0.blue, alpha: 1) }
+    // a theme colour's name follows the theme in light and dark; a hex is itself
+    let look = AppGraph.look.argon(accent: AppGraph.brand.value?.accent)
+    func color(_ value: String?) -> UIColor? {
+        guard look.hex(value, dark: false) != nil else { return nil }
+        return UIColor { traits in
+            let c = ArgonTheme.rgb(hex: look.hex(value, dark: traits.userInterfaceStyle == .dark)) ?? (red: 0, green: 0, blue: 0)
+            return UIColor(red: c.red, green: c.green, blue: c.blue, alpha: 1)
+        }
     }
     let background = color(navigation.topBarBackground), foreground = color(navigation.topBarForeground)
     if background != nil || foreground != nil {

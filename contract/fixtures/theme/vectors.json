@@ -12,12 +12,16 @@
       "success": "#2E7D4F",
       "accent": "#17150F",
       "onAccent": "#FFFFFF",
+      "secondary": "#17150F",
+      "onSecondary": "#FFFFFF",
       "radius": {
         "s": 4,
         "m": 8,
         "l": 16
       },
-      "button": 999
+      "button": 999,
+      "scale": 1,
+      "icons": "outline"
     }
   },
   {
@@ -33,12 +37,16 @@
       "success": "#6CC08A",
       "accent": "#F6F4F0",
       "onAccent": "#000000",
+      "secondary": "#F6F4F0",
+      "onSecondary": "#000000",
       "radius": {
         "s": 4,
         "m": 8,
         "l": 16
       },
-      "button": 999
+      "button": 999,
+      "scale": 1,
+      "icons": "outline"
     }
   },
   {
@@ -56,12 +64,16 @@
       "success": "#2E7D4F",
       "accent": "#1F6FEB",
       "onAccent": "#FFFFFF",
+      "secondary": "#17150F",
+      "onSecondary": "#FFFFFF",
       "radius": {
         "s": 4,
         "m": 8,
         "l": 16
       },
-      "button": 999
+      "button": 999,
+      "scale": 1,
+      "icons": "outline"
     }
   },
   {
@@ -81,12 +93,16 @@
       "success": "#2E7D4F",
       "accent": "#F5D90A",
       "onAccent": "#000000",
+      "secondary": "#17150F",
+      "onSecondary": "#FFFFFF",
       "radius": {
         "s": 0,
         "m": 0,
         "l": 0
       },
-      "button": 0
+      "button": 0,
+      "scale": 1,
+      "icons": "outline"
     }
   },
   {
@@ -105,12 +121,16 @@
       "success": "#2E7D4F",
       "accent": "#2B2118",
       "onAccent": "#FFFFFF",
+      "secondary": "#2B2118",
+      "onSecondary": "#FFFFFF",
       "radius": {
         "s": 4,
         "m": 8,
         "l": 16
       },
-      "button": 999
+      "button": 999,
+      "scale": 1,
+      "icons": "outline"
     }
   },
   {
@@ -132,18 +152,25 @@
       "success": "#6CC08A",
       "accent": "#8A3B12",
       "onAccent": "#FFFFFF",
+      "secondary": "#F6F4F0",
+      "onSecondary": "#000000",
       "radius": {
         "s": 8,
         "m": 16,
         "l": 24
       },
-      "button": 8
+      "button": 8,
+      "scale": 1,
+      "icons": "outline"
     }
   },
   {
     "appearance": {
       "background": "#101820",
-      "text": "#F2F2F2"
+      "text": "#F2F2F2",
+      "secondary": "#E9C46A",
+      "scale": "large",
+      "icons": "filled"
     },
     "dark": false,
     "tokens": {
@@ -156,35 +183,45 @@
       "success": "#2E7D4F",
       "accent": "#F2F2F2",
       "onAccent": "#000000",
+      "secondary": "#E9C46A",
+      "onSecondary": "#000000",
       "radius": {
         "s": 4,
         "m": 8,
         "l": 16
       },
-      "button": 999
+      "button": 999,
+      "scale": 1.12,
+      "icons": "filled"
     }
   },
   {
     "appearance": {
-      "text": "#003049"
+      "text": "#003049",
+      "secondary": "#2a9d8f",
+      "scale": "small"
     },
-    "dark": false,
+    "dark": true,
     "tokens": {
-      "ink": "#003049",
-      "muted": "#5D7A88",
-      "paper": "#F6F4F0",
-      "surface": "#FCFCFB",
-      "border": "#D4D9D9",
-      "sale": "#B23A2E",
-      "success": "#2E7D4F",
-      "accent": "#003049",
-      "onAccent": "#FFFFFF",
+      "ink": "#F6F4F0",
+      "muted": "#A29E96",
+      "paper": "#17150F",
+      "surface": "#221F19",
+      "border": "#3A362F",
+      "sale": "#E8735F",
+      "success": "#6CC08A",
+      "accent": "#F6F4F0",
+      "onAccent": "#000000",
+      "secondary": "#2A9D8F",
+      "onSecondary": "#000000",
       "radius": {
         "s": 4,
         "m": 8,
         "l": 16
       },
-      "button": 999
+      "button": 999,
+      "scale": 0.9,
+      "icons": "outline"
     }
   },
   {
@@ -192,7 +229,9 @@
       "background": "beige",
       "accent": "red",
       "corners": "oval",
-      "buttons": "x"
+      "buttons": "x",
+      "scale": "huge",
+      "icons": "sharp"
     },
     "dark": false,
     "tokens": {
@@ -205,12 +244,16 @@
       "success": "#2E7D4F",
       "accent": "#17150F",
       "onAccent": "#FFFFFF",
+      "secondary": "#17150F",
+      "onSecondary": "#FFFFFF",
       "radius": {
         "s": 4,
         "m": 8,
         "l": 16
       },
-      "button": 999
+      "button": 999,
+      "scale": 1,
+      "icons": "outline"
     }
   }
 ]

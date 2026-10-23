@@ -6,6 +6,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.float
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -25,22 +26,27 @@ class ThemeLookTest {
             // the settings' shape: `colors.background`, `colors.text`, `corners`, `buttons` (the accent is `brand.accent`)
             val appearance = JsonObject(
                 buildMap {
-                    put("colors", JsonObject(listOfNotNull(given["background"]?.let { "background" to it }, given["text"]?.let { "text" to it }).toMap()))
+                    put("colors", JsonObject(listOf("background", "text", "secondary").mapNotNull { k -> given[k]?.let { k to it } }.toMap()))
                     given["corners"]?.let { put("corners", it) }
                     given["buttons"]?.let { put("buttons", it) }
+                    given["scale"]?.let { put("type", JsonObject(mapOf("scale" to it))) }
+                    given["icons"]?.let { put("icons", it) }
                 },
             )
             val look = ThemeLook.decode(appearance)!!
-            val colors = argonColors(given["accent"]?.jsonPrimitive?.content, dark, look.background, look.text)
+            val colors = argonColors(given["accent"]?.jsonPrimitive?.content, dark, look.background, look.text, look.secondary)
             val hex = { c: androidx.compose.ui.graphics.Color -> "#%06X".format(c.toArgb() and 0xFFFFFF) }
             val tokens = mapOf(
                 "ink" to colors.ink, "muted" to colors.muted, "paper" to colors.paper, "surface" to colors.surface, "border" to colors.border,
                 "sale" to colors.sale, "success" to colors.success, "accent" to colors.accent, "onAccent" to colors.onAccent,
+                "secondary" to colors.secondary, "onSecondary" to colors.onSecondary,
             )
             for ((name, color) in tokens) assertEquals("$given dark=$dark $name", want[name]!!.jsonPrimitive.content, hex(color))
             val radius = want["radius"]!!.jsonObject
             assertEquals("$given corners", listOf("s", "m", "l").map { radius[it]!!.jsonPrimitive.int }, look.corners.dp)
             assertEquals("$given buttons", want["button"]!!.jsonPrimitive.int, look.buttons.dp)
+            assertEquals("$given scale", want["scale"]!!.jsonPrimitive.float, look.scale, 0.0001f)
+            assertEquals("$given icons", want["icons"]!!.jsonPrimitive.content, look.icons.name.lowercase())
         }
     }
 

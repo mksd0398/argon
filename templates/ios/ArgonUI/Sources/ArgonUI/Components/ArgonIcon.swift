@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// The icons Argon uses, the same names on both platforms (SF Symbols here, Material Symbols on Android).
 public enum ArgonIconName: String, CaseIterable, Sendable {
@@ -54,6 +55,14 @@ public enum ArgonIconName: String, CaseIterable, Sendable {
         case .eyeOff: return "eye.slash"
         }
     }
+
+    /// The symbol in `style`: filled, its `.fill` form where SF Symbols has one (a magnifying glass or a cross has
+    /// none, and stays as it is).
+    public func systemName(_ style: ArgonIconStyle) -> String {
+        guard style == .filled, !systemName.hasSuffix(".fill") else { return systemName }
+        let filled = systemName + ".fill"
+        return UIImage(systemName: filled) != nil ? filled : systemName
+    }
 }
 
 /// An icon, decorative: the control around it carries the accessibility label. Takes the current foreground style
@@ -70,8 +79,10 @@ public struct ArgonIcon: View {
         self.tint = tint
     }
 
+    @Environment(\.argonTheme) private var theme
+
     public var body: some View {
-        let image = Image(systemName: name.systemName).font(.system(size: size)).accessibilityHidden(true)
+        let image = Image(systemName: name.systemName(theme.icons)).font(.system(size: size)).accessibilityHidden(true)
         if let tint = tint {
             image.foregroundStyle(tint)
         } else {

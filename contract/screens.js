@@ -3,6 +3,8 @@
 // settings and defaults — plus the checks an editor (Krypton's builder) runs before saving. The apps decode the same
 // JSON leniently on their own; this is the strict side.
 
+import { COLOR_NAMES } from "./theme.js";
+
 /** The metaobject each screen is: its handle is the screen. */
 export const APP_SCREEN_DEFINITION = {
   type: "app_screen",
@@ -100,7 +102,8 @@ export const SECTION_TYPES = {
   },
   marquee: {
     name: "Scrolling text",
-    settings: [s("text", "text"), s("link", "link"), choice("speed", ["slow", "medium", "fast"], "medium"), s("text_color", "color", { default: "#FFFFFF" })],
+    // the theme inverted unless set: on its background the `text` colour, in the words the `background` one
+    settings: [s("text", "text"), s("link", "link"), choice("speed", ["slow", "medium", "fast"], "medium"), s("text_color", "color", { default: "background" })],
   },
   faq: {
     name: "FAQ",
@@ -231,7 +234,9 @@ function checkValue(setting, value, at) {
       if (typeof value !== "boolean") throw fail("must be true or false");
       return value;
     case "color":
-      if (typeof value !== "string" || !/^#[0-9a-fA-F]{6}$/.test(value)) throw fail("must be a colour like #1F6FEB");
+      // one of the theme's colours by name (it follows the theme), or a colour of the section's own
+      if (COLOR_NAMES.includes(value)) return value;
+      if (typeof value !== "string" || !/^#[0-9a-fA-F]{6}$/.test(value)) throw fail(`must be a colour like #1F6FEB or one of the theme's: ${COLOR_NAMES.join(", ")}`);
       return value.toUpperCase();
     case "choice":
       if (!setting.choices.includes(value)) throw fail(`must be one of ${setting.choices.join(", ")}`);

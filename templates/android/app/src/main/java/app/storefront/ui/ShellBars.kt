@@ -19,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -34,7 +35,6 @@ import app.storefront.data.Links
 import app.storefront.data.MenuItem
 import app.storefront.data.Route
 import app.storefront.data.menuTree
-import app.storefront.ui.sections.color
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 
@@ -57,9 +57,9 @@ fun AnnouncementBar(announcement: Announcement, onOpen: (Route) -> Unit, onClose
     }
     val message = announcement.messages[index % announcement.messages.size]
     val route = Links.resolve(message.link, AppGraph.brand.value?.hosts ?: setOf(AppGraph.shopDomain))
-    val ink = color(announcement.color) ?: ArgonTheme.colors.paper
+    val ink = announcement.color.toColor().takeOrElse { ArgonTheme.colors.paper }
     Row(
-        Modifier.fillMaxWidth().background(color(announcement.background) ?: ArgonTheme.colors.ink).statusBarsPadding().heightIn(min = 36.dp)
+        Modifier.fillMaxWidth().background(announcement.background.toColor().takeOrElse { ArgonTheme.colors.ink }).statusBarsPadding().heightIn(min = 36.dp)
             .then(if (route != null) Modifier.clickable(role = Role.Button) { onOpen(route) } else Modifier),
         verticalAlignment = Alignment.CenterVertically,
     ) {

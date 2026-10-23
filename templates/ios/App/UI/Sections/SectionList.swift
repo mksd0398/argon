@@ -242,6 +242,7 @@ struct SectionView: View {
     let section: ScreenSection
     let scope: SectionScope
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.argonTheme) private var theme
 
     var body: some View {
         content
@@ -250,15 +251,15 @@ struct SectionView: View {
             .environment(\.colorScheme, readsOn(section.background) ? scheme : scheme == .dark ? .light : .dark)
             .padding(.vertical, section.padding)
             .frame(maxWidth: .infinity)
-            .background { ArgonTheme.color(hex: section.background) }
+            .background { theme.colors.resolve(section.background) }
             // the section last shown: what a crash report names as the one on screen
             .onAppear { CrashReports.setKey("section", "\(section.type) \(section.id)") }
     }
 
     private func readsOn(_ background: String?) -> Bool {
-        guard let background else { return true }
-        let ink = scheme == .dark ? ArgonPalette.dark.ink : ArgonPalette.themed(AppGraph.look.argon(accent: nil)).ink
-        return (ArgonTheme.contrastRatio(background, ink) ?? 21) >= 4.5
+        let dark = scheme == .dark
+        guard let fill = theme.look.hex(background, dark: dark), let ink = theme.look.hex("text", dark: dark) else { return true }
+        return (ArgonTheme.contrastRatio(fill, ink) ?? 21) >= 4.5
     }
 
     @ViewBuilder

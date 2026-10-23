@@ -3,6 +3,7 @@ package app.storefront.ui
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.luminance
@@ -38,7 +39,10 @@ fun isBarDark(): Boolean {
 @Composable
 fun AppTheme(accent: String?, content: @Composable () -> Unit) {
     val look = AppGraph.look
-    ArgonTheme(accent, isAppDark(), AppGraph.headingFont, AppGraph.bodyFont, look.background, look.text, look.corners, look.buttons) {
+    ArgonTheme(
+        accent, isAppDark(), AppGraph.headingFont, AppGraph.bodyFont, look.background, look.text, look.corners, look.buttons,
+        look.secondary, look.scale, look.icons,
+    ) {
         val navigation = AppGraph.navigation
         val bar = ArgonBarColors(navigation.topBarBackground.toColor(), navigation.topBarForeground.toColor())
         // the status bar icons over a merchant's own bar colour (the theme's are set by MainActivity)
@@ -47,5 +51,24 @@ fun AppTheme(accent: String?, content: @Composable () -> Unit) {
     }
 }
 
-/** A settings colour (`#RRGGBB`) as a colour; Unspecified (the theme's) when unset. */
-internal fun String?.toColor(): Color = this?.let(::color) ?: Color.Unspecified
+/**
+ * A colour setting as a colour in the current theme: one of its colours by name ([app.storefront.data.COLOR_NAMES],
+ * following the theme and light or dark) or a `#RRGGBB` of its own; Unspecified (the theme's) when unset or neither.
+ */
+@Composable
+@ReadOnlyComposable
+internal fun String?.toColor(): Color {
+    val c = ArgonTheme.colors
+    return when (this) {
+        null -> Color.Unspecified
+        "accent" -> c.accent
+        "secondary" -> c.secondary
+        "background" -> c.paper
+        "surface" -> c.surface
+        "text" -> c.ink
+        "muted" -> c.muted
+        "border" -> c.border
+        "sale" -> c.sale
+        else -> color(this) ?: Color.Unspecified
+    }
+}

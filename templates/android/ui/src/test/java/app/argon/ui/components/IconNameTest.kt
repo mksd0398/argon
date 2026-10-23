@@ -21,6 +21,18 @@ class IconNameTest {
         assertEquals(spec, ArgonIconName.entries.map { it.name.replaceFirstChar(Char::lowercase) })
 
     @Test
+    fun everyIconHasAFilledDrawingItsOwnOrTheSame() {
+        val drawables = Class.forName("app.argon.ui.R\$drawable")
+        for (icon in ArgonIconName.entries) {
+            val own = "argon_ic_${snake(icon.name)}_fill"
+            val file = File("src/main/res/drawable/$own.xml")
+            if (file.isFile) assertEquals(icon.name, drawables.getField(own).getInt(null), icon.filled)
+            else assertEquals("${icon.name} draws filled as it is", icon.drawable, icon.filled)
+        }
+        assertTrue(File("src/main/res/drawable/argon_ic_home_fill.xml").isFile)
+    }
+
+    @Test
     fun everyNameMapsToItsBundledDrawable() {
         val drawables = Class.forName("app.argon.ui.R\$drawable")
         for (icon in ArgonIconName.entries) {
@@ -35,6 +47,8 @@ class IconNameTest {
     @Test
     fun noDrawableIsLeftUnmapped() {
         val bundled = File("src/main/res/drawable").list()!!.filter { it.startsWith("argon_ic_") }.map { it.removeSuffix(".xml") }.toSet()
-        assertEquals(bundled, ArgonIconName.entries.map { "argon_ic_${snake(it.name)}" }.toSet())
+        val drawables = Class.forName("app.argon.ui.R\$drawable")
+        val mapped = ArgonIconName.entries.flatMap { listOf(it.drawable, it.filled) }.toSet()
+        assertEquals(bundled, bundled.filter { drawables.getField(it).getInt(null) in mapped }.toSet())
     }
 }

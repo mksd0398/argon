@@ -47,14 +47,14 @@ public struct ArgonTopBar: ViewModifier {
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.argonBarColors) var barColors
 
-    private var foreground: Color? { ArgonTheme.color(hex: barColors.foreground) }
+    private var foreground: Color? { theme.colors.resolve(barColors.foreground) }
 
     public func body(content: Content) -> some View {
         // with a logo, the logo sits at the start in place of the title (a home screen with its logo at the start)
         let logoAtStart = variant == .standard && logoUrl != nil || variant == .overlayStandard
         // the overlay bars are drawn in colours of their own; every other bar in the system's (or the app's `barColors`)
         let overlay = variant == .overlay || variant == .overlayStandard
-            ? overlayBarColors(solid: solid, dark: colorScheme == .dark, darkContent: darkOverPicture, bar: barColors)
+            ? overlayBarColors(solid: solid, dark: colorScheme == .dark, darkContent: darkOverPicture, bar: barColors, look: theme.look)
             : nil
         let tint = overlay?.content.color
         content
@@ -152,7 +152,7 @@ public struct OverlayBarColors: Equatable, Sendable {
     public let container, content, shade: ArgonRGBA
 }
 
-/// The colours the app gives its solid bars (`#RRGGBB`; nil: the theme's): the top bar's background and its title and
+/// The colours the app gives its solid bars (`#RRGGBB` or a theme colour's name; nil: the theme's): the top bar's background and its title and
 /// icons. Set it in the environment over the screens (`\.argonBarColors`); the overlay bar turns into these once solid.
 public struct ArgonBarColors: Equatable, Sendable {
     public var background: String?
@@ -178,18 +178,20 @@ extension EnvironmentValues {
 /// The overlay bar at `solid` (0 over the picture ... 1 the normal bar; clamped) in the light or the `dark` appearance.
 /// Over the picture it uses the dark palette whatever the appearance, as everything that sits on a photo does: light
 /// content, a dark shade; with `darkContent` (a light picture) the light palette: dark content, a light shade. Solid, it
-/// is the theme's bar, or `bar`'s colours where they are given.
-public func overlayBarColors(solid: Double, dark: Bool, darkContent: Bool = false, bar: ArgonBarColors = ArgonBarColors()) -> OverlayBarColors {
+/// is the theme's bar (`look`'s), or `bar`'s colours where they are given (a theme colour's name or `#RRGGBB`).
+public func overlayBarColors(
+    solid: Double, dark: Bool, darkContent: Bool = false, bar: ArgonBarColors = ArgonBarColors(), look: ArgonLook = ArgonLook()
+) -> OverlayBarColors {
     let t = min(max(solid, 0), 1)
-    let onPhoto = darkContent ? ArgonPalette.light : ArgonPalette.dark, theme = dark ? ArgonPalette.dark : ArgonPalette.light
+    let onPhoto = darkContent ? ArgonPalette.light : ArgonPalette.dark, theme = dark ? ArgonPalette.dark : ArgonPalette.themed(look)
     func parts(_ hex: String, opacity: Double = 1) -> ArgonRGBA {
         let c = ArgonTheme.rgb(hex: hex) ?? (red: 0, green: 0, blue: 0)
         return ArgonRGBA(red: c.red, green: c.green, blue: c.blue, opacity: opacity)
     }
     func mix(_ from: Double, _ to: Double) -> Double { from * (1 - t) + to * t }
-    let light = parts(onPhoto.ink), ink = parts(bar.foreground ?? theme.ink)
+    let light = parts(onPhoto.ink), ink = parts(look.hex(bar.foreground, dark: dark) ?? theme.ink)
     return OverlayBarColors(
-        container: parts(bar.background ?? theme.paper, opacity: t),
+        container: parts(look.hex(bar.background, dark: dark) ?? theme.paper, opacity: t),
         content: ArgonRGBA(red: mix(light.red, ink.red), green: mix(light.green, ink.green), blue: mix(light.blue, ink.blue), opacity: 1),
         shade: parts(onPhoto.paper, opacity: overlayBarShade * (1 - t))
     )

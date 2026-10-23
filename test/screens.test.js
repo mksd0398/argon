@@ -117,7 +117,7 @@ test("detailing: every section takes a background and padding; the four new type
   fails({ sections: [{ id: "g", type: "features", blocks: Array.from({ length: 9 }, (_, i) => ({ id: `b${i}`, type: "feature" })) }] }, "home", /too many/);
   assert.equal(one({ id: "i", type: "image_grid", settings: { columns: "3" }, blocks: [{ id: "t", type: "tile", settings: { link: "/collections/sale" } }] }).settings.columns, "3");
   assert.equal(one({ id: "m", type: "marquee", settings: { text: "Free shipping {{ shop.name }}", speed: "fast" } }).settings.speed, "fast");
-  assert.deepEqual(newSection("marquee", "m").settings, { speed: "medium", text_color: "#FFFFFF" });
+  assert.deepEqual(newSection("marquee", "m").settings, { speed: "medium", text_color: "background" });
 
   assert.deepEqual(checkTemplate({ screen: { top_bar: "transparent", top_bar_tint: "dark", background: "#fafafa" }, sections: [] }, "home").screen,
     { top_bar: "transparent", top_bar_tint: "dark", background: "#FAFAFA" });
@@ -149,4 +149,11 @@ test("the onboarding screen: one welcome section of up to 5 pages, which no othe
   fails({ sections: [{ ...welcome, blocks: [page("p", { button_label: "x".repeat(25) })] }] }, "onboarding", /longer than 24/);
   fails({ sections: [{ ...welcome, blocks: [page("p", { video: "http://x.test/v.mp4" })] }] }, "onboarding", /https/);
   assert.deepEqual(checkTemplate({ sections: [] }, "onboarding").sections, []);
+});
+
+test("a colour setting takes one of the theme's colours by name, or a hex of its own", () => {
+  assert.equal(one({ id: "a", type: "spacer", settings: { background: "accent" } }).settings.background, "accent");
+  assert.equal(checkTemplate({ screen: { background: "surface" }, sections: [] }, "home").screen.background, "surface");
+  fails({ sections: [{ id: "a", type: "spacer", settings: { background: "Accent" } }] }, "home", /theme's: accent, secondary/);
+  fails({ sections: [{ id: "a", type: "spacer", settings: { background: "primary" } }] }, "home", /#1F6FEB or one of the theme's/);
 });
