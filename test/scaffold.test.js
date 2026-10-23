@@ -171,7 +171,7 @@ test("--demo --yes scaffolds both apps against mock.shop", async () => {
       "API_VERSION=2026-10", "APP_NAME=Mock.shop", "BUNDLE_ID=com.mockshop.demoapp", "PDP_METAFIELDS=",
       "HOME_TEMPLATE=fashion", "COLLECTION_TEMPLATE=top", "JUDGEME_PUBLIC_TOKEN=", "SHOW_VENDOR=false", "ONBOARDING=true", "FREE_SHIPPING_THRESHOLD=150",
       "META_APP_ID=", "META_CLIENT_TOKEN=", "MOENGAGE_WORKSPACE_ID=", "MOENGAGE_DATA_CENTER=", "SERVER_PURCHASE=false",
-      "CHECKOUT=shopify", "LOGIN=shopify", "GOKWIK_MERCHANT_ID=", "GOKWIK_ENVIRONMENT=production"]) {
+      "CHECKOUT=shopify", "LOGIN=shopify", "GOKWIK_MERCHANT_ID=", "GOKWIK_ENVIRONMENT=production", "ARGON_REVISION=0.1.0"]) {
       assert.ok(props.split("\n").includes(line), `shopify.properties has ${line}`);
     }
     // no analytics unless asked for: no SDK in the iOS package, no Firebase file, no server, nothing about it at the end
@@ -373,7 +373,10 @@ test("every analytics flag: keys in both config files, Firebase's files, the iOS
     assert.ok(lines(readFileSync(join(dir, "ios/xtool.yml"), "utf8")).includes("- App/GoogleService-Info.plist"), "bundled by an xtool build");
 
     const added = addedLines(readFileSync(join(dir, "ios/Package.swift"), "utf8"));
-    assert.deepEqual(added, [...Object.values(SDK_LINES).map(([dependency]) => dependency), ...Object.values(SDK_LINES).map(([, product]) => product), ...FIREBASE_TARGET]);
+    // Firebase brings crash reports: Crashlytics below Analytics
+    const products = Object.values(SDK_LINES).map(([, product]) => product);
+    products.splice(1, 0, SDK_LINES.firebase[1].replace("FirebaseAnalytics", "FirebaseCrashlytics"));
+    assert.deepEqual(added, [...Object.values(SDK_LINES).map(([dependency]) => dependency), ...products, ...FIREBASE_TARGET]);
     const info = readFileSync(join(dir, "ios/Xtool-Info.plist"), "utf8");
     for (const [key, value] of [["CFBundleDisplayName", "Mock.shop"], ["FacebookAppID", "123"], ["FacebookClientToken", "abc"], ["FacebookDisplayName", "Mock.shop"]]) {
       assert.ok(info.includes(`\t<key>${key}</key>\n\t<string>${value}</string>\n`), key);
@@ -500,7 +503,7 @@ test("packageSwift: each SDK's package and product go in below Checkout Kit's, i
   assert.deepEqual(meta.slice(meta.findIndex((line) => line.includes("checkout-sheet-kit-swift\", from")) + 1).slice(0, 2), [`        ${SDK_LINES.meta[0]}`, "    ],"]);
   assert.deepEqual(meta.slice(meta.findIndex((line) => line.includes("ShopifyCheckoutSheetKit")) + 1).slice(0, 2), [`                ${SDK_LINES.meta[1]}`, "            ],"]);
   // the order is fixed, whatever order the providers are given in; only Firebase has a file to keep out of the target
-  assert.deepEqual(addedLines(packageSwift(TEMPLATE_PACKAGE, ["moengage", "firebase"])), [SDK_LINES.firebase[0], SDK_LINES.moengage[0], SDK_LINES.firebase[1], SDK_LINES.moengage[1], ...FIREBASE_TARGET]);
+  assert.deepEqual(addedLines(packageSwift(TEMPLATE_PACKAGE, ["moengage", "firebase"])), [SDK_LINES.firebase[0], SDK_LINES.moengage[0], SDK_LINES.firebase[1], SDK_LINES.firebase[1].replace("FirebaseAnalytics", "FirebaseCrashlytics"), SDK_LINES.moengage[1], ...FIREBASE_TARGET]);
 
   const unix = lines(TEMPLATE_PACKAGE).join("\n"), windows = lines(TEMPLATE_PACKAGE).join("\r\n");
   assert.ok(!packageSwift(unix, ["firebase", "meta", "moengage"]).includes("\r"));

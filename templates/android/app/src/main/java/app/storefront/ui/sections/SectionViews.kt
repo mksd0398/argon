@@ -44,6 +44,7 @@ import app.argon.ui.components.ArgonListItem
 import app.argon.ui.components.ArgonListLeading
 import app.argon.ui.components.ArgonListTrailing
 import app.storefront.data.CollectionCard
+import app.storefront.data.CrashReports
 import app.storefront.data.ProductCard
 import app.storefront.data.Route
 import app.storefront.data.ScreenSection
@@ -72,7 +73,11 @@ import kotlinx.coroutines.delay
  */
 @Composable
 fun SectionView(section: ScreenSection, env: SectionEnv, modifier: Modifier = Modifier) {
-    LaunchedEffect(section.id) { env.viewed(section) }
+    LaunchedEffect(section.id) {
+        env.viewed(section)
+        // the section last shown: what a crash report names as the one on screen
+        CrashReports.setKey("section", "${section.type} ${section.id}")
+    }
     val background = section.background?.let(::color)
     Box(modifier.fillMaxWidth().then(if (background != null) Modifier.background(background) else Modifier).padding(vertical = section.padding.dp)) {
         when (val content = section.content) {

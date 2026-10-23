@@ -16,6 +16,9 @@ enum Liquid {
             let renderer = Renderer(context: context, timeZone: timeZone)
             return try renderer.render(nodes)
         } catch {
+            // never a crash: the text without its Liquid; reported, with the template's start, so a store's broken
+            // Liquid shows up in App health
+            CrashReports.record(error, "liquid: \(template.prefix(120))")
             return withoutLiquid(template)
         }
     }

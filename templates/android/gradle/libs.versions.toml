@@ -12,6 +12,7 @@ okhttp = "5.4.0"
 serialization = "1.11.0"
 coroutines = "1.11.0"
 googleServices = "4.5.0"
+crashlyticsPlugin = "3.0.8"
 firebaseBom = "35.0.0"
 facebook = "18.3.0"
 moengage = "15.04.00"
@@ -35,6 +36,7 @@ kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutine
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
 firebase-messaging = { module = "com.google.firebase:firebase-messaging" }
+firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics" }
 facebook-core = { module = "com.facebook.android:facebook-core", version.ref = "facebook" }
 moengage = { module = "com.moengage:moe-android-sdk", version.ref = "moengage" }
 junit = { module = "junit:junit", version.ref = "junit" }
@@ -46,3 +48,4 @@ android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
+firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "crashlyticsPlugin" }

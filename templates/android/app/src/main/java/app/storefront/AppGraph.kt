@@ -16,6 +16,9 @@ import app.storefront.auth.KwikPassStore
 import app.storefront.auth.TokenCrypto
 import app.storefront.data.Analytics
 import app.storefront.data.AnalyticsConsentStore
+import app.storefront.data.CrashReports
+import app.storefront.data.CrashSink
+import app.storefront.data.crashBackend
 import app.storefront.data.Announcement
 import app.storefront.data.Appearance
 import app.storefront.data.Brand
@@ -76,6 +79,11 @@ import okhttp3.OkHttpClient
 class StorefrontApp : Application(), SingletonImageLoader.Factory {
     override fun onCreate() {
         super.onCreate()
+        // Crash reports first, so a crash anywhere below is reported with what the app is (src/firebase, else none)
+        CrashReports.backend = crashBackend()
+        CrashReports.setKey("shop", BuildConfig.SHOP_DOMAIN)
+        CrashReports.setKey("app_version", "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+        CrashReports.setKey("argon", BuildConfig.ARGON_REVISION)
         // First: the per-store values read the cached settings. The fetch only refreshes that cache, for the next launch.
         AppGraph.settingsStore = RemoteSettingsStore(filesDir, AppGraph.settingsUrl, AppGraph.http)
         // The merchant's fonts when an earlier launch downloaded them; the files the newest settings name are fetched for the next.
@@ -90,6 +98,8 @@ class StorefrontApp : Application(), SingletonImageLoader.Factory {
         AppGraph.analytics = Analytics(
             listOfNotNull(
                 if (BuildConfig.DEBUG) LogSink() else null,
+                // the breadcrumbs of a crash report
+                if (CrashReports.backend != null) CrashSink() else null,
                 firebaseSink(this),
                 metaSink(this),
                 moEngageSink(this),

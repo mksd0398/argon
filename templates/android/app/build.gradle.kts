@@ -36,7 +36,12 @@ if (moengage && config("MOENGAGE_DATA_CENTER").trim() !in listOf("", "1", "2", "
 val push = config("PUSH").trim().equals("true", ignoreCase = true)
 if (push && !firebase) throw GradleException("PUSH is true but app/google-services.json is missing: push goes through the store's Firebase project")
 // Google's plugin turns google-services.json into the resources Firebase starts from; it fails a build without the file.
-if (firebase) apply(plugin = libs.plugins.google.services.get().pluginId)
+// Crashlytics comes with Firebase: its plugin writes the build id the SDK refuses to start without, and uploads the
+// R8 mapping of a minified release build.
+if (firebase) {
+    apply(plugin = libs.plugins.google.services.get().pluginId)
+    apply(plugin = libs.plugins.firebase.crashlytics.get().pluginId)
+}
 
 android {
     namespace = "app.storefront"
@@ -55,7 +60,7 @@ android {
             "HOME_TEMPLATE", "COLLECTION_TEMPLATE", "JUDGEME_PUBLIC_TOKEN", "SHOW_VENDOR",
             "ONBOARDING", "FREE_SHIPPING_THRESHOLD", "SETTINGS_URL", "CUSTOMER_REDIRECT_URI",
             "META_APP_ID", "META_CLIENT_TOKEN", "MOENGAGE_WORKSPACE_ID", "MOENGAGE_DATA_CENTER", "SERVER_PURCHASE",
-            "PUSH", "DEVICES_URL", "CHECKOUT", "LOGIN", "GOKWIK_MERCHANT_ID", "GOKWIK_ENVIRONMENT",
+            "PUSH", "DEVICES_URL", "CHECKOUT", "LOGIN", "GOKWIK_MERCHANT_ID", "GOKWIK_ENVIRONMENT", "ARGON_REVISION",
         )) buildConfigField("String", key, javaString(config(key)))
         resValue("string", "app_name", resourceString(config("APP_NAME")))
         manifestPlaceholders["authScheme"] = "shop.${config("SHOP_ID")}.app"
@@ -99,6 +104,8 @@ dependencies {
         implementation(libs.firebase.analytics)
         // its push service is compiled in with Firebase (src/firebase), and runs only with PUSH (the manifest)
         implementation(libs.firebase.messaging)
+        // crash reports (src/firebase/.../CrashReporting.kt)
+        implementation(libs.firebase.crashlytics)
     }
     if (meta) implementation(libs.facebook.core)
     if (moengage) implementation(libs.moengage)

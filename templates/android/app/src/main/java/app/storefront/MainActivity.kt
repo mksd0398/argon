@@ -8,6 +8,7 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import app.storefront.data.Appearance
+import app.storefront.data.ArgonTestCrash
 import app.storefront.ui.AppRoot
 import kotlinx.coroutines.launch
 
@@ -25,6 +26,12 @@ class MainActivity : ComponentActivity() {
         // system brings back (after process death, from Recents) has the same intent, whose link was opened already.
         val fromHistory = intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
         if (savedInstanceState == null && !fromHistory) AppGraph.takeNotificationLink(intent)
+        // Debug builds only: `adb shell am start -n <package>/app.storefront.MainActivity --ez argon_test_crash true`
+        // crashes three seconds after launch, once a screen and its events are in (the report shows them), to prove crash
+        // reports reach the store's Firebase (they are sent at the next launch).
+        if (BuildConfig.DEBUG && intent.getBooleanExtra("argon_test_crash", false)) {
+            window.decorView.postDelayed({ throw ArgonTestCrash() }, 3_000)
+        }
     }
 
     // a notification tapped while the app is open (the foreground one PushService shows)

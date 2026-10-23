@@ -62,6 +62,7 @@ private struct ScreenTracker: ViewModifier {
                 guard !shown, let name = name else { return }
                 shown = true
                 AppGraph.analytics.track(.screenView(name))
+                CrashReports.setKey("screen", name)
             }
             .onDisappear { shown = false }
     }

@@ -43,9 +43,12 @@ object Liquid {
             buildString { LiquidRenderer(context, zone).render(nodes, this) }
         } catch (e: Exception) {
             // a syntax error, the work budget or the output cap ([LiquidRenderer]), or a value no filter can take (NaN, an
-            // infinite amount, a date out of range): the text without its Liquid, never a crash
+            // infinite amount, a date out of range): the text without its Liquid, never a crash; reported, with the
+            // template's start, so a store's broken Liquid shows up in App health
+            CrashReports.record(e, "liquid: ${template.take(120)}")
             withoutLiquid(template)
         } catch (e: StackOverflowError) {
+            CrashReports.record(e, "liquid: ${template.take(120)}")
             withoutLiquid(template)
         }
     }

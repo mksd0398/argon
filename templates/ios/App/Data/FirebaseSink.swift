@@ -11,7 +11,8 @@ import Foundation
 @MainActor
 func firebaseSink() -> AnalyticsSink? {
     guard Bundle.main.url(forResource: "GoogleService-Info", withExtension: "plist") != nil else { return nil }
-    FirebaseApp.configure()
+    // crash reports (FirebaseCrash.swift) may have started it already
+    if FirebaseApp.app() == nil { FirebaseApp.configure() }
     return FirebaseSink(serverPurchase: AppGraph.serverPurchase)
 }
 

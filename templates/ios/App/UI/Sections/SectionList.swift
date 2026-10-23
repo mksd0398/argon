@@ -107,6 +107,8 @@ private func quietly<T>(_ what: String, _ screen: String, _ fallback: T, _ load:
     } catch {
         if !Task.isCancelled {
             screensLog.warning("\(what, privacy: .public) of screen \(screen, privacy: .public) not loaded: \(error.localizedDescription)")
+            // a network failure is not a bug; anything else (a response the app can't read) is reported
+            if !(error is URLError) { CrashReports.record(error, "load \(what) of \(screen)") }
         }
         return fallback
     }
@@ -245,6 +247,8 @@ struct SectionView: View {
             .padding(.vertical, section.padding)
             .frame(maxWidth: .infinity)
             .background { ArgonTheme.color(hex: section.background) }
+            // the section last shown: what a crash report names as the one on screen
+            .onAppear { CrashReports.setKey("section", "\(section.type) \(section.id)") }
     }
 
     @ViewBuilder

@@ -85,7 +85,7 @@ enum AnalyticsEvent: Equatable, Sendable {
     var params: [String: Any] { Dictionary(values) { _, last in last } }
 
     /// `params` as the log prints them, in Android's order and form: "{value=324.0, currency=CAD, items=[123/456 x3]}".
-    fileprivate var paramsText: String {
+    var paramsText: String {
         let texts: [String] = values.map { key, value in
             // a list of texts without the quotes Swift would print around each
             let text = (value as? [String]).map { "[" + $0.joined(separator: ", ") + "]" } ?? "\(value)"
